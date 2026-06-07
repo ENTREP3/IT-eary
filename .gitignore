@@ -1,0 +1,9 @@
+node_modules
+dist
+.env.local
+.env*.local
+*.log
+.DS_Store
+
+# Local Claude Code config (per-machine)
+.claude/settings.local.json
