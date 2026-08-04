@@ -4,6 +4,14 @@ import { Loader2 } from 'lucide-react';
 import { AdminApp } from './components/AdminApp';
 import { CashierApp } from './components/CashierApp';
 import { StorefrontApp } from './components/diner/StorefrontApp';
+import { Landing } from './components/site/Landing';
+import {
+  AboutPage,
+  ContactPage,
+  FaqPage,
+  PrivacyPage,
+  RefundPage,
+} from './components/site/InfoPages';
 import { AuthScreen } from './components/auth/AuthScreen';
 import { useAuthStore } from './store/authStore';
 import { usePaymentStore } from './store/paymentStore';
@@ -12,7 +20,8 @@ import type { UserRole } from './lib/types';
 
 /**
  * All three audiences on the web, mirroring the Flutter apps:
- *   /          diner storefront — no account
+ *   /          landing page, plus the About / FAQ / Contact / policy pages
+ *   /menu      diner storefront, no account
  *   /cashier   counter
  *   /admin     owner
  *
@@ -35,7 +44,13 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<StorefrontApp />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/menu" element={<StorefrontApp />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/faq" element={<FaqPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/refund" element={<RefundPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
         <Route
           path="/admin"
           element={

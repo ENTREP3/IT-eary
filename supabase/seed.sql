@@ -8,8 +8,8 @@
 -- Diners never have accounts — ordering is ticket-based and anonymous.
 --
 -- ⚠️  LOCAL ONLY. These are weak, publicly-known development passwords:
---         admin@iteary.local   / admin123
---         cashier@iteary.local / cashier123
+--         admin@bencris.local   / admin123
+--         cashier@bencris.local / cashier123
 --     `supabase db push` never runs seeds, so they cannot reach a hosted
 --     project by accident — and they must not be recreated there by hand.
 --     On a hosted project, create staff in the Supabase dashboard with real
@@ -75,8 +75,8 @@ declare
   admin_id   uuid := '11111111-1111-1111-1111-111111111111';
   cashier_id uuid := '22222222-2222-2222-2222-222222222222';
 begin
-  perform pg_temp.seed_staff_user(admin_id,   'admin@iteary.local',   'admin123',   'Mary (Owner)');
-  perform pg_temp.seed_staff_user(cashier_id, 'cashier@iteary.local', 'cashier123', 'Ana (Cashier)');
+  perform pg_temp.seed_staff_user(admin_id,   'admin@bencris.local',   'admin123',   'Mary (Owner)');
+  perform pg_temp.seed_staff_user(cashier_id, 'cashier@bencris.local', 'cashier123', 'Ana (Cashier)');
 
   -- The signup trigger created 'customer' profiles; assign the real roles.
   update public.profiles set role = 'admin', full_name = 'Mary (Owner)'

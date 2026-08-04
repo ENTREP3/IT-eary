@@ -75,8 +75,8 @@ docker compose up -d web                      # dev server  → http://localhost
 docker compose --profile prod up -d --build web-prod   # nginx build → http://localhost:5173
 ```
 
-**Staff logins (local only):** `admin@iteary.local` / `admin123` ·
-`cashier@iteary.local` / `cashier123`
+**Staff logins (local only):** `admin@bencris.local` / `admin123` ·
+`cashier@bencris.local` / `cashier123`
 
 **Practice tickets** (seeded unpaid): `PAY001` · `PAY002` · `PAY003`
 

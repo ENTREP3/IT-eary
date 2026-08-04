@@ -11,3 +11,6 @@ supabase/.branches
 
 # Local Claude Code config (per-machine)
 .claude/settings.local.json
+
+# Office lock files left behind while a document is open
+~$*

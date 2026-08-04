@@ -99,7 +99,7 @@ let ticket = null;
 {
   const sb = fresh();
   const { data: signin, error } = await sb.auth.signInWithPassword({
-    email: 'cashier@iteary.local', password: 'cashier123',
+    email: 'cashier@bencris.local', password: 'cashier123',
   });
   check(!error, `cashier signIn (${error?.message ?? 'ok'})`);
 
@@ -135,7 +135,7 @@ let ticket = null;
 // ---------------------------------------------------------------------------
 {
   const sb = fresh();
-  await sb.auth.signInWithPassword({ email: 'cashier@iteary.local', password: 'cashier123' });
+  await sb.auth.signInWithPassword({ email: 'cashier@bencris.local', password: 'cashier123' });
 
   const { data: exp } = await sb.from('expenses').select('id');
   check((exp ?? []).length === 0, 'cashier cannot read admin-only expenses');
@@ -153,7 +153,7 @@ let ticket = null;
 {
   const sb = fresh();
   const { data, error } = await sb.auth.signInWithPassword({
-    email: 'admin@iteary.local', password: 'admin123',
+    email: 'admin@bencris.local', password: 'admin123',
   });
   check(!error, `admin signIn (${error?.message ?? 'ok'})`);
 

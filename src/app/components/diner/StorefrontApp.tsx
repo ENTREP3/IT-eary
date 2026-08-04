@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { Link } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus,
@@ -15,14 +16,38 @@ import {
   Ticket as TicketIcon,
   ImageIcon,
   ArrowLeft,
+  Search,
+  Heart,
+  Star,
+  Share2,
+  History,
+  Tag,
+  Flame,
 } from 'lucide-react';
 import { useKarinderyaStore } from '../../store/karinderyaStore';
 import { usePaymentStore } from '../../store/paymentStore';
 import { supabase } from '../../lib/supabase';
 import { Receipt } from '../Receipt';
 import { ImageWithFallback } from '../sigma/ImageWithFallback';
+import { Wordmark } from '../site/SiteChrome';
+import {
+  getFavourites,
+  getHistory,
+  getMyRating,
+  hasOrdered,
+  rememberOrder,
+  saveRating,
+  subscribePrefs,
+  toggleFavourite,
+  type PastOrder,
+} from '../../lib/localPrefs';
 import type { Dish } from '../data';
 import type { Order, PaymentMethod } from '../../lib/types';
+
+/** Re-renders whatever reads it whenever the device's own preferences change. */
+function usePrefs<T>(read: () => T): T {
+  return useSyncExternalStore(subscribePrefs, read, read);
+}
 
 type Stage = 'menu' | 'cart' | 'ticket';
 type CartLine = { dish: Dish; qty: number };
@@ -44,6 +69,28 @@ export function StorefrontApp() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [order, setOrder] = useState<Order | null>(null);
   const [lookupOpen, setLookupOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  const favourites = usePrefs(getFavourites);
+  const history = usePrefs(getHistory);
+
+  /**
+   * The best seller *within each category*, taken from the live sales column.
+   *
+   * Ranking across the whole menu would be useless to someone browsing: drinks
+   * outsell every main dish, so the badge would only ever appear on Inumin and
+   * a diner looking at Ulam would never see one.
+   */
+  const bestsellerIds = useMemo(() => {
+    const top = new Map<string, { id: string; sold: number }>();
+    for (const d of dishes) {
+      if (!d.available || d.soldToday <= 0) continue;
+      const current = top.get(d.category);
+      if (!current || d.soldToday > current.sold) top.set(d.category, { id: d.id, sold: d.soldToday });
+    }
+    return new Set([...top.values()].map((v) => v.id));
+  }, [dishes]);
 
   // Open on a category that actually has food today. Landing on one where
   // everything is sold out reads as though the karinderya is closed.
@@ -55,9 +102,36 @@ export function StorefrontApp() {
     setCat(stocked ?? categories[0]);
   }, [categories, dishes, cat]);
 
-  const visible = dishes.filter((d) => d.category === cat);
+  // A search looks across the whole menu; the category chips only apply when
+  // nobody is searching, otherwise a hit in another category would be hidden.
+  const searching = query.trim().length > 0;
+  const visible = useMemo(() => {
+    if (searching) {
+      const q = query.trim().toLowerCase();
+      return dishes.filter((d) =>
+        [d.name, d.tagalog, d.description, d.category].some((f) => f?.toLowerCase().includes(q)),
+      );
+    }
+    return dishes.filter((d) => d.category === cat);
+  }, [dishes, cat, query, searching]);
+
   const count = cart.reduce((a, c) => a + c.qty, 0);
   const total = cart.reduce((a, c) => a + c.qty * c.dish.price, 0);
+
+  /** Rebuilds a past order, skipping anything no longer on the menu today. */
+  const reorder = (past: PastOrder) => {
+    const lines: CartLine[] = [];
+    let skipped = 0;
+    for (const item of past.items) {
+      const dish = dishes.find((d) => d.id === item.id && d.available);
+      if (dish) lines.push({ dish, qty: item.qty });
+      else skipped += 1;
+    }
+    setCart(lines);
+    setHistoryOpen(false);
+    setStage(lines.length ? 'cart' : 'menu');
+    return skipped;
+  };
 
   const add = (d: Dish) =>
     setCart((prev) => {
@@ -75,6 +149,8 @@ export function StorefrontApp() {
     );
 
   const onPlaced = (o: Order) => {
+    // The device keeps its own copy so the next visit can reorder in one tap.
+    rememberOrder(o);
     setOrder(o);
     setCart([]);
     setStage('ticket');
@@ -84,23 +160,18 @@ export function StorefrontApp() {
     <div className="min-h-screen bg-diner-ground text-diner-ink">
       <header className="sticky top-0 z-20 bg-diner-ground/90 backdrop-blur border-b border-diner-ink/10">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between gap-3">
-          <button
-            onClick={() => setStage('menu')}
-            className="text-left"
-            aria-label="IT-eary home"
-          >
-            <div
-              style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.02em' }}
-              className="text-2xl leading-none"
-            >
-              IT<span style={{ fontStyle: 'italic' }} className="text-diner-accent">-eary</span>
-            </div>
-            <div className="text-[10px] tracking-[0.3em] uppercase opacity-55 mt-0.5">
-              Today's menu
-            </div>
-          </button>
+          <Wordmark />
 
           <div className="flex items-center gap-2">
+            {history.length > 0 && (
+              <button
+                onClick={() => setHistoryOpen(true)}
+                className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-full border border-diner-ink/20 hover:bg-diner-ink hover:text-diner-ground transition-colors"
+              >
+                <History size={14} />
+                <span className="hidden sm:inline">Order again</span>
+              </button>
+            )}
             <button
               onClick={() => setLookupOpen(true)}
               className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-full border border-diner-ink/20 hover:bg-diner-ink hover:text-diner-ground transition-colors"
@@ -135,24 +206,50 @@ export function StorefrontApp() {
               Kain na, <em className="text-diner-accent">tayo na.</em>
             </h1>
             <p className="mt-3 opacity-70 max-w-lg text-sm md:text-base">
-              Only what's cooking right now. If it isn't here, it's sold out — balik ka bukas.
+              Only what's cooking right now. If it isn't here, it's sold out, balik ka bukas.
             </p>
 
-            <nav className="mt-6 flex gap-2 flex-wrap">
-              {categories.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setCat(c)}
-                  className={`px-4 py-2 rounded-full text-sm transition-all ${
-                    cat === c
-                      ? 'bg-diner-ink text-diner-ground'
-                      : 'bg-diner-card border border-diner-ink/15 hover:border-diner-ink/40'
-                  }`}
-                >
-                  {c}
+            <label className="mt-6 flex items-center gap-2.5 h-12 px-4 rounded-full bg-diner-card border border-diner-ink/15 focus-within:border-diner-ink/45 max-w-md">
+              <Search size={16} className="opacity-50 shrink-0" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search for an ulam, silog or drink"
+                className="flex-1 bg-transparent outline-none text-sm placeholder:opacity-50"
+                aria-label="Search the menu"
+              />
+              {searching && (
+                <button onClick={() => setQuery('')} aria-label="Clear search" className="opacity-50 hover:opacity-100">
+                  <X size={15} />
                 </button>
-              ))}
-            </nav>
+              )}
+            </label>
+
+            {!searching && (
+              <nav className="mt-4 flex gap-2 flex-wrap">
+                {categories.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setCat(c)}
+                    className={`px-4 py-2 rounded-full text-sm transition-all ${
+                      cat === c
+                        ? 'bg-diner-ink text-diner-ground'
+                        : 'bg-diner-card border border-diner-ink/15 hover:border-diner-ink/40'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </nav>
+            )}
+
+            {searching && (
+              <p className="mt-4 text-sm opacity-60">
+                {visible.length === 0
+                  ? `Nothing on today's menu matches "${query.trim()}".`
+                  : `${visible.length} ${visible.length === 1 ? 'match' : 'matches'} across the whole menu`}
+              </p>
+            )}
           </section>
 
           <section className="max-w-5xl mx-auto px-4 md:px-8 pb-24">
@@ -169,6 +266,8 @@ export function StorefrontApp() {
                     qty={cart.find((l) => l.dish.id === d.id)?.qty ?? 0}
                     onAdd={() => add(d)}
                     onSub={() => sub(d.id)}
+                    bestseller={bestsellerIds.has(d.id)}
+                    favourite={favourites.includes(d.id)}
                   />
                 ))}
               </div>
@@ -195,6 +294,16 @@ export function StorefrontApp() {
       )}
 
       <AnimatePresence>
+        {historyOpen && (
+          <HistorySheet
+            history={history}
+            onClose={() => setHistoryOpen(false)}
+            onReorder={reorder}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {lookupOpen && (
           <LookupSheet
             onClose={() => setLookupOpen(false)}
@@ -214,12 +323,24 @@ function DishCard({
   qty,
   onAdd,
   onSub,
+  bestseller,
+  favourite,
 }: {
   dish: Dish;
   qty: number;
   onAdd: () => void;
   onSub: () => void;
+  bestseller: boolean;
+  favourite: boolean;
 }) {
+  const [rateOpen, setRateOpen] = useState(false);
+  const myRating = usePrefs(() => getMyRating(dish.id));
+  const canRate = usePrefs(() => hasOrdered(dish.id));
+
+  // "Few left" only means something when the kitchen actually set a limit.
+  const fewLeft =
+    dish.available && typeof dish.stockCount === 'number' && dish.stockCount > 0 && dish.stockCount <= 3;
+
   return (
     <article
       className={`rounded-3xl bg-diner-card border border-diner-ink/10 overflow-hidden ${
@@ -232,6 +353,33 @@ function DishCard({
           alt={dish.name}
           className={`w-full h-full object-cover ${dish.available ? '' : 'grayscale'}`}
         />
+
+        <div className="absolute top-3 left-3 flex flex-col items-start gap-1.5">
+          {bestseller && dish.available && (
+            <Badge tone="accent" icon={<Flame size={11} />}>
+              Bestseller
+            </Badge>
+          )}
+          {fewLeft && (
+            <Badge tone="warn">
+              Only {dish.stockCount} left
+            </Badge>
+          )}
+        </div>
+
+        <button
+          onClick={() => toggleFavourite(dish.id)}
+          aria-label={favourite ? `Remove ${dish.name} from favourites` : `Save ${dish.name} to favourites`}
+          aria-pressed={favourite}
+          className="absolute top-3 right-3 w-9 h-9 rounded-full grid place-items-center bg-diner-ground/85 backdrop-blur border border-diner-ink/10 hover:bg-diner-ground"
+        >
+          <Heart
+            size={15}
+            className={favourite ? 'text-diner-accent' : 'opacity-55'}
+            fill={favourite ? 'currentColor' : 'none'}
+          />
+        </button>
+
         {!dish.available && (
           <div className="absolute inset-0 grid place-items-center">
             <span className="px-3 py-1 bg-diner-ink text-diner-ground text-xs tracking-[0.25em] uppercase -rotate-3">
@@ -261,6 +409,32 @@ function DishCard({
         {dish.description && (
           <p className="mt-2 text-sm opacity-70 leading-relaxed">{dish.description}</p>
         )}
+
+        <div className="mt-2.5 flex items-center gap-2 min-h-[22px]">
+          {myRating ? (
+            <>
+              <Stars value={myRating.stars} />
+              <button onClick={() => setRateOpen(true)} className="text-xs opacity-60 hover:opacity-100">
+                Edit your rating
+              </button>
+            </>
+          ) : canRate ? (
+            <button
+              onClick={() => setRateOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs text-diner-accent hover:underline"
+            >
+              <Star size={12} /> Rate this dish
+            </button>
+          ) : (
+            <span className="text-xs opacity-45">Order it to leave a rating</span>
+          )}
+        </div>
+
+        <AnimatePresence>
+          {rateOpen && (
+            <RateSheet dish={dish} existing={myRating} onClose={() => setRateOpen(false)} />
+          )}
+        </AnimatePresence>
 
         {!dish.available ? null : qty === 0 ? (
           <button
@@ -293,6 +467,190 @@ function DishCard({
   );
 }
 
+function Badge({
+  children,
+  tone,
+  icon,
+}: {
+  children: React.ReactNode;
+  tone: 'accent' | 'warn';
+  icon?: React.ReactNode;
+}) {
+  const skin =
+    tone === 'accent'
+      ? 'bg-diner-accent text-white'
+      : 'bg-diner-ground text-diner-ink border border-diner-ink/15';
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-[0.08em] uppercase ${skin}`}
+    >
+      {icon}
+      {children}
+    </span>
+  );
+}
+
+function Stars({ value, size = 13 }: { value: number; size?: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5" aria-label={`${value} out of 5`}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star
+          key={n}
+          size={size}
+          className={n <= value ? 'text-diner-accent' : 'opacity-25'}
+          fill={n <= value ? 'currentColor' : 'none'}
+        />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * Rating is gated on this device having actually bought the dish, which mirrors
+ * the rule the server will enforce once ratings live in Postgres: only a
+ * settled ticket can leave one, so reviews cannot be manufactured.
+ */
+function RateSheet({
+  dish,
+  existing,
+  onClose,
+}: {
+  dish: Dish;
+  existing?: { stars: number; comment: string };
+  onClose: () => void;
+}) {
+  const [stars, setStars] = useState(existing?.stars ?? 0);
+  const [comment, setComment] = useState(existing?.comment ?? '');
+  const ticket = getHistory().find((o) => o.items.some((i) => i.id === dish.id))?.ticket_code ?? '';
+
+  const submit = () => {
+    if (!stars) return;
+    saveRating({ dishId: dish.id, stars, comment: comment.trim(), at: new Date().toISOString(), ticket });
+    onClose();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      className="overflow-hidden"
+    >
+      <div className="mt-3 pt-3 border-t border-diner-ink/10">
+        <div className="flex items-center gap-1">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button key={n} onClick={() => setStars(n)} aria-label={`${n} star${n > 1 ? 's' : ''}`}>
+              <Star
+                size={22}
+                className={n <= stars ? 'text-diner-accent' : 'opacity-30'}
+                fill={n <= stars ? 'currentColor' : 'none'}
+              />
+            </button>
+          ))}
+        </div>
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          rows={2}
+          placeholder="Anything you want to say about it? (optional)"
+          className="mt-2.5 w-full rounded-xl border border-diner-ink/15 bg-diner-ground px-3 py-2 text-sm outline-none focus:border-diner-ink/40 resize-none"
+        />
+        <p className="mt-1.5 text-[11px] opacity-50">
+          Verified against ticket {ticket || 'on this device'}.
+        </p>
+        <div className="mt-2 flex gap-2">
+          <button
+            onClick={submit}
+            disabled={!stars}
+            className="flex-1 py-2 rounded-full bg-diner-ink text-diner-ground text-sm disabled:opacity-40"
+          >
+            {existing ? 'Update rating' : 'Post rating'}
+          </button>
+          <button onClick={onClose} className="px-4 py-2 rounded-full border border-diner-ink/20 text-sm">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/** Past tickets held on this device, each one re-orderable in a single tap. */
+function HistorySheet({
+  history,
+  onClose,
+  onReorder,
+}: {
+  history: PastOrder[];
+  onClose: () => void;
+  onReorder: (o: PastOrder) => number;
+}) {
+  const [note, setNote] = useState<string | null>(null);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-diner-ink/60 backdrop-blur-sm grid place-items-end md:place-items-center"
+    >
+      <motion.div
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 60, opacity: 0 }}
+        transition={{ type: 'spring', damping: 25 }}
+        className="w-full md:max-w-lg bg-diner-ground md:rounded-3xl rounded-t-3xl overflow-hidden max-h-[85vh] flex flex-col"
+      >
+        <div className="flex items-center justify-between p-5 border-b border-diner-ink/10">
+          <div className="text-xs tracking-[0.3em] uppercase opacity-60">Your recent orders</div>
+          <button onClick={onClose} className="p-1 hover:opacity-70" aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-auto p-5 space-y-3">
+          <p className="text-xs opacity-55 leading-relaxed">
+            Kept on this phone only, never on our system. Clearing your browser data removes them.
+          </p>
+          {note && <p className="text-sm text-diner-accent">{note}</p>}
+
+          {history.map((o) => (
+            <div key={o.ticket_code} className="p-4 rounded-2xl bg-diner-card border border-diner-ink/10">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="font-mono text-sm tracking-widest">{o.ticket_code}</span>
+                <span className="text-xs opacity-55">
+                  {new Date(o.placed_at).toLocaleDateString()}
+                </span>
+              </div>
+              <p className="mt-1.5 text-sm opacity-75 leading-relaxed">
+                {o.items.map((i) => `${i.qty}x ${i.name}`).join(', ')}
+              </p>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <span style={{ fontFamily: 'var(--font-display)' }} className="text-lg tabular-nums">
+                  ₱{o.total.toFixed(2)}
+                </span>
+                <button
+                  onClick={() => {
+                    const skipped = onReorder(o);
+                    if (skipped) {
+                      setNote(
+                        `${skipped} ${skipped === 1 ? 'item is' : 'items are'} not on today's menu, so we left ${skipped === 1 ? 'it' : 'them'} out.`,
+                      );
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-diner-ink text-diner-ground text-sm"
+                >
+                  <RefreshCw size={14} /> Order this again
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function CartSheet({
   cart,
   total,
@@ -314,6 +672,50 @@ function CartSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [promo, setPromo] = useState('');
+  const [promoBusy, setPromoBusy] = useState(false);
+  const [applied, setApplied] = useState<{ code: string; discount: number; label: string } | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+
+  /**
+   * The discount is quoted by the same database function that will charge it,
+   * so the number shown here is the number the diner actually pays. The client
+   * never computes it.
+   */
+  const checkPromo = async () => {
+    const code = promo.trim().toUpperCase();
+    if (!code) return;
+    setPromoBusy(true);
+    setPromoError(null);
+    try {
+      const { data, error: rpcErr } = await supabase.rpc('preview_promo', {
+        p_code: code,
+        p_subtotal: total,
+      });
+      if (rpcErr) throw rpcErr;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row?.valid) {
+        setApplied({ code, discount: Number(row.discount), label: row.label ?? '' });
+      } else {
+        setApplied(null);
+        setPromoError(row?.reason || 'That code cannot be used right now.');
+      }
+    } catch {
+      setApplied(null);
+      setPromoError('Could not check that code.');
+    } finally {
+      setPromoBusy(false);
+    }
+  };
+
+  // A code priced against a different subtotal is no longer trustworthy.
+  useEffect(() => {
+    setApplied(null);
+    setPromoError(null);
+  }, [total]);
+
+  const payable = Math.max(0, total - (applied?.discount ?? 0));
+
   // Don't preselect a method the owner has switched off.
   useEffect(() => {
     if (!settings) return;
@@ -330,6 +732,7 @@ function CartSheet({
         p_items: cart.map((l) => ({ id: l.dish.id, qty: l.qty })),
         p_customer_name: name.trim() || null,
         p_payment_method: method,
+        p_promo_code: applied?.code ?? null,
       });
       if (rpcErr) throw rpcErr;
       onPlaced(data as Order);
@@ -430,13 +833,59 @@ function CartSheet({
         </div>
 
         <div className="p-5 border-t border-diner-ink/10 space-y-3">
+          <div>
+            <div className="text-[11px] tracking-[0.2em] uppercase opacity-55 mb-2">
+              Have a promo code?
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1 flex items-center gap-2 h-11 px-3.5 rounded-xl border border-diner-ink/15 bg-diner-card focus-within:border-diner-ink/40">
+                <Tag size={15} className="opacity-50 shrink-0" />
+                <input
+                  value={promo}
+                  onChange={(e) => setPromo(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === 'Enter' && checkPromo()}
+                  placeholder="e.g. SULIT10"
+                  className="flex-1 bg-transparent outline-none text-sm tracking-wider uppercase placeholder:normal-case placeholder:tracking-normal placeholder:opacity-50"
+                  aria-label="Promo code"
+                />
+              </div>
+              <button
+                onClick={checkPromo}
+                disabled={promoBusy || !promo.trim()}
+                className="px-4 rounded-xl border border-diner-ink/25 text-sm disabled:opacity-40"
+              >
+                {promoBusy ? <Loader2 size={15} className="animate-spin" /> : 'Apply'}
+              </button>
+            </div>
+            {promoError && <p className="mt-1.5 text-xs text-diner-accent">{promoError}</p>}
+            {applied && (
+              <p className="mt-1.5 text-xs text-semantic-cash flex items-center gap-1.5">
+                <Check size={13} />
+                {applied.label || `${applied.code} applied`}
+              </p>
+            )}
+          </div>
+
+          {applied && (
+            <div className="space-y-1 text-sm pt-1">
+              <div className="flex items-center justify-between opacity-65">
+                <span>Subtotal</span>
+                <span className="tabular-nums">₱{total.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between text-semantic-cash">
+                <span>Discount ({applied.code})</span>
+                <span className="tabular-nums">-₱{applied.discount.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <span className="opacity-60 text-sm">Total</span>
             <span
               style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }}
               className="text-3xl tabular-nums"
             >
-              ₱{total.toFixed(2)}
+              ₱{payable.toFixed(2)}
             </span>
           </div>
           <p className="text-xs opacity-55 leading-relaxed">
@@ -488,6 +937,41 @@ function MethodButton({
       <span className={`grid place-items-center ${selected ? text : 'opacity-70'}`}>{icon}</span>
       <span className={`block mt-1.5 text-sm font-medium ${selected ? text : ''}`}>{label}</span>
       <span className="block text-[11px] opacity-60 leading-tight mt-0.5">{blurb}</span>
+    </button>
+  );
+}
+
+/**
+ * Sharing the order is the cheapest marketing the shop has: the person who
+ * receives it lands on the menu. Uses the phone's own share sheet where it
+ * exists, and quietly falls back to the clipboard on desktop.
+ */
+function ShareButton({ order }: { order: Order }) {
+  const [copied, setCopied] = useState(false);
+
+  const share = async () => {
+    const url = `${window.location.origin}/menu`;
+    const text = `I just ordered from Bencris. ${order.items
+      .slice(0, 2)
+      .map((i) => i.name)
+      .join(', ')}${order.items.length > 2 ? ' and more' : ''}. See what is cooking today:`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Bencris', text, url });
+        return;
+      } catch {
+        /* the diner dismissed the share sheet, which is not an error */
+      }
+    }
+    await navigator.clipboard?.writeText(`${text} ${url}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button onClick={share} className="inline-flex items-center gap-1.5 text-xs opacity-80 hover:opacity-100">
+      <Share2 size={13} /> {copied ? 'Link copied' : 'Share'}
     </button>
   );
 }
@@ -570,12 +1054,15 @@ function TicketView({
         >
           {order.ticket_code}
         </div>
-        <button
-          onClick={() => navigator.clipboard?.writeText(order.ticket_code)}
-          className="mt-3 inline-flex items-center gap-1.5 text-xs opacity-80 hover:opacity-100"
-        >
-          <Copy size={13} /> Copy code
-        </button>
+        <div className="mt-3 flex items-center justify-center gap-4">
+          <button
+            onClick={() => navigator.clipboard?.writeText(order.ticket_code)}
+            className="inline-flex items-center gap-1.5 text-xs opacity-80 hover:opacity-100"
+          >
+            <Copy size={13} /> Copy code
+          </button>
+          <ShareButton order={order} />
+        </div>
       </div>
 
       <div

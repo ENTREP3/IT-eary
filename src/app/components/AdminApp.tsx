@@ -165,7 +165,7 @@ export function AdminApp() {
           style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.02em' }}
           className="text-2xl leading-none"
         >
-          IT<span style={{ fontStyle: 'italic', color: '#e8a84a' }}>-eary</span>
+          Ben<span style={{ fontStyle: 'italic', color: '#e8a84a' }}>cris</span>
         </div>
         <div className="text-[10px] tracking-[0.25em] uppercase opacity-35 mt-1">Operations</div>
       </div>
@@ -346,7 +346,7 @@ export function AdminApp() {
 // ============================================================================
 // Notification bell — combines new orders (live) + low-stock alerts.
 // ============================================================================
-const SEEN_KEY = 'it-eary-notif-seen';
+const SEEN_KEY = 'bencris-notif-seen';
 
 function NotificationBell({
   orders,
@@ -1126,7 +1126,7 @@ function AnalyticsPanel({ orders }: { orders: Order[] }) {
       },
     ]);
     const stamp = new Date().toISOString().slice(0, 10);
-    downloadTextFile(`it-eary-analytics-${stamp}.csv`, csv);
+    downloadTextFile(`bencris-analytics-${stamp}.csv`, csv);
   }, [orders, live, mix, dishes, inventory, expenses]);
 
   const todayGross = totalSales(today);
