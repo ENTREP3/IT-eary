@@ -1,17 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import type { Order, OrderItem, PaymentMethod } from '../lib/types';
-
-function newReference() {
-  return 'KM' + Math.floor(Math.random() * 900000 + 100000);
-}
-
-type PlaceOrderArgs = {
-  items: OrderItem[];
-  total: number;
-  paymentMethod: PaymentMethod;
-  customerName?: string | null;
-};
+import type { Order, PaymentMethod, PaymentStatus } from '../lib/types';
 
 type OrdersState = {
   /** Orders from roughly the last 7 days, newest first (admin view). */
@@ -19,9 +8,34 @@ type OrdersState = {
   loading: boolean;
   loadRecent: () => Promise<void>;
   subscribe: () => () => void;
-  placeOrder: (args: PlaceOrderArgs) => Promise<Order>;
+  /** Looks a ticket up by the code the diner shows at the counter. */
+  findByTicket: (ticketCode: string) => Promise<Order | null>;
+  /**
+   * Records payment. Server-side guards reject non-staff and double payment.
+   * `status` carries which of the three outcomes the cashier took.
+   */
+  markPaid: (args: {
+    ticketCode: string;
+    method: PaymentMethod;
+    status?: PaymentStatus;
+    inPerson?: boolean;
+    note?: string | null;
+  }) => Promise<Order>;
+  /**
+   * Short-lived signed URL for a GCash receipt. The bucket is private, so a
+   * public URL would never resolve — and these images carry the sender's real
+   * name and mobile number.
+   */
+  signedProofUrl: (proofPath: string) => Promise<string | null>;
+  /**
+   * Owner clearing a flagged sale after checking the real GCash history.
+   * `verified: false` cancels the order — the money never arrived.
+   */
+  resolveReview: (ticketCode: string, verified: boolean, note?: string) => Promise<Order>;
   setStatus: (id: string, status: Order['status']) => Promise<void>;
 };
+
+const PROOF_BUCKET = 'payment-proofs';
 
 export const useOrdersStore = create<OrdersState>((set, get) => ({
   orders: [],
@@ -77,25 +91,52 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
     };
   },
 
-  placeOrder: async ({ items, total, paymentMethod, customerName }) => {
-    const { data: auth } = await supabase.auth.getUser();
-    const row = {
-      reference: newReference(),
-      customer_id: auth.user?.id ?? null,
-      customer_name: customerName ?? null,
-      items,
-      total,
-      payment_method: paymentMethod,
-      // GCash is treated as paid on confirm; cash is collected at the counter.
-      status: paymentMethod === 'gcash' ? 'paid' : 'pending',
-    };
+  findByTicket: async (ticketCode) => {
+    const code = ticketCode.trim().toUpperCase();
+    if (!code) return null;
     const { data, error } = await supabase
       .from('orders')
-      .insert(row)
       .select('*')
-      .single();
+      .eq('ticket_code', code)
+      .maybeSingle();
     if (error) throw error;
-    return data as Order;
+    return (data as Order) ?? null;
+  },
+
+  markPaid: async ({ ticketCode, method, status = 'verified', inPerson = false, note = null }) => {
+    const { data, error } = await supabase.rpc('mark_ticket_paid', {
+      p_ticket_code: ticketCode.trim().toUpperCase(),
+      p_method: method,
+      p_status: status,
+      p_in_person: inPerson,
+      p_note: note,
+    });
+    if (error) throw error;
+    const order = data as Order;
+    set((s) => ({ orders: s.orders.map((o) => (o.id === order.id ? order : o)) }));
+    return order;
+  },
+
+  resolveReview: async (ticketCode, verified, note) => {
+    const { data, error } = await supabase.rpc('resolve_payment_review', {
+      p_ticket_code: ticketCode.trim().toUpperCase(),
+      p_verified: verified,
+      p_note: note ?? null,
+    });
+    if (error) throw error;
+    const order = data as Order;
+    set((s) => ({ orders: s.orders.map((o) => (o.id === order.id ? order : o)) }));
+    return order;
+  },
+
+  signedProofUrl: async (proofPath) => {
+    const { data, error } = await supabase.storage
+      .from(PROOF_BUCKET)
+      .createSignedUrl(proofPath, 300);
+    // A missing object is a real possibility — the path is recorded separately
+    // from the upload — so surface nothing rather than throwing at the counter.
+    if (error) return null;
+    return data?.signedUrl ?? null;
   },
 
   setStatus: async (id, status) => {
@@ -112,8 +153,10 @@ export function paymentMix(orders: Order[]) {
   let gcash = 0;
   let cash = 0;
   for (const o of orders) {
+    // payment_method is null until a cashier settles the ticket — an unpaid
+    // ticket is not evidence of how the diner will eventually pay.
     if (o.payment_method === 'gcash') gcash++;
-    else cash++;
+    else if (o.payment_method === 'cash') cash++;
   }
   const total = gcash + cash;
   return {

@@ -1,6 +1,7 @@
 // Shared types mirroring the Supabase schema (supabase/migrations).
 
-export type UserRole = 'customer' | 'admin';
+// 'customer' is legacy — diners no longer have accounts. Staff are admin/cashier.
+export type UserRole = 'customer' | 'admin' | 'cashier';
 
 export type Profile = {
   id: string;
@@ -37,15 +38,35 @@ export type OrderItem = {
   price: number;
 };
 
+/**
+ * What the cashier concluded about the money — deliberately separate from
+ * `payment_method`, which is only the diner's declared intent.
+ *
+ * `needs_review` is the no-loss outcome: the food is released so the diner
+ * isn't stuck at the counter, but the sale is flagged for the owner to
+ * reconcile against the real GCash history.
+ */
+export type PaymentStatus = 'unpaid' | 'verified' | 'needs_review';
+
 export type Order = {
   id: string;
   reference: string;
-  customer_id: string | null;
+  /** Short code the diner shows at the counter, e.g. "K7M2Q9". */
+  ticket_code: string;
   customer_name: string | null;
   items: OrderItem[];
   total: number;
-  payment_method: PaymentMethod;
+  /** Chosen by the diner at checkout; the cashier may switch it. */
+  payment_method: PaymentMethod | null;
+  payment_status: PaymentStatus;
+  /** Object path in the private payment-proofs bucket — never a public URL. */
+  proof_path: string | null;
+  proof_uploaded_at: string | null;
+  verified_in_person: boolean;
+  review_note: string | null;
   status: OrderStatus;
+  paid_at: string | null;
+  paid_by: string | null;
   created_at: string;
 };
 

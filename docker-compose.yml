@@ -1,0 +1,23 @@
+services:
+  web:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "5174:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    env_file:
+      - path: .env.local
+        required: false
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+
+  web-prod:
+    profiles: ["prod"]
+    build:
+      context: .
+      target: production
+    ports:
+      - "5173:80"

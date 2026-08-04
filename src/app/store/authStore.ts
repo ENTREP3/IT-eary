@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import type { Profile } from '../lib/types';
+import type { Profile, UserRole } from '../lib/types';
 
 type AuthState = {
   session: Session | null;
@@ -14,15 +14,11 @@ type AuthState = {
   init: () => void;
   refreshProfile: () => Promise<void>;
 
-  registerCustomer: (args: {
-    email: string;
-    password: string;
-    fullName: string;
-    phone?: string;
-  }) => Promise<void>;
-  loginCustomer: (email: string, password: string) => Promise<void>;
-  /** Signs in, then verifies the account is an admin — otherwise signs back out. */
-  loginAdmin: (email: string, password: string) => Promise<void>;
+  /**
+   * Signs in, then verifies the account holds one of `allowed` — otherwise
+   * signs back out so nobody is left in a half-authenticated state.
+   */
+  loginStaff: (email: string, password: string, allowed: UserRole[]) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -70,35 +66,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ profile: await fetchProfile(user.id) });
   },
 
-  registerCustomer: async ({ email, password, fullName, phone }) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        // Stored in raw_user_meta_data; the DB trigger copies name/phone into
-        // the profile. Role is forced to 'customer' server-side regardless.
-        data: { full_name: fullName, phone: phone ?? '' },
-      },
-    });
-    if (error) throw error;
-    // With email confirmations disabled locally, a session is returned and the
-    // onAuthStateChange listener will pick it up.
-  },
-
-  loginCustomer: async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-  },
-
-  loginAdmin: async (email, password) => {
+  loginStaff: async (email, password, allowed) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
 
     const profile = data.user ? await fetchProfile(data.user.id) : null;
-    if (!profile || profile.role !== 'admin') {
-      // Not an admin — don't leave them in a half-signed-in state.
+    if (!profile || !allowed.includes(profile.role)) {
       await supabase.auth.signOut();
-      throw new Error('This account is not authorized for admin access.');
+      throw new Error('This account is not authorized for that area.');
     }
     set({ session: data.session, user: data.user, profile, loading: false });
   },

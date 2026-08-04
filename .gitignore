@@ -5,5 +5,9 @@ dist
 *.log
 .DS_Store
 
+# Supabase CLI local state — contains generated keys/secrets
+supabase/.temp
+supabase/.branches
+
 # Local Claude Code config (per-machine)
 .claude/settings.local.json
