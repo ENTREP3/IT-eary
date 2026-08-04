@@ -124,6 +124,18 @@ public = true
 file_size_limit = "5MiB"
 allowed_mime_types = ["image/png", "image/jpeg", "image/webp"]
 
+# PRIVATE bucket holding diners' GCash receipt screenshots. Deliberately NOT
+# public: a GCash receipt shows the sender's real name, mobile number and
+# reference. Staff read these through short-lived signed URLs; anonymous diners
+# may upload against their own unpaid ticket but can never browse the bucket.
+#
+# The 2 MiB ceiling is a backstop — the app caps images near 100 KB before
+# upload, which is what keeps this inside the 1 GB free-tier allowance.
+[storage.buckets.payment-proofs]
+public = false
+file_size_limit = "2MiB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/webp"]
+
 # Allow connections via S3 compatible clients
 [storage.s3_protocol]
 enabled = true

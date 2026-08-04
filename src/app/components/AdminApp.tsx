@@ -24,6 +24,8 @@ import {
   X,
   ChefHat,
   Clock,
+  Menu,
+  FlagTriangleRight,
 } from 'lucide-react';
 import {
   LineChart,
@@ -57,6 +59,7 @@ import {
 } from '../store/ordersStore';
 import { buildAnalyticsCsv, downloadTextFile } from '../lib/exportCsv';
 import type { Order } from '../lib/types';
+import { supabase } from '../lib/supabase';
 import {
   Dialog,
   DialogContent,
@@ -80,15 +83,30 @@ import { Label } from './ui/label';
 
 type Tab = 'dashboard' | 'kitchen' | 'inventory' | 'analytics' | 'menu' | 'payments';
 
+/** payment_method is null until a cashier settles the ticket. */
+function PaymentBadge({ method }: { method: Order['payment_method'] }) {
+  const style =
+    method === 'gcash'
+      ? 'bg-[#0074e0]/20 text-[#6dadff]'
+      : method === 'cash'
+        ? 'bg-[#e8dfc8]/10'
+        : 'bg-[#c8442a]/25 text-[#e87a5c]';
+  const label = method === 'gcash' ? 'GCash' : method === 'cash' ? 'Cash' : 'Unpaid';
+  return <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${style}`}>{label}</span>;
+}
+
 const dialogSurface = 'bg-[#0a0d0a] border-[#e8dfc8]/15 text-[#e8dfc8] sm:max-w-lg max-h-[90vh] overflow-y-auto';
 const fieldCls =
   'bg-[#0f1410] border-[#e8dfc8]/15 text-[#e8dfc8] placeholder:text-[#e8dfc8]/40 focus-visible:ring-[#e8a84a]/40';
 
-export function AdminApp({ onBack }: { onBack: () => void }) {
+export function AdminApp() {
   const [tab, setTab] = useState<Tab>('dashboard');
   const [query, setQuery] = useState('');
+  const [navOpen, setNavOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const inventory = useKarinderyaStore((s) => s.inventory);
   const dishes = useKarinderyaStore((s) => s.dishes);
+  const loadAll = useKarinderyaStore((s) => s.loadAll);
   const low = useMemo(() => inventory.filter((i) => i.stock <= i.reorderAt), [inventory]);
 
   const profile = useAuthStore((s) => s.profile);
@@ -109,6 +127,14 @@ export function AdminApp({ onBack }: { onBack: () => void }) {
     return unsub;
   }, [loadRecent, subscribe]);
 
+  // App.tsx calls loadAll() at boot, while the visitor is still anonymous — so
+  // inventory (admin-only under RLS) comes back empty and never refills. This
+  // component only mounts once the admin gate has passed, so re-fetch here to
+  // pick up the admin-only tables.
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
+
   // Global search across menu + inventory.
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -124,40 +150,44 @@ export function AdminApp({ onBack }: { onBack: () => void }) {
     return [...dishHits, ...invHits].slice(0, 8);
   }, [query, dishes, inventory]);
 
-  return (
-    <div className="min-h-screen flex bg-[#0f1410] text-[#e8dfc8]">
-      <aside className="w-64 shrink-0 bg-[#0a0d0a] border-r border-[#e8dfc8]/10 flex flex-col">
-        <div className="p-6 border-b border-[#e8dfc8]/10">
-          <button
-            onClick={onBack}
-            className="text-xs opacity-50 hover:opacity-100 flex items-center gap-1.5 mb-4"
-          >
-            <ArrowLeft size={13} /> Back to menu
-          </button>
-          <div
-            style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.02em' }}
-            className="text-2xl leading-none"
-          >
-            IT<span style={{ fontStyle: 'italic', color: '#e8a84a' }}>-eary</span>
-          </div>
-          <div className="text-[10px] tracking-[0.25em] uppercase opacity-35 mt-1">Operations</div>
+  // One markup definition, rendered twice: as the fixed desktop rail and as the
+  // slide-in drawer on phones.
+  const sidebar = (
+    <>
+      <div className="p-6 border-b border-[#e8dfc8]/10">
+        <a
+          href="/cashier"
+          className="text-xs opacity-50 hover:opacity-100 flex items-center gap-1.5 mb-4"
+        >
+          <ArrowLeft size={13} /> Counter
+        </a>
+        <div
+          style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.02em' }}
+          className="text-2xl leading-none"
+        >
+          IT<span style={{ fontStyle: 'italic', color: '#e8a84a' }}>-eary</span>
         </div>
-        <nav className="p-3 flex-1 space-y-1">
-          {(
-            [
-              ['dashboard', 'Dashboard', LayoutDashboard],
-              ['kitchen', 'Kitchen', ChefHat],
-              ['inventory', 'Inventory', Package],
-              ['analytics', 'Sales & Profit', LineIcon],
-              ['menu', 'Menu', UtensilsCrossed],
-              ['payments', 'Payments', CreditCard],
-            ] as const
-          ).map(([k, l, Icon]) => {
-            const badge = k === 'inventory' ? low.length : k === 'kitchen' ? activeCount : 0;
-            return (
+        <div className="text-[10px] tracking-[0.25em] uppercase opacity-35 mt-1">Operations</div>
+      </div>
+      <nav className="p-3 flex-1 space-y-1">
+        {(
+          [
+            ['dashboard', 'Dashboard', LayoutDashboard],
+            ['kitchen', 'Kitchen', ChefHat],
+            ['inventory', 'Inventory', Package],
+            ['analytics', 'Sales & Profit', LineIcon],
+            ['menu', 'Menu', UtensilsCrossed],
+            ['payments', 'Payments', CreditCard],
+          ] as const
+        ).map(([k, l, Icon]) => {
+          const badge = k === 'inventory' ? low.length : k === 'kitchen' ? activeCount : 0;
+          return (
             <button
               key={k}
-              onClick={() => setTab(k)}
+              onClick={() => {
+                setTab(k);
+                setNavOpen(false);
+              }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                 tab === k ? 'bg-[#e8a84a] text-[#0a0d0a]' : 'hover:bg-[#e8dfc8]/5'
               }`}
@@ -173,55 +203,98 @@ export function AdminApp({ onBack }: { onBack: () => void }) {
                 </span>
               )}
             </button>
-          );})}
-        </nav>
-        <div className="p-4 border-t border-[#e8dfc8]/10">
-          <div className="text-xs opacity-50">
-            <div className="text-[#e8dfc8]/90">{profile?.full_name ?? 'Owner'}</div>
-            <div className="mt-0.5 capitalize">{profile?.role ?? 'admin'} · signed in</div>
-          </div>
-          <button
-            onClick={() => signOut()}
-            className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-[#e8dfc8]/15 text-xs hover:bg-[#c8442a]/20 hover:border-[#c8442a]/40 transition-colors"
-          >
-            <LogOut size={13} /> Log out
-          </button>
+          );
+        })}
+      </nav>
+      <div className="p-4 border-t border-[#e8dfc8]/10">
+        <div className="text-xs opacity-50">
+          <div className="text-[#e8dfc8]/90">{profile?.full_name ?? 'Owner'}</div>
+          <div className="mt-0.5 capitalize">{profile?.role ?? 'admin'} · signed in</div>
         </div>
+        <button
+          onClick={() => signOut()}
+          className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-[#e8dfc8]/15 text-xs hover:bg-[#c8442a]/20 hover:border-[#c8442a]/40 transition-colors"
+        >
+          <LogOut size={13} /> Log out
+        </button>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="min-h-screen flex bg-[#0f1410] text-[#e8dfc8]">
+      <aside className="hidden md:flex w-64 shrink-0 bg-[#0a0d0a] border-r border-[#e8dfc8]/10 flex-col">
+        {sidebar}
       </aside>
 
+      {navOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex" role="dialog" aria-modal="true">
+          <button
+            aria-label="Close menu"
+            onClick={() => setNavOpen(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          />
+          <aside className="relative w-72 max-w-[85vw] bg-[#0a0d0a] border-r border-[#e8dfc8]/10 flex flex-col overflow-y-auto">
+            {sidebar}
+          </aside>
+        </div>
+      )}
+
       <main className="flex-1 overflow-auto">
-        <div className="sticky top-0 z-10 bg-[#0f1410]/90 backdrop-blur border-b border-[#e8dfc8]/10 flex items-center justify-between px-8 py-4">
-          <div>
-            <div className="text-[10px] tracking-[0.3em] uppercase opacity-50">
-              {tab === 'dashboard' && '— Overview'}
-              {tab === 'kitchen' && '— Order queue'}
-              {tab === 'inventory' && '— Stock room'}
-              {tab === 'analytics' && '— Sales & Profit'}
-              {tab === 'menu' && '— Menu control'}
-              {tab === 'payments' && '— Payment settings'}
-            </div>
-            <h1
-              style={{ fontFamily: 'var(--font-display)', fontWeight: 500, letterSpacing: '-0.02em' }}
-              className="text-3xl"
+        <div className="sticky top-0 z-10 bg-[#0f1410]/90 backdrop-blur border-b border-[#e8dfc8]/10 flex items-center justify-between gap-3 px-4 md:px-8 py-3 md:py-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => setNavOpen(true)}
+              aria-label="Open menu"
+              className="md:hidden shrink-0 p-2 -ml-2 rounded-lg hover:bg-[#e8dfc8]/10"
             >
-              {tab === 'dashboard' && `Magandang hapon, ${(profile?.full_name ?? 'Mary').split(' ')[0]}.`}
-              {tab === 'kitchen' && 'Orders on the line'}
-              {tab === 'inventory' && 'What we have in stock'}
-              {tab === 'analytics' && 'The numbers, in plain sight'}
-              {tab === 'menu' && "Today's menu"}
-              {tab === 'payments' && 'How customers pay you'}
-            </h1>
+              <Menu size={20} />
+            </button>
+            <div className="min-w-0">
+              <div className="text-[10px] tracking-[0.3em] uppercase opacity-50">
+                {tab === 'dashboard' && '— Overview'}
+                {tab === 'kitchen' && '— Order queue'}
+                {tab === 'inventory' && '— Stock room'}
+                {tab === 'analytics' && '— Sales & Profit'}
+                {tab === 'menu' && '— Menu control'}
+                {tab === 'payments' && '— Payment settings'}
+              </div>
+              <h1
+                style={{ fontFamily: 'var(--font-display)', fontWeight: 500, letterSpacing: '-0.02em' }}
+                className="text-xl md:text-3xl truncate"
+              >
+                {tab === 'dashboard' && `Magandang hapon, ${(profile?.full_name ?? 'Mary').split(' ')[0]}.`}
+                {tab === 'kitchen' && 'Orders on the line'}
+                {tab === 'inventory' && 'What we have in stock'}
+                {tab === 'analytics' && 'The numbers, in plain sight'}
+                {tab === 'menu' && "Today's menu"}
+                {tab === 'payments' && 'How customers pay you'}
+              </h1>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            {/* Functional search */}
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
+            {/* Functional search — collapses to an icon on phones. */}
             <div className="relative">
-              <div className="flex items-center gap-2 bg-[#0a0d0a] border border-[#e8dfc8]/10 rounded-full px-3 py-2 text-sm">
-                <Search size={14} className="opacity-50" />
+              <button
+                onClick={() => setSearchOpen((v) => !v)}
+                aria-label="Search"
+                className="sm:hidden p-2 rounded-lg hover:bg-[#e8dfc8]/10"
+              >
+                <Search size={18} />
+              </button>
+              <div
+                className={`${
+                  searchOpen
+                    ? 'flex absolute right-0 top-11 w-[min(18rem,calc(100vw-2rem))] z-20'
+                    : 'hidden'
+                } sm:flex sm:static sm:w-auto items-center gap-2 bg-[#0a0d0a] border border-[#e8dfc8]/10 rounded-full px-3 py-2 text-sm`}
+              >
+                <Search size={14} className="opacity-50 hidden sm:block" />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search menu & stock…"
-                  className="bg-transparent outline-none w-44 text-sm placeholder:opacity-40"
+                  className="bg-transparent outline-none w-full sm:w-44 text-sm placeholder:opacity-40"
                 />
                 {query && (
                   <button onClick={() => setQuery('')} className="opacity-50 hover:opacity-100">
@@ -230,7 +303,7 @@ export function AdminApp({ onBack }: { onBack: () => void }) {
                 )}
               </div>
               {query && (
-                <div className="absolute right-0 mt-2 w-72 bg-[#0a0d0a] border border-[#e8dfc8]/15 rounded-xl overflow-hidden shadow-xl z-20">
+                <div className="absolute right-0 mt-2 top-full w-[min(18rem,calc(100vw-2rem))] bg-[#0a0d0a] border border-[#e8dfc8]/15 rounded-xl overflow-hidden shadow-xl z-20">
                   {results.length === 0 ? (
                     <div className="px-4 py-3 text-sm opacity-50">No matches for “{query}”.</div>
                   ) : (
@@ -240,6 +313,7 @@ export function AdminApp({ onBack }: { onBack: () => void }) {
                         onClick={() => {
                           setTab(r.kind);
                           setQuery('');
+                          setSearchOpen(false);
                         }}
                         className="w-full text-left px-4 py-2.5 hover:bg-[#e8dfc8]/5 flex items-center justify-between gap-3"
                       >
@@ -256,7 +330,7 @@ export function AdminApp({ onBack }: { onBack: () => void }) {
           </div>
         </div>
 
-        <div className="p-8">
+        <div className="p-4 md:p-8">
           {tab === 'dashboard' && <Dashboard orders={orders} />}
           {tab === 'kitchen' && <KitchenBoard orders={orders} />}
           {tab === 'inventory' && <InventoryPanel />}
@@ -375,14 +449,8 @@ function NotificationBell({
                       className="text-sm flex items-center justify-between py-1.5 border-b border-[#e8dfc8]/5 last:border-0"
                     >
                       <div className="min-w-0">
-                        <span className="opacity-60">{o.reference}</span>{' '}
-                        <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                            o.payment_method === 'gcash' ? 'bg-[#0074e0]/20 text-[#6dadff]' : 'bg-[#e8dfc8]/10'
-                          }`}
-                        >
-                          {o.payment_method === 'gcash' ? 'GCash' : 'Cash'}
-                        </span>
+                        <span className="font-mono tracking-[0.1em] opacity-70">{o.ticket_code}</span>{' '}
+                        <PaymentBadge method={o.payment_method} />
                       </div>
                       <div className="text-right shrink-0">
                         <div style={{ fontFamily: 'var(--font-display)' }}>₱{o.total}</div>
@@ -426,12 +494,12 @@ function Stat({
   good?: boolean;
 }) {
   return (
-    <Card className="p-5">
+    <Card className="p-4 md:p-5">
       <div className="text-[10px] tracking-[0.25em] uppercase opacity-50">{label}</div>
-      <div className="mt-3 flex items-end justify-between">
+      <div className="mt-3 flex items-end justify-between gap-2">
         <div
           style={{ fontFamily: 'var(--font-display)', fontWeight: 500, letterSpacing: '-0.02em' }}
-          className="text-4xl"
+          className="text-2xl md:text-4xl"
         >
           {value}
         </div>
@@ -442,6 +510,133 @@ function Stat({
           </span>
         )}
       </div>
+    </Card>
+  );
+}
+
+/**
+ * Sales the cashier released without verifiable proof. These are real money
+ * questions, so they sit at the top of the dashboard until the owner has
+ * checked them against the actual GCash transaction history.
+ */
+function ReconciliationPanel({ orders }: { orders: Order[] }) {
+  const flagged = useMemo(
+    () => orders.filter((o) => o.payment_status === 'needs_review'),
+    [orders],
+  );
+  const resolveReview = useOrdersStore((s) => s.resolveReview);
+  const signedProofUrl = useOrdersStore((s) => s.signedProofUrl);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<string | null>(null);
+
+  if (flagged.length === 0) return null;
+
+  const resolve = async (code: string, verified: boolean) => {
+    setBusy(code);
+    setError(null);
+    try {
+      await resolveReview(
+        code,
+        verified,
+        verified ? 'Confirmed against GCash history' : 'Not found in GCash history',
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not resolve.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const openProof = async (path: string) => {
+    const url = await signedProofUrl(path);
+    setViewing(url);
+  };
+
+  return (
+    <Card className="p-4 md:p-5 border-[#e8a84a]/40 bg-[#e8a84a]/10">
+      <div className="flex items-center gap-2 text-[#e8a84a] text-sm">
+        <FlagTriangleRight size={15} />
+        <span className="tracking-[0.15em] uppercase text-xs">
+          Needs reconciliation · {flagged.length}
+        </span>
+      </div>
+      <p className="mt-2 text-xs opacity-60">
+        Released to the diner without verified proof. Check your GCash history,
+        then confirm or cancel each one.
+      </p>
+
+      {error && <p className="mt-2 text-xs text-[#e87a5c]">{error}</p>}
+
+      <div className="mt-4 space-y-2">
+        {flagged.map((o) => (
+          <div
+            key={o.id}
+            className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-[#0a0d0a] border border-[#e8dfc8]/10"
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span
+                  style={{ fontFamily: 'var(--font-display)' }}
+                  className="text-[#e8a84a] tracking-widest"
+                >
+                  {o.ticket_code}
+                </span>
+                <span className="text-sm opacity-70">₱{Number(o.total).toFixed(2)}</span>
+              </div>
+              <div className="text-[11px] opacity-50 truncate">
+                {o.customer_name ?? 'Walk-in'} · {formatOrderTime(o.created_at)}
+                {o.review_note ? ` · ${o.review_note}` : ''}
+              </div>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              {o.proof_path && (
+                <button
+                  onClick={() => openProof(o.proof_path!)}
+                  className="px-3 py-1.5 rounded-lg border border-[#e8dfc8]/20 text-xs hover:bg-[#e8dfc8]/10"
+                >
+                  View proof
+                </button>
+              )}
+              <button
+                onClick={() => resolve(o.ticket_code, true)}
+                disabled={busy === o.ticket_code}
+                className="px-3 py-1.5 rounded-lg bg-[#8cc07a] text-[#0a0d0a] text-xs font-medium disabled:opacity-40"
+              >
+                {busy === o.ticket_code ? '…' : 'Payment found'}
+              </button>
+              <button
+                onClick={() => resolve(o.ticket_code, false)}
+                disabled={busy === o.ticket_code}
+                className="px-3 py-1.5 rounded-lg border border-[#c8442a]/50 text-[#e87a5c] text-xs disabled:opacity-40"
+              >
+                Never paid
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {viewing && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 grid place-items-center p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <button
+            onClick={() => setViewing(null)}
+            aria-label="Close"
+            className="absolute top-4 right-4 p-2 rounded-lg bg-white/10 hover:bg-white/20"
+          >
+            <X size={20} />
+          </button>
+          <img
+            src={viewing}
+            alt="GCash receipt"
+            className="max-w-full max-h-full object-contain rounded-lg"
+          />
+        </div>
+      )}
     </Card>
   );
 }
@@ -471,6 +666,8 @@ function Dashboard({ orders }: { orders: Order[] }) {
         />
       </motion.div>
 
+      <ReconciliationPanel orders={orders} />
+
       {low.length > 0 && (
         <Card className="p-5 border-[#c8442a]/40 bg-[#c8442a]/10">
           <div className="flex items-center gap-2 text-[#e87a5c] text-sm">
@@ -492,8 +689,8 @@ function Dashboard({ orders }: { orders: Order[] }) {
       )}
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 p-6">
-          <div className="flex items-center justify-between mb-4">
+        <Card className="lg:col-span-2 p-4 md:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div>
               <div className="text-[10px] tracking-[0.25em] uppercase opacity-50">Orders by hour · today</div>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }} className="text-2xl mt-1">
@@ -514,7 +711,7 @@ function Dashboard({ orders }: { orders: Order[] }) {
           </ResponsiveContainer>
         </Card>
 
-        <Card className="p-6">
+        <Card className="p-4 md:p-6">
           <div className="text-[10px] tracking-[0.25em] uppercase opacity-50">Latest Orders</div>
           <div className="mt-4 space-y-3">
             {recent.length === 0 && <div className="text-sm opacity-40">No orders yet today.</div>}
@@ -525,14 +722,8 @@ function Dashboard({ orders }: { orders: Order[] }) {
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="opacity-60">{o.reference}</span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                        o.payment_method === 'gcash' ? 'bg-[#0074e0]/20 text-[#6dadff]' : 'bg-[#e8dfc8]/10'
-                      }`}
-                    >
-                      {o.payment_method === 'gcash' ? 'GCash' : 'Cash'}
-                    </span>
+                    <span className="font-mono tracking-[0.1em] opacity-70">{o.ticket_code}</span>
+                    <PaymentBadge method={o.payment_method} />
                   </div>
                   <div className="truncate opacity-70 text-xs mt-0.5">{itemsSummary(o.items)}</div>
                 </div>
@@ -591,14 +782,10 @@ function KitchenBoard({ orders }: { orders: Order[] }) {
               >
                 <Card className="p-4">
                   <div className="flex items-center justify-between">
-                    <span className="opacity-70 text-sm">{o.reference}</span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                        o.payment_method === 'gcash' ? 'bg-[#0074e0]/20 text-[#6dadff]' : 'bg-[#e8dfc8]/10'
-                      }`}
-                    >
-                      {o.payment_method === 'gcash' ? 'GCash' : 'Cash'}
+                    <span className="text-sm font-mono tracking-[0.15em] text-[#e8a84a]">
+                      {o.ticket_code}
                     </span>
+                    <PaymentBadge method={o.payment_method} />
                   </div>
                   <div className="mt-2 space-y-0.5">
                     {(o.items ?? []).map((it, idx) => (
@@ -699,7 +886,8 @@ function InventoryPanel() {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="grid grid-cols-12 px-6 py-3 border-b border-[#e8dfc8]/10 text-[10px] tracking-[0.25em] uppercase opacity-50">
+        {/* Column headings only make sense once the row is actually a table. */}
+        <div className="hidden md:grid grid-cols-12 px-6 py-3 border-b border-[#e8dfc8]/10 text-[10px] tracking-[0.25em] uppercase opacity-50">
           <div className="col-span-3">Ingredient</div>
           <div className="col-span-2">Stock</div>
           <div className="col-span-3">Level</div>
@@ -710,19 +898,42 @@ function InventoryPanel() {
           const ratio = Math.min(1, i.stock / (i.reorderAt * 2.5));
           const low = i.stock <= i.reorderAt;
           const out = i.stock === 0;
+          const actions = (
+            <>
+              <button
+                type="button"
+                onClick={() => openEdit(i)}
+                className="p-2 rounded-lg hover:bg-[#e8dfc8]/10 text-[#e8dfc8]/80"
+                aria-label="Edit"
+              >
+                <Pencil size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteId(i.id)}
+                className="p-2 rounded-lg hover:bg-[#c8442a]/20 text-[#e87a5c]"
+                aria-label="Delete"
+              >
+                <Trash2 size={15} />
+              </button>
+            </>
+          );
           return (
             <motion.div
               key={i.id}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: idx * 0.03 }}
-              className="grid grid-cols-12 px-6 py-4 border-b border-[#e8dfc8]/5 items-center hover:bg-[#e8dfc8]/[0.02]"
+              className="flex flex-col gap-2 md:grid md:grid-cols-12 md:gap-0 px-4 md:px-6 py-4 border-b border-[#e8dfc8]/5 md:items-center hover:bg-[#e8dfc8]/[0.02]"
             >
-              <div className="col-span-3">{i.name}</div>
-              <div className="col-span-2" style={{ fontFamily: 'var(--font-display)' }}>
+              <div className="md:col-span-3 flex items-center justify-between gap-2">
+                <span>{i.name}</span>
+                <div className="flex gap-1 md:hidden">{actions}</div>
+              </div>
+              <div className="md:col-span-2" style={{ fontFamily: 'var(--font-display)' }}>
                 {i.stock} <span className="opacity-50 text-sm">{i.unit}</span>
               </div>
-              <div className="col-span-3">
+              <div className="md:col-span-3">
                 <div className="h-1.5 rounded-full bg-[#e8dfc8]/10 overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
@@ -736,24 +947,12 @@ function InventoryPanel() {
                   Reorder at {i.reorderAt} {i.unit}
                 </div>
               </div>
-              <div className="col-span-2 text-sm opacity-60">{i.lastDelivery}</div>
-              <div className="col-span-2 flex justify-end gap-1">
-                <button
-                  type="button"
-                  onClick={() => openEdit(i)}
-                  className="p-2 rounded-lg hover:bg-[#e8dfc8]/10 text-[#e8dfc8]/80"
-                  aria-label="Edit"
-                >
-                  <Pencil size={15} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeleteId(i.id)}
-                  className="p-2 rounded-lg hover:bg-[#c8442a]/20 text-[#e87a5c]"
-                  aria-label="Delete"
-                >
-                  <Trash2 size={15} />
-                </button>
+              <div className="md:col-span-2 text-sm opacity-60">
+                <span className="md:hidden opacity-70">Last delivery · </span>
+                {i.lastDelivery}
+              </div>
+              <div className="md:col-span-2 hidden md:flex justify-end gap-1">
+                {actions}
               </div>
             </motion.div>
           );
@@ -899,8 +1098,8 @@ function AnalyticsPanel({ orders }: { orders: Order[] }) {
       },
       {
         title: 'Orders (last 7 days, live)',
-        headers: ['reference', 'items', 'total_php', 'method', 'status', 'created_at'],
-        rows: orders.map((o) => [o.reference, itemsSummary(o.items), o.total, o.payment_method, o.status, o.created_at]),
+        headers: ['ticket', 'items', 'total_php', 'method', 'status', 'created_at', 'paid_at'],
+        rows: orders.map((o) => [o.ticket_code, itemsSummary(o.items), o.total, o.payment_method ?? 'unpaid', o.status, o.created_at, o.paid_at ?? '']),
       },
       {
         title: 'Payment mix (live)',
@@ -935,8 +1134,8 @@ function AnalyticsPanel({ orders }: { orders: Order[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="grid lg:grid-cols-3 gap-4 flex-1">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 flex-1 w-full">
           <Stat label="Today's gross" value={`₱${todayGross.toLocaleString()}`} />
           <Stat
             label="Today's net"
@@ -949,15 +1148,15 @@ function AnalyticsPanel({ orders }: { orders: Order[] }) {
         <button
           type="button"
           onClick={handleExport}
-          className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[#e8dfc8]/20 bg-[#0a0d0a] text-sm hover:bg-[#e8dfc8]/10"
+          className="shrink-0 w-full lg:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-[#e8dfc8]/20 bg-[#0a0d0a] text-sm hover:bg-[#e8dfc8]/10"
         >
           <Download size={16} />
           Export CSV
         </button>
       </div>
 
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-5">
+      <Card className="p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
           <div>
             <div className="text-[10px] tracking-[0.25em] uppercase opacity-50">Last 7 days</div>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }} className="text-2xl mt-1">
@@ -986,7 +1185,7 @@ function AnalyticsPanel({ orders }: { orders: Order[] }) {
       </Card>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <Card className="p-6">
+        <Card className="p-4 md:p-6">
           <div className="text-[10px] tracking-[0.25em] uppercase opacity-50">Best sellers · 7d</div>
           <div style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }} className="text-2xl mt-1 mb-5">
             What's flying off the pan
@@ -1015,7 +1214,7 @@ function AnalyticsPanel({ orders }: { orders: Order[] }) {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className="p-4 md:p-6">
           <div className="text-[10px] tracking-[0.25em] uppercase opacity-50">Payment mix · live</div>
           <div style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }} className="text-2xl mt-1 mb-2">
             How diners pay
@@ -1095,8 +1294,8 @@ function ExpensesManager() {
   const recent = expenses.slice(0, 8);
 
   return (
-    <Card className="p-6">
-      <div className="flex items-center justify-between mb-5">
+    <Card className="p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
           <div className="text-[10px] tracking-[0.25em] uppercase opacity-50">Costs</div>
           <div style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }} className="text-2xl mt-1">
@@ -1114,7 +1313,7 @@ function ExpensesManager() {
           <Label className="text-[#e8dfc8]/70">Amount (₱)</Label>
           <Input
             type="number"
-            className={fieldCls + ' w-28'}
+            className={fieldCls + ' w-full md:w-28'}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0"
@@ -1180,6 +1379,54 @@ function ExpensesManager() {
 // ============================================================================
 // Payments panel — admin updates GCash details + uploads the QR code.
 // ============================================================================
+/**
+ * Receipt screenshots are kept indefinitely, and the Supabase free tier allows
+ * 1 GB. Surfacing the number means hitting the ceiling is a decision rather
+ * than a surprise on a busy day.
+ */
+function StorageUsage() {
+  const [rows, setRows] = useState<{ bucket: string; object_count: number; bytes: number }[]>([]);
+
+  useEffect(() => {
+    supabase.rpc('storage_usage').then(({ data }) => setRows(data ?? []));
+  }, []);
+
+  const total = rows.reduce((a, r) => a + Number(r.bytes), 0);
+  const proofs = rows.find((r) => r.bucket === 'payment-proofs');
+  const FREE_TIER = 1024 ** 3;
+  const pct = Math.min(100, (total / FREE_TIER) * 100);
+
+  return (
+    <Card className="p-4 md:p-6">
+      <div className="text-[10px] tracking-[0.25em] uppercase opacity-50">Storage</div>
+      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }} className="text-2xl mt-1">
+        Receipt images
+      </div>
+      <div className="mt-4 flex items-baseline justify-between">
+        <span className="text-sm opacity-60">
+          {proofs?.object_count ?? 0} receipt{proofs?.object_count === 1 ? '' : 's'} stored
+        </span>
+        <span style={{ fontFamily: 'var(--font-display)' }} className="text-xl">
+          {(total / 1024 / 1024).toFixed(1)} MB
+        </span>
+      </div>
+      <div className="mt-2 h-1.5 rounded-full bg-[#e8dfc8]/10 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{
+            width: `${Math.max(pct, 0.5)}%`,
+            background: pct > 80 ? '#c8442a' : pct > 50 ? '#e8a84a' : '#8cc07a',
+          }}
+        />
+      </div>
+      <div className="mt-2 text-[11px] opacity-45">
+        {pct < 1 ? 'Well under' : `${pct.toFixed(1)}% of`} the 1 GB free allowance.
+        Images are shrunk on the phone before upload, so roughly 10,000 receipts fit.
+      </div>
+    </Card>
+  );
+}
+
 function PaymentsPanel() {
   const settings = usePaymentStore((s) => s.settings);
   const load = usePaymentStore((s) => s.load);
@@ -1244,7 +1491,7 @@ function PaymentsPanel() {
   return (
     <div className="max-w-3xl space-y-6">
       <div className="grid md:grid-cols-2 gap-6">
-        <Card className="p-6 space-y-4">
+        <Card className="p-4 md:p-6 space-y-4">
           <div>
             <div className="text-[10px] tracking-[0.25em] uppercase opacity-50">GCash account</div>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }} className="text-2xl mt-1">
@@ -1288,7 +1535,7 @@ function PaymentsPanel() {
           )}
         </Card>
 
-        <Card className="p-6 space-y-4">
+        <Card className="p-4 md:p-6 space-y-4">
           <div>
             <div className="text-[10px] tracking-[0.25em] uppercase opacity-50">GCash QR code</div>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }} className="text-2xl mt-1">
@@ -1314,6 +1561,8 @@ function PaymentsPanel() {
           <p className="text-[10px] opacity-40 text-center">PNG, JPG or WebP · up to 5 MB</p>
         </Card>
       </div>
+
+      <StorageUsage />
     </div>
   );
 }

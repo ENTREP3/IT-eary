@@ -25,23 +25,18 @@ const fresh = () => createClient(URL, ANON, { auth: { persistSession: false } })
   check(!!error || (data?.length ?? 0) === 0, `anon CANNOT read inventory (${error?.code ?? 'empty'})`);
 }
 
-// --- customer + admin clients ---
+// --- anonymous diner (no account) + admin clients ---
 const cust = fresh();
-const email = `diner_${Date.now()}@test.local`;
-await cust.auth.signUp({ email, password: 'secret123', options: { data: { full_name: 'Test Diner' } } });
-const { data: cu } = await cust.auth.getUser();
 
 const admin = fresh();
 await admin.auth.signInWithPassword({ email: 'admin@iteary.local', password: 'admin123' });
 
-// --- trigger: ordering bumps dishes.sold_today ---
+// --- trigger: ticketing bumps dishes.sold_today ---
 {
   const { data: before } = await admin.from('dishes').select('sold_today').eq('id', 'adobo').single();
-  await cust.from('orders').insert({
-    reference: 'KMT' + Math.floor(Math.random() * 900000 + 100000),
-    customer_id: cu.user.id, customer_name: 'Test Diner',
-    items: [{ id: 'adobo', name: 'Chicken Adobo', qty: 2, price: 85 }],
-    total: 170, payment_method: 'cash', status: 'pending',
+  await cust.rpc('create_ticket', {
+    p_items: [{ id: 'adobo', qty: 2 }],
+    p_customer_name: 'Test Diner',
   });
   const { data: after } = await admin.from('dishes').select('sold_today').eq('id', 'adobo').single();
   check(after.sold_today === before.sold_today + 2, `sold_today incremented by trigger (${before.sold_today} -> ${after.sold_today})`);
@@ -50,24 +45,22 @@ await admin.auth.signInWithPassword({ email: 'admin@iteary.local', password: 'ad
 // --- trigger: stock_count decrements and auto sold-out at 0 ---
 {
   await admin.from('dishes').update({ stock_count: 3, available: true }).eq('id', 'sago');
-  await cust.from('orders').insert({
-    reference: 'KMS' + Math.floor(Math.random() * 900000 + 100000),
-    customer_id: cu.user.id, customer_name: 'Test Diner',
-    items: [{ id: 'sago', name: "Sago't Gulaman", qty: 3, price: 25 }],
-    total: 75, payment_method: 'gcash', status: 'paid',
+  await cust.rpc('create_ticket', {
+    p_items: [{ id: 'sago', qty: 3 }],
+    p_customer_name: 'Test Diner',
   });
   const { data: sago } = await admin.from('dishes').select('stock_count, available').eq('id', 'sago').single();
   check(sago.stock_count === 0 && sago.available === false, `stock_count hit 0 and dish auto sold-out (stock=${sago.stock_count}, available=${sago.available})`);
 }
 
-// --- RLS: customer cannot write menu or expenses; admin can ---
+// --- RLS: anonymous diners cannot write menu or expenses; admin can ---
 {
   const { error: dishErr } = await cust.from('dishes').update({ price: 1 }).eq('id', 'adobo');
   const { data: adoboAfter } = await admin.from('dishes').select('price').eq('id', 'adobo').single();
-  check(Number(adoboAfter.price) !== 1, `customer CANNOT edit dishes (price still ${adoboAfter.price})`);
+  check(Number(adoboAfter.price) !== 1, `anon CANNOT edit dishes (price still ${adoboAfter.price})`);
 
   const { error: expErr } = await cust.from('expenses').insert({ label: 'hack', amount: 1 });
-  check(!!expErr, `customer CANNOT add expenses (${expErr?.code ?? 'no error?!'})`);
+  check(!!expErr, `anon CANNOT add expenses (${expErr?.code ?? 'no error?!'})`);
 
   const { error: okErr } = await admin.from('expenses').insert({ label: 'Test expense', amount: 500, category: 'Supplies' });
   check(!okErr, `admin CAN add expenses (${okErr?.message ?? 'ok'})`);

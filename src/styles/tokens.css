@@ -1,0 +1,38 @@
+/* GENERATED FILE — DO NOT EDIT. */
+/* Source: design/tokens.json   Regenerate: npm run tokens */
+
+@theme {
+  /* staff */
+  --color-staff-ground: #0f1410; /* app background */
+  --color-staff-card: #0a0d0a; /* panels, sidebar, inputs */
+  --color-staff-ink: #e8dfc8; /* primary text on dark */
+  --color-staff-accent: #e8a84a; /* primary action, active nav */
+
+  /* diner */
+  --color-diner-ground: #f4ead5; /* app background */
+  --color-diner-card: #fbf4e3; /* dish cards, cart rows */
+  --color-diner-ink: #2a1810; /* primary text on cream */
+  --color-diner-accent: #c8442a; /* wordmark, primary emphasis */
+
+  /* semantic */
+  --color-semantic-good: #8cc07a; /* healthy stock, positive delta */
+  --color-semantic-alert: #e87a5c; /* unpaid, needs attention */
+  --color-semantic-critical: #c8442a; /* destructive, out of stock */
+  --color-semantic-cash: #3a5a3a; /* cash payment method */
+  --color-semantic-gcash: #0074e0; /* GCash payment method */
+  --color-semantic-gcash-soft: #6dadff; /* GCash on a dark ground */
+
+  /* receipt */
+  --color-receipt-paper: #ffffff; /* receipt sheet */
+  --color-receipt-print: #1a1a1a; /* receipt text */
+
+  /* radius */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  /* type */
+  --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+}

@@ -1,76 +1,86 @@
-import React, { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { Loader2 } from 'lucide-react';
-import { CustomerApp } from './components/CustomerApp';
 import { AdminApp } from './components/AdminApp';
+import { CashierApp } from './components/CashierApp';
+import { StorefrontApp } from './components/diner/StorefrontApp';
 import { AuthScreen } from './components/auth/AuthScreen';
 import { useAuthStore } from './store/authStore';
 import { usePaymentStore } from './store/paymentStore';
 import { useKarinderyaStore } from './store/karinderyaStore';
+import type { UserRole } from './lib/types';
 
-type Screen = 'customer' | 'admin';
-
+/**
+ * All three audiences on the web, mirroring the Flutter apps:
+ *   /          diner storefront — no account
+ *   /cashier   counter
+ *   /admin     owner
+ *
+ * The rules they share live in Postgres, not here, so the web and mobile
+ * versions of each screen cannot drift.
+ */
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('customer');
-
   const initAuth = useAuthStore((s) => s.init);
-  const loading = useAuthStore((s) => s.loading);
-  const role = useAuthStore((s) => s.profile?.role);
   const loadPayments = usePaymentStore((s) => s.load);
   const loadMenu = useKarinderyaStore((s) => s.loadAll);
   const subscribeMenu = useKarinderyaStore((s) => s.subscribe);
 
-  // Boot: hydrate the session, payment settings, and the menu/inventory (now
-  // served from Postgres) — and keep the menu live across devices.
   useEffect(() => {
     initAuth();
     loadPayments();
     loadMenu();
-    const unsub = subscribeMenu();
-    return unsub;
+    return subscribeMenu();
   }, [initAuth, loadPayments, loadMenu, subscribeMenu]);
 
-  // Ctrl+Shift+A still jumps to the staff area — but it's now gated by login.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') {
-        e.preventDefault();
-        setScreen('admin');
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
-  const renderAdmin = () => {
-    if (loading) {
-      return (
-        <div className="min-h-screen grid place-items-center bg-[#0f1410] text-[#e8dfc8]">
-          <Loader2 className="animate-spin opacity-60" />
-        </div>
-      );
-    }
-    if (role === 'admin') {
-      return <AdminApp onBack={() => setScreen('customer')} />;
-    }
-    return <AuthScreen mode="admin" onClose={() => setScreen('customer')} />;
-  };
-
   return (
-    <div className="size-full">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={screen}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.35 }}
-          className="size-full"
-        >
-          {screen === 'customer' && <CustomerApp />}
-          {screen === 'admin' && renderAdmin()}
-        </motion.div>
-      </AnimatePresence>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<StorefrontApp />} />
+        <Route
+          path="/admin"
+          element={
+            <RequireRole allowed={['admin']} area="admin">
+              <AdminApp />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/cashier"
+          element={
+            <RequireRole allowed={['cashier', 'admin']} area="cashier">
+              <CashierApp />
+            </RequireRole>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
+}
+
+function RequireRole({
+  allowed,
+  area,
+  children,
+}: {
+  allowed: UserRole[];
+  area: 'admin' | 'cashier';
+  children: React.ReactNode;
+}) {
+  const loading = useAuthStore((s) => s.loading);
+  const role = useAuthStore((s) => s.profile?.role);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-[#0f1410] text-[#e8dfc8]">
+        <Loader2 className="animate-spin opacity-60" />
+      </div>
+    );
+  }
+
+  if (!role || !allowed.includes(role)) {
+    return <AuthScreen area={area} allowed={allowed} />;
+  }
+
+  return <>{children}</>;
 }
