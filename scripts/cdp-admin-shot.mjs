@@ -102,7 +102,7 @@ try {
       }
       const email = document.querySelector('input[type=email]');
       const pass = document.querySelector('input[type=password]');
-      setVal(email,'admin@iteary.local');
+      setVal(email,'admin@bencris.local');
       setVal(pass,'admin123');
       const btn = document.querySelector('button[type=submit]');
       btn && btn.click();

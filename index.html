@@ -4,7 +4,58 @@
     <head>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>IT-eary · Karinderya OS</title>
+      <title>Bencris, karinderya in Dasmariñas Bayan, Cavite</title>
+      <meta
+        name="description"
+        content="Home-cooked Filipino food in Dasmariñas Bayan, Cavite. See what is actually cooking today before you make the trip, order without an account, and pay by cash or GCash at the counter."
+      />
+      <meta name="theme-color" content="#f4ead5" />
+
+      <!-- Link preview: what a pasted link looks like in a group chat. -->
+      <meta property="og:type" content="restaurant" />
+      <meta property="og:site_name" content="Bencris" />
+      <meta property="og:title" content="Bencris, today's menu in Dasmariñas Bayan" />
+      <meta
+        property="og:description"
+        content="Check what is cooking right now. Sold-out dishes hide themselves, so you never make the trip for nothing."
+      />
+
+      <!-- Structured data so a search engine understands this is a local
+           eatery. Address and hours are placeholders until the owner
+           confirms them; they match src/app/lib/business.ts. -->
+      <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Restaurant",
+          "name": "Bencris",
+          "description": "Neighbourhood karinderya serving home-cooked Filipino food in Dasmariñas Bayan.",
+          "servesCuisine": "Filipino",
+          "priceRange": "₱",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "[Stall number and building]",
+            "addressLocality": "Dasmariñas",
+            "addressRegion": "Cavite",
+            "addressCountry": "PH"
+          },
+          "openingHoursSpecification": [
+            {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+              "opens": "06:00",
+              "closes": "20:00"
+            },
+            {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": "Sunday",
+              "opens": "06:00",
+              "closes": "14:00"
+            }
+          ],
+          "paymentAccepted": "Cash, GCash"
+        }
+      </script>
+
       <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
     </head>
 

@@ -9,7 +9,7 @@ if (!url || !anonKey) {
   // Fail loudly in dev rather than producing confusing "fetch failed" errors.
   // eslint-disable-next-line no-console
   console.error(
-    '[IT-eary] Missing Supabase env vars. Copy .env.example to .env.local and run `npx supabase start`.',
+    '[Bencris] Missing Supabase env vars. Copy .env.example to .env.local and run `npx supabase start`.',
   );
 }
 

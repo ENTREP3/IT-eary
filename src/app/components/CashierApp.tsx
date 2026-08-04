@@ -145,7 +145,7 @@ export function CashierApp() {
             style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.02em' }}
             className="text-2xl leading-none"
           >
-            IT<span style={{ fontStyle: 'italic', color: '#e8a84a' }}>-eary</span>
+            Ben<span style={{ fontStyle: 'italic', color: '#e8a84a' }}>cris</span>
           </div>
           <div className="text-[10px] tracking-[0.25em] uppercase opacity-40 mt-1">Counter</div>
         </div>

@@ -60,8 +60,8 @@ Authentication uses **Supabase Auth (email + password)**. Roles live in
 - A DB trigger (`handle_new_user`) creates a profile for every new auth user and
   **always** sets `role = 'customer'` (the inert default). A malicious client
   cannot sign up as staff by passing `{"role":"admin"}` — that input is ignored.
-- Staff are created out-of-band: the seed creates `admin@iteary.local` and
-  `cashier@iteary.local`, or an existing admin calls `promote_to_admin(email)` /
+- Staff are created out-of-band: the seed creates `admin@bencris.local` and
+  `cashier@bencris.local`, or an existing admin calls `promote_to_admin(email)` /
   `promote_to_cashier(email)`.
 - Column-level grants prevent anyone from updating their own `role`
   (verified by the test suite — see below).
@@ -80,8 +80,8 @@ In [`src/app/store/authStore.ts`](src/app/store/authStore.ts):
 Routing in [`src/app/App.tsx`](src/app/App.tsx) gates `/admin` to `['admin']` and
 `/cashier` to `['cashier', 'admin']`.
 
-**Staff logins:** `admin@iteary.local` / `admin123` and
-`cashier@iteary.local` / `cashier123` (change these for anything real).
+**Staff logins:** `admin@bencris.local` / `admin123` and
+`cashier@bencris.local` / `cashier123` (change these for anything real).
 
 ---
 

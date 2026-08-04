@@ -29,7 +29,7 @@ const fresh = () => createClient(URL, ANON, { auth: { persistSession: false } })
 const cust = fresh();
 
 const admin = fresh();
-await admin.auth.signInWithPassword({ email: 'admin@iteary.local', password: 'admin123' });
+await admin.auth.signInWithPassword({ email: 'admin@bencris.local', password: 'admin123' });
 
 // --- trigger: ticketing bumps dishes.sold_today ---
 {

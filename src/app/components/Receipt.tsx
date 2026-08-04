@@ -3,7 +3,7 @@ import { Printer, Download, Check } from 'lucide-react';
 import { downloadTextFile } from '../lib/exportCsv';
 import type { Order } from '../lib/types';
 
-const STORE_NAME = 'IT-eary Karinderya';
+const STORE_NAME = 'Bencris Karinderya';
 
 function peso(n: number) {
   return `₱${Number(n).toFixed(2)}`;

@@ -19,13 +19,13 @@ const COPY = {
     icon: ShieldCheck,
     title: 'Owner sign in',
     blurb: 'Owner access only. Cashier accounts cannot sign in here.',
-    demo: 'admin@iteary.local / admin123',
+    demo: 'admin@bencris.local / admin123',
   },
   cashier: {
     icon: Store,
     title: 'Counter sign in',
     blurb: 'Sign in to take payments at the counter.',
-    demo: 'cashier@iteary.local / cashier123',
+    demo: 'cashier@bencris.local / cashier123',
   },
 } as const;
 
@@ -73,7 +73,7 @@ export function AuthScreen({ area, allowed }: { area: Area; allowed: UserRole[] 
             style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.02em' }}
             className="text-2xl leading-none mb-2"
           >
-            IT<span style={{ fontStyle: 'italic', color: '#e8a84a' }}>-eary</span>
+            Ben<span style={{ fontStyle: 'italic', color: '#e8a84a' }}>cris</span>
           </div>
           <h2
             style={{ fontFamily: 'var(--font-display)', fontWeight: 500, letterSpacing: '-0.02em' }}
@@ -119,13 +119,11 @@ export function AuthScreen({ area, allowed }: { area: Area; allowed: UserRole[] 
           </button>
         </form>
 
-        <p className="text-[11px] opacity-40 mt-4 text-center">
-          {isLocalBackend ? (
-            <>Demo · {copy.demo}</>
-          ) : (
-            <>Connected to {new URL(supabaseUrl || 'https://unknown').hostname}</>
-          )}
-        </p>
+        {/* Staff accounts only. Never surface backend hosts or keys here:
+            the counter has no use for them, and it is not ours to publish. */}
+        {isLocalBackend && (
+          <p className="text-[11px] opacity-40 mt-4 text-center">Staff account · {copy.demo}</p>
+        )}
       </motion.div>
     </div>
   );
