@@ -120,7 +120,10 @@ export type InventoryItem = {
   unit: string;
   stock: number;
   reorderAt: number;
+  /** How much the kitchen should have for a normal day; the shortfall is what to buy. */
+  parLevel: number;
   lastDelivery: string;
+  lastReceivedAt?: string | null;
 };
 
 export const INVENTORY: InventoryItem[] = [

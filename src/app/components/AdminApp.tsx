@@ -758,28 +758,46 @@ function Dashboard({ orders }: { orders: Order[] }) {
 // Kitchen / order-queue board — live FIFO lanes with status advancement.
 // ============================================================================
 
+/** "Today", "Yesterday", "3 days ago", from the stamp receive_stock() writes. */
+function sinceDelivery(i: InventoryItem): string {
+  if (!i.lastReceivedAt) return i.lastDelivery && i.lastDelivery !== '—' ? i.lastDelivery : 'Never';
+  const days = Math.floor((Date.now() - new Date(i.lastReceivedAt).getTime()) / 86_400_000);
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  return `${days} days ago`;
+}
+
 function InventoryPanel() {
   const inventory = useKarinderyaStore((s) => s.inventory);
   const updateInventory = useKarinderyaStore((s) => s.updateInventory);
   const addInventory = useKarinderyaStore((s) => s.addInventory);
   const deleteInventory = useKarinderyaStore((s) => s.deleteInventory);
+  const loadAll = useKarinderyaStore((s) => s.loadAll);
 
   const [open, setOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editing, setEditing] = useState<InventoryItem | null>(null);
+  // Which ingredient is having a delivery recorded, and how much arrived.
+  const [receiving, setReceiving] = useState<string | null>(null);
+  const [received, setReceived] = useState('');
 
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('kg');
-  const [stock, setStock] = useState(0);
-  const [reorderAt, setReorderAt] = useState(0);
+  // Held as text while the dialog is open. A number here meant an empty field
+  // coerced straight back to 0, so the zero could never be deleted and whatever
+  // you typed landed after it. Converted to a number on save.
+  const [stock, setStock] = useState('');
+  const [reorderAt, setReorderAt] = useState('');
+  const [parLevel, setParLevel] = useState('');
   const [lastDelivery, setLastDelivery] = useState('');
 
   const openNew = () => {
     setEditing(null);
     setName('');
     setUnit('kg');
-    setStock(0);
-    setReorderAt(0);
+    setStock('');
+    setReorderAt('');
+    setParLevel('');
     setLastDelivery('');
     setOpen(true);
   };
@@ -788,8 +806,9 @@ function InventoryPanel() {
     setEditing(i);
     setName(i.name);
     setUnit(i.unit);
-    setStock(i.stock);
-    setReorderAt(i.reorderAt);
+    setStock(String(i.stock));
+    setReorderAt(String(i.reorderAt));
+    setParLevel(String(i.parLevel ?? 0));
     setLastDelivery(i.lastDelivery);
     setOpen(true);
   };
@@ -797,9 +816,9 @@ function InventoryPanel() {
   const save = async () => {
     if (!name.trim()) return;
     if (editing) {
-      await updateInventory(editing.id, { name, unit, stock, reorderAt, lastDelivery: lastDelivery.trim() || '—' });
+      await updateInventory(editing.id, { name, unit, stock: Number(stock) || 0, reorderAt: Number(reorderAt) || 0, parLevel: Number(parLevel) || 0, lastDelivery: lastDelivery.trim() || '—' });
     } else {
-      await addInventory({ name, unit, stock, reorderAt, lastDelivery: lastDelivery.trim() || '—' });
+      await addInventory({ name, unit, stock: Number(stock) || 0, reorderAt: Number(reorderAt) || 0, parLevel: Number(parLevel) || 0, lastDelivery: lastDelivery.trim() || '—' });
     }
     setOpen(false);
   };
@@ -825,11 +844,22 @@ function InventoryPanel() {
           <div className="col-span-2 text-right">Actions</div>
         </div>
         {inventory.map((i, idx) => {
-          const ratio = Math.min(1, i.stock / (i.reorderAt * 2.5));
-          const low = i.stock <= i.reorderAt;
+          // Level answers "how full is this", against what a full stock means
+          // for this ingredient. A bare threshold never said that.
+          const par = i.parLevel || 0;
+          const ratio = par > 0 ? Math.min(1, i.stock / par) : 0;
+          const shortfall = Math.max(0, Math.round((par - i.stock) * 100) / 100);
+          const low = par > 0 && i.stock < par * 0.35;
           const out = i.stock === 0;
           const actions = (
             <>
+              <button
+                type="button"
+                onClick={() => setReceiving(i.id)}
+                className="px-2.5 py-1.5 rounded-lg text-xs border border-[#8cc07a]/35 text-[#8cc07a] hover:bg-[#8cc07a]/10"
+              >
+                Receive
+              </button>
               <button
                 type="button"
                 onClick={() => openEdit(i)}
@@ -873,13 +903,20 @@ function InventoryPanel() {
                     }}
                   />
                 </div>
-                <div className="mt-1 text-[10px] opacity-50">
-                  Reorder at {i.reorderAt} {i.unit}
+                <div className="mt-1 text-[10px] opacity-55">
+                  {par > 0 ? (
+                    <>
+                      {i.stock} of {par} {i.unit}
+                      {shortfall > 0 && <span className="text-[#e8a84a]"> · buy {shortfall}</span>}
+                    </>
+                  ) : (
+                    <span className="opacity-70">Set a full stock to track this</span>
+                  )}
                 </div>
               </div>
               <div className="md:col-span-2 text-sm opacity-60">
                 <span className="md:hidden opacity-70">Last delivery · </span>
-                {i.lastDelivery}
+                {sinceDelivery(i)}
               </div>
               <div className="md:col-span-2 hidden md:flex justify-end gap-1">
                 {actions}
@@ -888,6 +925,77 @@ function InventoryPanel() {
           );
         })}
       </Card>
+
+      {/* Recording a delivery is separate from editing, because it is the one
+          action that should stamp the date for you. */}
+      <Dialog open={!!receiving} onOpenChange={(v) => !v && setReceiving(null)}>
+        <DialogContent className={dialogSurface}>
+          <DialogHeader>
+            <DialogTitle className="text-[#e8dfc8]">
+              Record a delivery
+              {receiving && (
+                <span className="opacity-60 font-normal">
+                  {' '}
+                  · {inventory.find((x) => x.id === receiving)?.name}
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          {receiving && (() => {
+            const item = inventory.find((x) => x.id === receiving);
+            if (!item) return null;
+            const par = item.parLevel || 0;
+            const missing = Math.max(0, Math.round((par - item.stock) * 100) / 100);
+            return (
+              <div className="grid gap-3 py-2">
+                <p className="text-sm opacity-70">
+                  You have {item.stock} {item.unit}
+                  {par > 0 && <> of {par}. That is {missing} {item.unit} short.</>}
+                </p>
+                <div>
+                  <Label className="text-[#e8dfc8]/70">How much arrived</Label>
+                  <Input
+                    type="number"
+                    className={fieldCls}
+                    value={received}
+                    onChange={(e) => setReceived(e.target.value)}
+                    placeholder={missing > 0 ? String(missing) : '0'}
+                    autoFocus
+                  />
+                  <p className="text-[10px] opacity-45 mt-1">
+                    This is added to your stock, and today's date is recorded for you.
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setReceiving(null)}
+              className="px-4 py-2 rounded-lg border border-[#e8dfc8]/20"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={!Number(received)}
+              onClick={async () => {
+                await supabase.rpc('receive_stock', {
+                  p_inventory_id: receiving,
+                  p_quantity: Number(received),
+                });
+                setReceiving(null);
+                setReceived('');
+                loadAll();
+              }}
+              className="px-4 py-2 rounded-lg bg-[#8cc07a] text-[#0a0d0a] font-medium disabled:opacity-40"
+            >
+              Add to stock
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className={dialogSurface}>
@@ -923,17 +1031,21 @@ function InventoryPanel() {
                   type="number"
                   className={fieldCls}
                   value={stock}
-                  onChange={(e) => setStock(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setStock(e.target.value)}
                 />
               </div>
               <div>
-                <Label className="text-[#e8dfc8]/70">Reorder at</Label>
+                <Label className="text-[#e8dfc8]/70">Full stock</Label>
                 <Input
                   type="number"
                   className={fieldCls}
-                  value={reorderAt}
-                  onChange={(e) => setReorderAt(parseFloat(e.target.value) || 0)}
+                  value={parLevel}
+                  onChange={(e) => setParLevel(e.target.value)}
+                  placeholder="100"
                 />
+                <p className="text-[10px] opacity-45 mt-1">
+                  How much of this you should have. The screen then shows your count out of it.
+                </p>
               </div>
             </div>
           </div>
@@ -1745,8 +1857,11 @@ function MenuControl() {
                 <Input
                   type="number"
                   className={fieldCls}
-                  value={form.price}
-                  onChange={(e) => setForm((p) => ({ ...p, price: parseFloat(e.target.value) || 0 }))}
+                  value={form.price === 0 ? '' : form.price}
+                  placeholder="0"
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, price: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0 }))
+                  }
                 />
               </div>
               <div>
@@ -1754,13 +1869,16 @@ function MenuControl() {
                 <Input
                   type="number"
                   className={fieldCls}
-                  value={form.soldToday}
-                  onChange={(e) => setForm((p) => ({ ...p, soldToday: parseInt(e.target.value, 10) || 0 }))}
+                  value={form.soldToday === 0 ? '' : form.soldToday}
+                  placeholder="0"
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, soldToday: e.target.value === '' ? 0 : parseInt(e.target.value, 10) || 0 }))
+                  }
                 />
               </div>
             </div>
             <div>
-              <Label className="text-[#e8dfc8]/70">Stock left (blank = unlimited)</Label>
+              <Label className="text-[#e8dfc8]/70">Servings left today (blank = unlimited)</Label>
               <Input
                 type="number"
                 className={fieldCls}
@@ -1773,8 +1891,14 @@ function MenuControl() {
                   }))
                 }
               />
-              <p className="text-[10px] opacity-40 mt-1">
-                When set, each order subtracts from this and auto-marks the dish sold out at 0.
+              <p className="text-[10px] opacity-45 mt-1 leading-relaxed">
+                Plates of this dish still available. Each order takes one off, and at 0 the dish
+                marks itself sold out and leaves the menu.
+                <br />
+                <span className="text-[#e8a84a]">
+                  Typing here does not touch your ingredients.
+                </span>{' '}
+                To cook more and have the ingredients deducted, use Record cooking under Recipe.
               </p>
             </div>
             <div>

@@ -170,8 +170,9 @@ type Staff = { id: string; email: string; full_name: string | null; role: string
 
 function StaffSection() {
   const [rows, setRows] = useState<Staff[]>([]);
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'cashier' | 'admin'>('cashier');
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'cashier' as 'cashier' | 'admin' });
+  const [resetting, setResetting] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
 
@@ -184,18 +185,39 @@ function StaffSection() {
     load();
   }, []);
 
-  const grant = async () => {
+  const create = async () => {
     setBusy(true);
     setMessage(null);
-    const { error } = await supabase.rpc(
-      role === 'admin' ? 'promote_to_admin' : 'promote_to_cashier',
-      { target_email: email.trim() },
-    );
+    const { data, error } = await supabase.rpc('create_staff_account', {
+      p_email: form.email.trim(),
+      p_password: form.password,
+      p_full_name: form.name.trim(),
+      p_role: form.role,
+    });
     setBusy(false);
     if (error) return setMessage({ tone: 'bad', text: error.message });
-    setEmail('');
-    setMessage({ tone: 'ok', text: `${email.trim()} can now sign in as ${role}.` });
+    setMessage({
+      tone: 'ok',
+      text:
+        data === 'created'
+          ? `${form.email.trim()} can sign in now. Give them the password you just set.`
+          : `${form.email.trim()} already had an account, so it was given ${form.role} access.`,
+    });
+    setForm({ name: '', email: '', password: '', role: 'cashier' });
     load();
+  };
+
+  const resetPassword = async (target: string) => {
+    setBusy(true);
+    const { error } = await supabase.rpc('set_staff_password', {
+      p_email: target,
+      p_password: newPassword,
+    });
+    setBusy(false);
+    if (error) return setMessage({ tone: 'bad', text: error.message });
+    setMessage({ tone: 'ok', text: `New password set for ${target}.` });
+    setResetting(null);
+    setNewPassword('');
   };
 
   const revoke = async (target: string) => {
@@ -208,38 +230,60 @@ function StaffSection() {
   return (
     <section className="rounded-2xl border border-[#e8dfc8]/12 bg-[#0a0d0a] p-5">
       <h2 className="flex items-center gap-2 text-sm font-semibold">
-        <Users size={16} className="text-[#e8a84a]" /> Staff access
+        <Users size={16} className="text-[#e8a84a]" /> Staff logins
       </h2>
       <p className="text-xs opacity-55 mt-1 max-w-prose">
-        The person must already have an account. Ask them to sign up on the customer page first,
-        then grant access here. Removing access leaves their account and history intact.
+        Create the login here and hand the email and password to your staff. They do not sign up
+        themselves. If the email already has a customer account, it is given staff access instead.
       </p>
 
-      <div className="mt-4 flex flex-wrap gap-2 items-end">
-        <label className="flex-1 min-w-[220px]">
-          <span className="text-[11px] opacity-55">Their email</span>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="block">
+          <span className="text-[11px] opacity-55">Name</span>
           <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="name@example.com"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="Ana Dela Cruz"
             className={`${field} mt-1`}
           />
         </label>
-        <label>
+        <label className="block">
+          <span className="text-[11px] opacity-55">Email they will sign in with</span>
+          <input
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            placeholder="ana@bencris.local"
+            className={`${field} mt-1`}
+          />
+        </label>
+        <label className="block">
+          <span className="text-[11px] opacity-55">Password (at least 6 characters)</span>
+          <input
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            className={`${field} mt-1`}
+          />
+        </label>
+        <label className="block">
           <span className="text-[11px] opacity-55">Role</span>
-          <select value={role} onChange={(e) => setRole(e.target.value as 'cashier' | 'admin')} className={`${field} mt-1`}>
+          <select
+            value={form.role}
+            onChange={(e) => setForm({ ...form, role: e.target.value as 'cashier' | 'admin' })}
+            className={`${field} mt-1`}
+          >
             <option value="cashier">Cashier</option>
             <option value="admin">Owner</option>
           </select>
         </label>
-        <button
-          onClick={grant}
-          disabled={busy || !email.trim()}
-          className="h-10 px-4 rounded-lg border border-[#e8dfc8]/20 text-sm inline-flex items-center gap-1.5 disabled:opacity-40"
-        >
-          {busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Grant access
-        </button>
       </div>
+
+      <button
+        onClick={create}
+        disabled={busy || !form.email.trim() || form.password.length < 6}
+        className="mt-3 h-10 px-4 rounded-lg bg-[#e8a84a] text-[#0a0d0a] text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-40"
+      >
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Create login
+      </button>
 
       {message && (
         <p className={`mt-3 text-sm ${message.tone === 'ok' ? 'text-[#8cc07a]' : 'text-[#e87a5c]'}`}>
@@ -261,6 +305,15 @@ function StaffSection() {
               {s.role === 'admin' ? 'Owner' : 'Cashier'}
             </span>
             <button
+              onClick={() => {
+                setResetting(resetting === s.email ? null : s.email);
+                setNewPassword('');
+              }}
+              className="text-[11px] opacity-55 hover:opacity-100"
+            >
+              Reset password
+            </button>
+            <button
               onClick={() => revoke(s.email)}
               className="opacity-45 hover:opacity-100 hover:text-[#e87a5c]"
               aria-label={`Remove access for ${s.email}`}
@@ -270,6 +323,29 @@ function StaffSection() {
           </li>
         ))}
       </ul>
+
+      {resetting && (
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <label className="flex-1 min-w-[220px]">
+            <span className="text-[11px] opacity-55">New password for {resetting}</span>
+            <input
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className={`${field} mt-1`}
+            />
+          </label>
+          <button
+            onClick={() => resetPassword(resetting)}
+            disabled={busy || newPassword.length < 6}
+            className="h-10 px-4 rounded-lg border border-[#e8dfc8]/20 text-sm disabled:opacity-40"
+          >
+            Set password
+          </button>
+          <button onClick={() => setResetting(null)} className="h-10 px-3 text-sm opacity-60">
+            Cancel
+          </button>
+        </div>
+      )}
     </section>
   );
 }
