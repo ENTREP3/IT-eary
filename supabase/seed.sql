@@ -86,3 +86,21 @@ begin
   where id = cashier_id;
 end $$;
 
+-- ---------------------------------------------------------------------------
+-- YOUR OWN STAFF ACCOUNTS
+--
+-- `supabase db reset` rebuilds the database from the migrations and this file,
+-- so anything created by hand in Studio, or through the Shop screen, is wiped.
+-- That is fine for demo data and very much not fine for your own login.
+--
+-- Add yours here and it survives every reset. Uncomment, change the details,
+-- and give each person a different id (any unique uuid will do).
+-- ---------------------------------------------------------------------------
+-- do $$
+-- declare
+--   my_id uuid := '33333333-3333-3333-3333-333333333333';
+-- begin
+--   perform pg_temp.seed_staff_user(my_id, 'you@example.com', 'your-password', 'Your Name');
+--   update public.profiles set role = 'admin', full_name = 'Your Name' where id = my_id;
+-- end $$;
+
