@@ -780,6 +780,9 @@ function InventoryPanel() {
   // Which ingredient is having a delivery recorded, and how much arrived.
   const [receiving, setReceiving] = useState<string | null>(null);
   const [received, setReceived] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [receiveError, setReceiveError] = useState<string | null>(null);
 
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('kg');
@@ -813,14 +816,34 @@ function InventoryPanel() {
     setOpen(true);
   };
 
+  /**
+   * Saving used to have no error handling at all. A rejected write left the
+   * dialog open with nothing said, so a failed save was indistinguishable from
+   * a slow one, and the ingredient simply never appeared.
+   */
   const save = async () => {
     if (!name.trim()) return;
-    if (editing) {
-      await updateInventory(editing.id, { name, unit, stock: Number(stock) || 0, reorderAt: Number(reorderAt) || 0, parLevel: Number(parLevel) || 0, lastDelivery: lastDelivery.trim() || '—' });
-    } else {
-      await addInventory({ name, unit, stock: Number(stock) || 0, reorderAt: Number(reorderAt) || 0, parLevel: Number(parLevel) || 0, lastDelivery: lastDelivery.trim() || '—' });
+    setSaveError(null);
+    setSaving(true);
+    const fields = {
+      name,
+      unit,
+      stock: Number(stock) || 0,
+      reorderAt: Number(reorderAt) || 0,
+      parLevel: Number(parLevel) || 0,
+      lastDelivery: lastDelivery.trim() || '—',
+    };
+    try {
+      if (editing) await updateInventory(editing.id, fields);
+      else await addInventory(fields);
+      setOpen(false);
+    } catch (e) {
+      setSaveError(
+        e instanceof Error ? e.message : 'Could not save that ingredient. Please try again.',
+      );
+    } finally {
+      setSaving(false);
     }
-    setOpen(false);
   };
 
   return (
@@ -970,6 +993,9 @@ function InventoryPanel() {
             );
           })()}
           <DialogFooter>
+            {receiveError && (
+              <p className="text-sm text-[#e87a5c] mr-auto self-center">{receiveError}</p>
+            )}
             <button
               type="button"
               onClick={() => setReceiving(null)}
@@ -981,10 +1007,15 @@ function InventoryPanel() {
               type="button"
               disabled={!Number(received)}
               onClick={async () => {
-                await supabase.rpc('receive_stock', {
+                setReceiveError(null);
+                const { error } = await supabase.rpc('receive_stock', {
                   p_inventory_id: receiving,
                   p_quantity: Number(received),
                 });
+                if (error) {
+                  setReceiveError(error.message);
+                  return;
+                }
                 setReceiving(null);
                 setReceived('');
                 loadAll();
@@ -1050,6 +1081,9 @@ function InventoryPanel() {
             </div>
           </div>
           <DialogFooter>
+            {saveError && (
+              <p className="text-sm text-[#e87a5c] mr-auto self-center">{saveError}</p>
+            )}
             <button
               type="button"
               onClick={() => setOpen(false)}
@@ -1060,9 +1094,10 @@ function InventoryPanel() {
             <button
               type="button"
               onClick={save}
-              className="px-4 py-2 rounded-lg bg-[#e8a84a] text-[#0a0d0a]"
+              disabled={saving}
+              className="px-4 py-2 rounded-lg bg-[#e8a84a] text-[#0a0d0a] disabled:opacity-60"
             >
-              Save
+              {saving ? 'Saving...' : 'Save'}
             </button>
           </DialogFooter>
         </DialogContent>
