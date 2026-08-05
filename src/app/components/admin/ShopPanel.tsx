@@ -176,8 +176,19 @@ function StaffSection() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Surface a failure rather than rendering an empty list. Swallowing the error
+  // made a broken query look exactly like "no staff yet", which is the worst
+  // possible way for this screen to fail.
   const load = async () => {
-    const { data } = await supabase.rpc('list_staff');
+    const { data, error } = await supabase.rpc('list_staff');
+    if (error) {
+      setLoadError(error.message);
+      setRows([]);
+      return;
+    }
+    setLoadError(null);
     setRows((data ?? []) as Staff[]);
   };
 
@@ -288,6 +299,17 @@ function StaffSection() {
       {message && (
         <p className={`mt-3 text-sm ${message.tone === 'ok' ? 'text-[#8cc07a]' : 'text-[#e87a5c]'}`}>
           {message.text}
+        </p>
+      )}
+
+      {loadError && (
+        <p className="mt-4 text-sm text-[#e87a5c]">
+          Could not load the staff list: {loadError}
+        </p>
+      )}
+      {!loadError && rows.length === 0 && (
+        <p className="mt-4 text-sm opacity-55">
+          No staff logins yet. Create one above.
         </p>
       )}
 
