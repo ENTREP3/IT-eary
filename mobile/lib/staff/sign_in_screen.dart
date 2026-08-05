@@ -152,7 +152,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 ),
                 const SizedBox(height: 18),
                 const Text(
-                  'IT-eary',
+                  'Bencris',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,

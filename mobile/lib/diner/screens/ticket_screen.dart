@@ -83,7 +83,7 @@ class _TicketScreenState extends State<TicketScreen> {
       await SharePlus.instance.share(
         ShareParams(
           files: [XFile(file.path)],
-          text: 'IT-eary receipt ${_ticket.ticketCode}',
+          text: 'Bencris receipt ${_ticket.ticketCode}',
         ),
       );
     } catch (_) {
@@ -414,7 +414,7 @@ class _ReceiptCard extends StatelessWidget {
         children: [
           const Center(
             child: Text(
-              'IT-eary Karinderya',
+              'Bencris Karinderya',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
           ),
@@ -539,7 +539,7 @@ String buildReceiptText(Ticket t) {
   const w = 32;
   String line(String l, String r) => l + r.padLeft((w - l.length).clamp(1, w));
   final rule = '-' * w;
-  const title = 'IT-eary Karinderya';
+  const title = 'Bencris Karinderya';
 
   final out = <String>[
     title.padLeft(((w + title.length) / 2).floor()),

@@ -27,8 +27,8 @@ const apps = [
   {
     target: 'lib/main_customer.dart',
     out: 'build/customer',
-    name: 'IT-eary',
-    short: 'IT-eary',
+    name: 'Bencris',
+    short: 'Bencris',
     description: "Order from the karinderya's live menu and hold your ticket.",
     theme: '#F4EAD5',
     background: '#F4EAD5',
@@ -36,7 +36,7 @@ const apps = [
   {
     target: 'lib/main_cashier.dart',
     out: 'build/cashier',
-    name: 'IT-eary Counter',
+    name: 'Bencris Counter',
     short: 'Counter',
     description: 'Look up a ticket, check the payment, settle it.',
     theme: '#0F1410',
@@ -45,7 +45,7 @@ const apps = [
   {
     target: 'lib/main_admin.dart',
     out: 'build/admin',
-    name: 'IT-eary Operations',
+    name: 'Bencris Operations',
     short: 'Operations',
     description: 'Sales, kitchen queue, stock, menu and payments.',
     theme: '#0F1410',

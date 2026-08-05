@@ -127,38 +127,34 @@ try {
   Add-Footer $s '02'
 
   # -------------------------------------------------------- 3. part 1 (a)
-  $s = New-ContentSlide 'PART 1  -  BUSINESS PRESENCE ASSESSMENT' 'What we observed on site'
+  $s = New-ContentSlide 'PART 1  -  BUSINESS PRESENCE ASSESSMENT' 'What the website already does well'
   Add-Bullets $s 60 144 400 350 @(
-    'The menu is the trays on the counter, so availability exists only inside the room.',
-    'Diners decide and queue in the same place, so the queue moves at the speed of indecision.',
-    'Trays run empty in the middle of service. This is the wasted trip, photographed.',
-    'Payment is a cash box. There is no register, and no receipt is ever issued.'
+    'The menu is served from the database, so a dish marks itself sold out and disappears without anyone touching it.',
+    'Ordering needs no account and no app. Checkout issues a six-character ticket code to the phone.',
+    'Prices are computed by the server, so a tampered browser cannot underpay. An automated test proves it.',
+    'Promo codes are validated by the same database rule that charges them.'
   ) 13 | Out-Null
   Add-Bullets $s 500 144 400 350 @(
-    "For GCash, a staff member manually photographs the customer's payment screen on their own phone.",
-    'That photo is the only proof the transfer happened, and it is attached to no order at all.',
-    'Orders and takings are written on paper, or are not recorded anywhere.',
-    'Searching the business name online returns nothing owned by Bencris.'
+    'GCash receipts are attached to the ticket and stored privately, giving an audit trail at no transaction fee.',
+    'The owner and the counter see different things, enforced by the database rather than by hidden buttons.',
+    'The owner dashboard finally measures the business: sales, best sellers, stock and net profit.',
+    'A landing page, trust pages, menu search, scarcity badges and one-tap reorder now exist.'
   ) 13 | Out-Null
   Add-Footer $s '03'
 
   # -------------------------------------------------------- 4. part 1 (b)
-  $s = New-ContentSlide 'PART 1  -  BUSINESS PRESENCE ASSESSMENT' 'Strengths to build on, and the gaps'
-  Add-Text $s 60 138 400 18 'STRENGTHS AN ONLINE PRESENCE CAN AMPLIFY' 10 $true $ACCENT 'Calibri' | Out-Null
-  Add-Bullets $s 60 164 400 330 @(
-    'An established location with steady passing trade every day.',
-    'A base of regular suki who already return without any marketing.',
-    'A varied, freshly cooked menu, with enough range to make an online menu worth opening.',
-    'GCash is already accepted, and staff already photograph every transfer.',
-    'Word of mouth already brings in new customers, in person.'
+  $s = New-ContentSlide 'PART 1  -  BUSINESS PRESENCE ASSESSMENT' 'What the website still needs'
+  Add-Bullets $s 60 144 400 350 @(
+    "Ratings never leave the diner's own phone, so the site still shows no social proof.",
+    'The site is not published yet. There is no public address, so no customer can reach it.',
+    'Nothing measures how the site is used, so cart abandonment is invisible.',
+    'The whole site downloads as one large file, which is slow on mobile data.'
   ) 13 | Out-Null
-  Add-Text $s 500 138 400 18 'OPPORTUNITIES FOR IMPROVEMENT' 10 $true $ACCENT 'Calibri' | Out-Null
-  Add-Bullets $s 500 164 400 330 @(
-    'There is nothing online for a customer to reach at all.',
-    'Availability cannot be known before making the trip to the store.',
-    'Nothing exists that could spread, so word of mouth stops at a conversation.',
-    'Without demand data, how much to cook each day remains guesswork.',
-    'The GCash record is a photo on a personal phone that nobody can audit.'
+  Add-Bullets $s 500 144 400 350 @(
+    'The dish photographs are generic stock images, and several are wrong for the dish.',
+    'The address and contact number are still placeholders.',
+    'The owner cannot create a promo code without a developer.',
+    'There is still no QR code or referral code, so word of mouth cannot be captured.'
   ) 13 | Out-Null
   Add-Footer $s '04'
 

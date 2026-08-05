@@ -7,6 +7,7 @@ import {
   LineChart as LineIcon,
   UtensilsCrossed,
   CreditCard,
+  Tag,
   AlertTriangle,
   TrendingUp,
   TrendingDown,
@@ -60,6 +61,9 @@ import {
 import { buildAnalyticsCsv, downloadTextFile } from '../lib/exportCsv';
 import type { Order } from '../lib/types';
 import { supabase } from '../lib/supabase';
+import { PromotionsPanel } from './admin/PromotionsPanel';
+import { KitchenBoard } from './shared/KitchenBoard';
+import { RecipePanel } from './admin/RecipePanel';
 import {
   Dialog,
   DialogContent,
@@ -81,7 +85,7 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 
-type Tab = 'dashboard' | 'kitchen' | 'inventory' | 'analytics' | 'menu' | 'payments';
+type Tab = 'dashboard' | 'kitchen' | 'inventory' | 'analytics' | 'menu' | 'payments' | 'promos';
 
 /** payment_method is null until a cashier settles the ticket. */
 function PaymentBadge({ method }: { method: Order['payment_method'] }) {
@@ -178,6 +182,7 @@ export function AdminApp() {
             ['analytics', 'Sales & Profit', LineIcon],
             ['menu', 'Menu', UtensilsCrossed],
             ['payments', 'Payments', CreditCard],
+            ['promos', 'Promotions', Tag],
           ] as const
         ).map(([k, l, Icon]) => {
           const badge = k === 'inventory' ? low.length : k === 'kitchen' ? activeCount : 0;
@@ -258,6 +263,7 @@ export function AdminApp() {
                 {tab === 'analytics' && '— Sales & Profit'}
                 {tab === 'menu' && '— Menu control'}
                 {tab === 'payments' && '— Payment settings'}
+                {tab === 'promos' && '— Promotions'}
               </div>
               <h1
                 style={{ fontFamily: 'var(--font-display)', fontWeight: 500, letterSpacing: '-0.02em' }}
@@ -269,6 +275,7 @@ export function AdminApp() {
                 {tab === 'analytics' && 'The numbers, in plain sight'}
                 {tab === 'menu' && "Today's menu"}
                 {tab === 'payments' && 'How customers pay you'}
+                {tab === 'promos' && 'Discount codes'}
               </h1>
             </div>
           </div>
@@ -337,6 +344,7 @@ export function AdminApp() {
           {tab === 'analytics' && <AnalyticsPanel orders={orders} />}
           {tab === 'menu' && <MenuControl />}
           {tab === 'payments' && <PaymentsPanel />}
+          {tab === 'promos' && <PromotionsPanel />}
         </div>
       </main>
     </div>
@@ -743,90 +751,6 @@ function Dashboard({ orders }: { orders: Order[] }) {
 // ============================================================================
 // Kitchen / order-queue board — live FIFO lanes with status advancement.
 // ============================================================================
-function KitchenBoard({ orders }: { orders: Order[] }) {
-  const setStatus = useOrdersStore((s) => s.setStatus);
-
-  const lanes = [
-    { title: 'New', statuses: ['pending', 'paid'], accent: '#6dadff', next: 'preparing' as const, nextLabel: 'Start preparing' },
-    { title: 'Preparing', statuses: ['preparing'], accent: '#e8a84a', next: 'ready' as const, nextLabel: 'Mark ready' },
-    { title: 'Ready', statuses: ['ready'], accent: '#8cc07a', next: 'completed' as const, nextLabel: 'Complete' },
-  ];
-
-  const fifo = (statuses: string[]) =>
-    orders
-      .filter((o) => statuses.includes(o.status))
-      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-
-  return (
-    <div className="grid lg:grid-cols-3 gap-5">
-      {lanes.map((lane) => {
-        const list = fifo(lane.statuses);
-        return (
-          <div key={lane.title} className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ background: lane.accent }} />
-              <span className="text-sm tracking-[0.15em] uppercase opacity-70">{lane.title}</span>
-              <span className="text-xs opacity-40">({list.length})</span>
-            </div>
-
-            {list.length === 0 && (
-              <Card className="p-5 text-sm opacity-40 border-dashed">Nothing here.</Card>
-            )}
-
-            {list.map((o) => (
-              <motion.div
-                key={o.id}
-                layout
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <Card className="p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-mono tracking-[0.15em] text-[#e8a84a]">
-                      {o.ticket_code}
-                    </span>
-                    <PaymentBadge method={o.payment_method} />
-                  </div>
-                  <div className="mt-2 space-y-0.5">
-                    {(o.items ?? []).map((it, idx) => (
-                      <div key={idx} className="text-sm flex justify-between gap-2">
-                        <span className="opacity-85">{it.qty} × {it.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-[10px] opacity-40 flex items-center gap-1">
-                      <Clock size={11} /> {formatOrderTime(o.created_at)}
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }}>₱{o.total}</span>
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      onClick={() => setStatus(o.id, lane.next)}
-                      className="flex-1 py-2 rounded-lg text-sm font-medium text-[#0a0d0a]"
-                      style={{ background: lane.accent }}
-                    >
-                      {lane.nextLabel}
-                    </button>
-                    {lane.title === 'New' && (
-                      <button
-                        onClick={() => setStatus(o.id, 'cancelled')}
-                        className="px-3 py-2 rounded-lg border border-[#e8dfc8]/15 text-[#e87a5c] hover:bg-[#c8442a]/20"
-                        aria-label="Cancel order"
-                      >
-                        <X size={15} />
-                      </button>
-                    )}
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 function InventoryPanel() {
   const inventory = useKarinderyaStore((s) => s.inventory);
@@ -1613,6 +1537,8 @@ function MenuControl() {
   const [form, setForm] = useState<Omit<Dish, 'id'>>(emptyDish);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [imageFileName, setImageFileName] = useState('');
+  // Which dish has its recipe open. Only one at a time keeps the list scannable.
+  const [recipeFor, setRecipeFor] = useState<string | null>(null);
 
   const openCreate = () => {
     setEditingId(null);
@@ -1730,7 +1656,7 @@ function MenuControl() {
                 <div className="text-xs opacity-50 mt-0.5">
                   ₱{d.price} · {d.category} · {d.soldToday} sold
                 </div>
-                <div className="mt-2 flex gap-1">
+                <div className="mt-2 flex gap-1 items-center">
                   <button
                     type="button"
                     onClick={() => openEdit(d)}
@@ -1746,6 +1672,15 @@ function MenuControl() {
                     aria-label="Delete"
                   >
                     <Trash2 size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRecipeFor(recipeFor === d.id ? null : d.id)}
+                    className={`ml-1 px-2.5 py-1 rounded-md text-xs inline-flex items-center gap-1.5 ${
+                      recipeFor === d.id ? 'bg-[#e8a84a] text-[#0a0d0a]' : 'hover:bg-[#e8dfc8]/10'
+                    }`}
+                  >
+                    <ChefHat size={13} /> Recipe
                   </button>
                 </div>
               </div>
@@ -1764,6 +1699,12 @@ function MenuControl() {
                 />
               </button>
             </div>
+
+            {recipeFor === d.id && (
+              <div className="pt-3 border-t border-[#e8dfc8]/10">
+                <RecipePanel dishId={d.id} dishName={d.name} />
+              </div>
+            )}
           </Card>
         ))}
       </div>

@@ -1,10 +1,25 @@
-import React, { useEffect } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { Loader2 } from 'lucide-react';
-import { AdminApp } from './components/AdminApp';
-import { CashierApp } from './components/CashierApp';
 import { StorefrontApp } from './components/diner/StorefrontApp';
+
+/**
+ * The staff screens are loaded only when somebody actually opens them.
+ *
+ * They are by far the heaviest part of the build (the owner dashboard alone
+ * pulls in the whole charting library), and no diner will ever see them. Every
+ * customer arrives on a phone over mobile data, so making them wait for the
+ * counter and dashboard code is the single most expensive thing we could do to
+ * the first page load.
+ */
+const AdminApp = lazy(() =>
+  import('./components/AdminApp').then((m) => ({ default: m.AdminApp })),
+);
+const CashierApp = lazy(() =>
+  import('./components/CashierApp').then((m) => ({ default: m.CashierApp })),
+);
 import { Landing } from './components/site/Landing';
+import { AccountPage } from './components/site/AccountPage';
 import {
   AboutPage,
   ContactPage,
@@ -16,6 +31,7 @@ import { AuthScreen } from './components/auth/AuthScreen';
 import { useAuthStore } from './store/authStore';
 import { usePaymentStore } from './store/paymentStore';
 import { useKarinderyaStore } from './store/karinderyaStore';
+import { useReviewStore } from './store/reviewStore';
 import type { UserRole } from './lib/types';
 
 /**
@@ -33,13 +49,15 @@ export default function App() {
   const loadPayments = usePaymentStore((s) => s.load);
   const loadMenu = useKarinderyaStore((s) => s.loadAll);
   const subscribeMenu = useKarinderyaStore((s) => s.subscribe);
+  const loadRatings = useReviewStore((s) => s.load);
 
   useEffect(() => {
     initAuth();
     loadPayments();
     loadMenu();
+    loadRatings();
     return subscribeMenu();
-  }, [initAuth, loadPayments, loadMenu, subscribeMenu]);
+  }, [initAuth, loadPayments, loadMenu, loadRatings, subscribeMenu]);
 
   return (
     <BrowserRouter>
@@ -51,11 +69,14 @@ export default function App() {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/refund" element={<RefundPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/account" element={<AccountPage />} />
         <Route
           path="/admin"
           element={
             <RequireRole allowed={['admin']} area="admin">
-              <AdminApp />
+              <Suspense fallback={<StaffLoading />}>
+                <AdminApp />
+              </Suspense>
             </RequireRole>
           }
         />
@@ -63,13 +84,24 @@ export default function App() {
           path="/cashier"
           element={
             <RequireRole allowed={['cashier', 'admin']} area="cashier">
-              <CashierApp />
+              <Suspense fallback={<StaffLoading />}>
+                <CashierApp />
+              </Suspense>
             </RequireRole>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+  );
+}
+
+/** Shown for the moment a staff screen is being fetched. */
+function StaffLoading() {
+  return (
+    <div className="min-h-screen grid place-items-center bg-[#0f1410] text-[#e8dfc8]">
+      <Loader2 className="animate-spin opacity-60" />
+    </div>
   );
 }
 

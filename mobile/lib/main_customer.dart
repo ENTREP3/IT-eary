@@ -20,7 +20,7 @@ class DinerApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => Cart(),
       child: MaterialApp(
-        title: 'IT-eary',
+        title: 'Bencris',
         debugShowCheckedModeBanner: false,
         theme: buildTheme(),
         home: const _FirstRunGate(),

@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router';
+import { UserRound } from 'lucide-react';
 import { BUSINESS, addressOneLine, isOpenNow } from '../../lib/business';
+import { useAuthStore } from '../../store/authStore';
 
 /**
  * The header and footer shared by every page that is not the ordering flow.
@@ -56,6 +58,7 @@ export function SiteHeader() {
           <Link to="/faq" className="hidden sm:block px-2 py-1 opacity-70 hover:opacity-100">
             FAQ
           </Link>
+          <AccountLink />
           <Link
             to="/menu"
             className="px-4 py-2 rounded-full bg-diner-ink text-diner-ground hover:opacity-90"
@@ -65,6 +68,20 @@ export function SiteHeader() {
         </nav>
       </div>
     </header>
+  );
+}
+
+/** Signed-in diners get their orders page; everyone else gets sign in. */
+function AccountLink() {
+  const user = useAuthStore((s) => s.user);
+  return (
+    <Link
+      to="/account"
+      className="inline-flex items-center gap-1.5 px-2 py-1 opacity-70 hover:opacity-100"
+    >
+      <UserRound size={15} />
+      <span className="hidden sm:inline">{user ? 'My orders' : 'Sign in'}</span>
+    </Link>
   );
 }
 

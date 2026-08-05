@@ -18,12 +18,16 @@ import {
 import { useAuthStore } from '../store/authStore';
 import { useOrdersStore } from '../store/ordersStore';
 import { Receipt } from './Receipt';
+import { KitchenBoard } from './shared/KitchenBoard';
 import type { Order, PaymentMethod, PaymentStatus } from '../lib/types';
 import { supabase } from '../lib/supabase';
 
 type Stage = 'lookup' | 'review' | 'receipt';
 
 export function CashierApp() {
+  // In a karinderya this size the person on the till is also the person calling
+  // to the kitchen, so the counter screen carries the order queue too.
+  const [view, setView] = useState<'counter' | 'kitchen'>('counter');
   const [stage, setStage] = useState<Stage>('lookup');
   const [code, setCode] = useState('');
   const [order, setOrder] = useState<Order | null>(null);
@@ -150,6 +154,24 @@ export function CashierApp() {
           <div className="text-[10px] tracking-[0.25em] uppercase opacity-40 mt-1">Counter</div>
         </div>
         <div className="flex items-center gap-4">
+          <div className="flex rounded-lg border border-[#e8dfc8]/15 overflow-hidden text-xs">
+            {(
+              [
+                ['counter', 'Counter'],
+                ['kitchen', 'Kitchen'],
+              ] as const
+            ).map(([k, label]) => (
+              <button
+                key={k}
+                onClick={() => setView(k)}
+                className={`px-3 py-2 transition-colors ${
+                  view === k ? 'bg-[#e8a84a] text-[#0a0d0a]' : 'hover:bg-[#e8dfc8]/5'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="text-right text-xs opacity-60 hidden sm:block">
             <div className="text-[#e8dfc8]/90">{profile?.full_name ?? 'Cashier'}</div>
             <div className="capitalize">{profile?.role} · signed in</div>
@@ -163,6 +185,12 @@ export function CashierApp() {
         </div>
       </header>
 
+      {view === 'kitchen' ? (
+        <main className="flex-1 p-6 overflow-auto">
+          <h2 className="text-[11px] tracking-[0.25em] uppercase opacity-45 mb-4">Order queue</h2>
+          <KitchenOrders />
+        </main>
+      ) : (
       <main className="flex-1 grid place-items-center p-6">
         <AnimatePresence mode="wait">
           {stage === 'lookup' && (
@@ -471,6 +499,7 @@ export function CashierApp() {
           )}
         </AnimatePresence>
       </main>
+      )}
 
       {/* Full-screen proof, for reading a reference number off a small photo. */}
       {zoomed && proofUrl && (
@@ -495,4 +524,23 @@ export function CashierApp() {
       )}
     </div>
   );
+}
+
+/**
+ * The order queue on the counter screen.
+ *
+ * Loads and subscribes on its own so the counter does not pay for the orders
+ * feed until somebody actually opens the Kitchen tab.
+ */
+function KitchenOrders() {
+  const orders = useOrdersStore((s) => s.orders);
+  const loadRecent = useOrdersStore((s) => s.loadRecent);
+  const subscribe = useOrdersStore((s) => s.subscribe);
+
+  useEffect(() => {
+    loadRecent();
+    return subscribe();
+  }, [loadRecent, subscribe]);
+
+  return <KitchenBoard orders={orders} />;
 }

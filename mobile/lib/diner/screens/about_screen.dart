@@ -54,7 +54,7 @@ class _AboutScreenState extends State<AboutScreen> {
           children: [
             _card(
               icon: Icons.storefront_outlined,
-              title: 'IT-eary Karinderya',
+              title: 'Bencris Karinderya',
               child: Text(
                 'Home-style Filipino cooking, made fresh each morning and served '
                 'until it runs out. Order from your phone, pay at the counter.',

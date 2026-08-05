@@ -9,5 +9,5 @@ import 'staff/staff_entry.dart';
 /// Only the counter. There is no route from here to the owner dashboard, so a
 /// cashier's device never carries it.
 Future<void> main() => bootstrap(
-      const StaffEntry(area: StaffArea.cashier, title: 'IT-eary Counter'),
+      const StaffEntry(area: StaffArea.cashier, title: 'Bencris Counter'),
     );

@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useKarinderyaStore } from '../../store/karinderyaStore';
 import { usePaymentStore } from '../../store/paymentStore';
+import { useReviewStore } from '../../store/reviewStore';
 import { supabase } from '../../lib/supabase';
 import { Receipt } from '../Receipt';
 import { ImageWithFallback } from '../sigma/ImageWithFallback';
@@ -51,6 +52,19 @@ function usePrefs<T>(read: () => T): T {
 
 type Stage = 'menu' | 'cart' | 'ticket';
 type CartLine = { dish: Dish; qty: number };
+
+/**
+ * Collection times offered at checkout, in minutes from now.
+ *
+ * Letting the diner say "in an hour" is what stops everyone arriving at noon
+ * at once, and it tells the kitchen how to pace the cooking.
+ */
+const PICKUP_CHOICES: { label: string; minutes: number | null }[] = [
+  { label: 'As soon as it is ready', minutes: null },
+  { label: 'In 30 minutes', minutes: 30 },
+  { label: 'In 1 hour', minutes: 60 },
+  { label: 'In 2 hours', minutes: 120 },
+];
 
 /**
  * The diner-facing web storefront — the browser twin of the Flutter app.
@@ -334,8 +348,14 @@ function DishCard({
   favourite: boolean;
 }) {
   const [rateOpen, setRateOpen] = useState(false);
+  const [reviewsOpen, setReviewsOpen] = useState(false);
   const myRating = usePrefs(() => getMyRating(dish.id));
   const canRate = usePrefs(() => hasOrdered(dish.id));
+
+  // The published average, from everyone, not just this device.
+  const rating = useReviewStore((s) => s.ratings[dish.id]);
+  const comments = useReviewStore((s) => s.reviews[dish.id]);
+  const loadFor = useReviewStore((s) => s.loadFor);
 
   // "Few left" only means something when the kitchen actually set a limit.
   const fewLeft =
@@ -389,6 +409,7 @@ function DishCard({
         )}
       </div>
       <div className="p-4">
+        {!dish.available && <RestockAlert dish={dish} />}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3
@@ -410,25 +431,61 @@ function DishCard({
           <p className="mt-2 text-sm opacity-70 leading-relaxed">{dish.description}</p>
         )}
 
-        <div className="mt-2.5 flex items-center gap-2 min-h-[22px]">
-          {myRating ? (
-            <>
-              <Stars value={myRating.stars} />
-              <button onClick={() => setRateOpen(true)} className="text-xs opacity-60 hover:opacity-100">
-                Edit your rating
-              </button>
-            </>
-          ) : canRate ? (
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 min-h-[22px]">
+          {rating ? (
+            <button
+              onClick={() => {
+                if (!comments) loadFor(dish.id);
+                setReviewsOpen((v) => !v);
+              }}
+              className="inline-flex items-center gap-1.5 hover:opacity-80"
+            >
+              <Stars value={Math.round(rating.average)} />
+              <span className="text-xs tabular-nums">{rating.average.toFixed(1)}</span>
+              <span className="text-xs opacity-55">
+                ({rating.total} {rating.total === 1 ? 'rating' : 'ratings'})
+              </span>
+            </button>
+          ) : (
+            <span className="text-xs opacity-45">No ratings yet</span>
+          )}
+
+          {canRate ? (
             <button
               onClick={() => setRateOpen(true)}
               className="inline-flex items-center gap-1.5 text-xs text-diner-accent hover:underline"
             >
-              <Star size={12} /> Rate this dish
+              <Star size={12} /> {myRating ? 'Edit your rating' : 'Rate this dish'}
             </button>
           ) : (
             <span className="text-xs opacity-45">Order it to leave a rating</span>
           )}
         </div>
+
+        <AnimatePresence>
+          {reviewsOpen && comments && comments.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <ul className="mt-3 pt-3 border-t border-diner-ink/10 space-y-3">
+                {comments.slice(0, 5).map((r) => (
+                  <li key={r.id}>
+                    <div className="flex items-center gap-2">
+                      <Stars value={r.rating} size={11} />
+                      <span className="text-[11px] opacity-55">
+                        {r.author_name || 'A diner'} · {new Date(r.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {r.comment && <p className="text-xs opacity-75 mt-0.5">{r.comment}</p>}
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <AnimatePresence>
           {rateOpen && (
@@ -464,6 +521,65 @@ function DishCard({
         )}
       </div>
     </article>
+  );
+}
+
+/**
+ * Turns a lost sale into a queued one.
+ *
+ * Needs an account, because there is nowhere to send the news otherwise. When
+ * the owner puts the dish back on the menu, a database trigger flags every
+ * waiting request and the diner sees it on their orders page.
+ */
+function RestockAlert({ dish }: { dish: Dish }) {
+  const user = useAuthStore((s) => s.user);
+  const [asked, setAsked] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('stock_alerts')
+      .select('dish_id')
+      .eq('dish_id', dish.id)
+      .then(({ data }) => setAsked((data ?? []).length > 0));
+  }, [user, dish.id]);
+
+  if (!user) {
+    return (
+      <p className="mb-3 text-xs opacity-60">
+        <Link to="/account" className="text-diner-accent hover:underline">
+          Sign in
+        </Link>{' '}
+        to be told when this is back.
+      </p>
+    );
+  }
+
+  if (asked) {
+    return (
+      <p className="mb-3 text-xs text-semantic-cash flex items-center gap-1.5">
+        <Check size={13} /> We will tell you when this is back.
+      </p>
+    );
+  }
+
+  return (
+    <button
+      onClick={async () => {
+        setBusy(true);
+        const { error } = await supabase
+          .from('stock_alerts')
+          .insert({ customer_id: user.id, dish_id: dish.id });
+        setBusy(false);
+        if (!error) setAsked(true);
+      }}
+      disabled={busy}
+      className="mb-3 inline-flex items-center gap-1.5 text-xs text-diner-accent hover:underline disabled:opacity-50"
+    >
+      {busy ? <Loader2 size={12} className="animate-spin" /> : <BellRing size={12} />}
+      Tell me when this is back
+    </button>
   );
 }
 
@@ -521,12 +637,26 @@ function RateSheet({
 }) {
   const [stars, setStars] = useState(existing?.stars ?? 0);
   const [comment, setComment] = useState(existing?.comment ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const post = useReviewStore((s) => s.submit);
+
+  // The most recent settled ticket on this device that contained the dish.
   const ticket = getHistory().find((o) => o.items.some((i) => i.id === dish.id))?.ticket_code ?? '';
 
-  const submit = () => {
-    if (!stars) return;
-    saveRating({ dishId: dish.id, stars, comment: comment.trim(), at: new Date().toISOString(), ticket });
-    onClose();
+  const submit = async () => {
+    if (!stars || !ticket) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await post({ ticketCode: ticket, dishId: dish.id, rating: stars, comment: comment.trim() });
+      // Kept locally too, so the card can show "Edit your rating" next time.
+      saveRating({ dishId: dish.id, stars, comment: comment.trim(), at: new Date().toISOString(), ticket });
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not post that rating.');
+      setBusy(false);
+    }
   };
 
   return (
@@ -556,14 +686,16 @@ function RateSheet({
           className="mt-2.5 w-full rounded-xl border border-diner-ink/15 bg-diner-ground px-3 py-2 text-sm outline-none focus:border-diner-ink/40 resize-none"
         />
         <p className="mt-1.5 text-[11px] opacity-50">
-          Verified against ticket {ticket || 'on this device'}.
+          Posted against ticket {ticket || 'on this device'}. The counter has to have settled it.
         </p>
+        {error && <p className="mt-1.5 text-xs text-diner-accent">{error}</p>}
         <div className="mt-2 flex gap-2">
           <button
             onClick={submit}
-            disabled={!stars}
-            className="flex-1 py-2 rounded-full bg-diner-ink text-diner-ground text-sm disabled:opacity-40"
+            disabled={!stars || busy}
+            className="flex-1 py-2 rounded-full bg-diner-ink text-diner-ground text-sm disabled:opacity-40 flex items-center justify-center gap-2"
           >
+            {busy && <Loader2 size={14} className="animate-spin" />}
             {existing ? 'Update rating' : 'Post rating'}
           </button>
           <button onClick={onClose} className="px-4 py-2 rounded-full border border-diner-ink/20 text-sm">
@@ -672,6 +804,8 @@ function CartSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Null means "as soon as it is ready", which is what most walk-ins want.
+  const [pickup, setPickup] = useState<number | null>(null);
   const [promo, setPromo] = useState('');
   const [promoBusy, setPromoBusy] = useState(false);
   const [applied, setApplied] = useState<{ code: string; discount: number; label: string } | null>(null);
@@ -733,6 +867,7 @@ function CartSheet({
         p_customer_name: name.trim() || null,
         p_payment_method: method,
         p_promo_code: applied?.code ?? null,
+        p_pickup_at: pickup === null ? null : new Date(Date.now() + pickup * 60_000).toISOString(),
       });
       if (rpcErr) throw rpcErr;
       onPlaced(data as Order);
@@ -793,6 +928,8 @@ function CartSheet({
             </div>
           ))}
 
+          <GoesWellWith cart={cart} onAdd={onAdd} />
+
           <label className="block pt-2">
             <span className="text-xs opacity-60">Your name (optional)</span>
             <input
@@ -802,6 +939,27 @@ function CartSheet({
               className="mt-1 w-full h-11 rounded-xl border border-diner-ink/15 bg-diner-card px-4 text-sm outline-none focus:border-diner-ink/40"
             />
           </label>
+
+          <div className="pt-2">
+            <div className="text-[11px] tracking-[0.2em] uppercase opacity-55 mb-2">
+              When will you collect?
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {PICKUP_CHOICES.map((c) => (
+                <button
+                  key={c.minutes ?? 'asap'}
+                  onClick={() => setPickup(c.minutes)}
+                  className={`px-3.5 py-2 rounded-full text-sm border transition-colors ${
+                    pickup === c.minutes
+                      ? 'bg-diner-ink text-diner-ground border-diner-ink'
+                      : 'bg-diner-card border-diner-ink/15 hover:border-diner-ink/40'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="pt-2">
             <div className="text-[11px] tracking-[0.2em] uppercase opacity-55 mb-2">
@@ -905,6 +1063,78 @@ function CartSheet({
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+/**
+ * "Goes well with", taken from what diners have actually bought together on
+ * settled tickets rather than from a hand-written list. It needs no upkeep and
+ * it corrects itself as the menu and the seasons change.
+ */
+function GoesWellWith({ cart, onAdd }: { cart: CartLine[]; onAdd: (d: Dish) => void }) {
+  const dishes = useKarinderyaStore((s) => s.dishes);
+  const [suggestions, setSuggestions] = useState<Dish[]>([]);
+
+  const inCart = cart.map((l) => l.dish.id).join(',');
+
+  useEffect(() => {
+    const ids = inCart ? inCart.split(',') : [];
+    if (!ids.length) return setSuggestions([]);
+
+    supabase
+      .from('dish_pairings')
+      .select('with_dish_id, times_together')
+      .in('dish_id', ids)
+      .order('times_together', { ascending: false })
+      .limit(12)
+      .then(({ data }) => {
+        const seen = new Set(ids);
+        const picks: Dish[] = [];
+        for (const row of data ?? []) {
+          const id = row.with_dish_id as string;
+          if (seen.has(id)) continue;
+          const dish = dishes.find((d) => d.id === id && d.available);
+          if (!dish) continue;
+          seen.add(id);
+          picks.push(dish);
+          if (picks.length === 2) break;
+        }
+        setSuggestions(picks);
+      });
+  }, [inCart, dishes]);
+
+  if (!suggestions.length) return null;
+
+  return (
+    <div className="pt-3">
+      <div className="text-[11px] tracking-[0.2em] uppercase opacity-55 mb-2">Goes well with</div>
+      <div className="space-y-2">
+        {suggestions.map((d) => (
+          <div
+            key={d.id}
+            className="flex items-center gap-3 p-2.5 rounded-2xl bg-diner-card border border-diner-ink/10"
+          >
+            <ImageWithFallback
+              src={d.image}
+              alt={d.name}
+              className="w-11 h-11 rounded-xl object-cover shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }} className="truncate text-sm">
+                {d.name}
+              </div>
+              <div className="text-xs opacity-60">₱{d.price.toFixed(2)}</div>
+            </div>
+            <button
+              onClick={() => onAdd(d)}
+              className="px-3 py-1.5 rounded-full border border-diner-ink/25 text-xs hover:bg-diner-ink hover:text-diner-ground transition-colors"
+            >
+              Add
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

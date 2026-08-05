@@ -1,0 +1,18 @@
+Web — open these now
+URL	What it is
+http://localhost:5173/	Landing page (hours, address, contact)
+http://localhost:5173/menu	The menu: search, badges, cart, promo code
+http://localhost:5173/cashier	Counter
+http://localhost:5173/admin	Owner dashboard
+http://localhost:5173/about · /faq · /contact · /refund · /privacy	Trust pages
+Staff logins: admin@bencris.local / admin123 and cashier@bencris.local / cashier123. Seeded unpaid tickets to settle: PAY001, PAY002, PAY003. Try SULIT10 in the cart.
+
+Supabase Studio, if you want to poke the data: http://127.0.0.1:55323
+
+Mobile — the Flutter apps
+These aren't running yet. From mobile/:
+
+
+flutter run -t lib/main_customer.dart -d edge   # diner
+flutter run -t lib/main_cashier.dart  -d edge   # counter
+flutter run -t lib/main_admin.dart    -d edge
