@@ -9,6 +9,18 @@ const Card = ({ children, className = '' }: { children: React.ReactNode; classNa
   <div className={`bg-[#0a0d0a] border border-[#e8dfc8]/10 rounded-2xl ${className}`}>{children}</div>
 );
 
+/** How the order was paid, or that it has not been settled yet. */
+function PaymentBadge({ method }: { method: Order['payment_method'] }) {
+  const style =
+    method === 'gcash'
+      ? 'bg-[#0074e0]/20 text-[#6dadff]'
+      : method === 'cash'
+        ? 'bg-[#e8dfc8]/10'
+        : 'bg-[#c8442a]/25 text-[#e87a5c]';
+  const label = method === 'gcash' ? 'GCash' : method === 'cash' ? 'Cash' : 'Unpaid';
+  return <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${style}`}>{label}</span>;
+}
+
 /**
  * The live order queue, shared by the owner dashboard and the counter.
  *

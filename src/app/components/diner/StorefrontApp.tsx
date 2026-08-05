@@ -928,8 +928,6 @@ function CartSheet({
             </div>
           ))}
 
-          <GoesWellWith cart={cart} onAdd={onAdd} />
-
           <label className="block pt-2">
             <span className="text-xs opacity-60">Your name (optional)</span>
             <input
@@ -1063,78 +1061,6 @@ function CartSheet({
         </div>
       </motion.div>
     </motion.div>
-  );
-}
-
-/**
- * "Goes well with", taken from what diners have actually bought together on
- * settled tickets rather than from a hand-written list. It needs no upkeep and
- * it corrects itself as the menu and the seasons change.
- */
-function GoesWellWith({ cart, onAdd }: { cart: CartLine[]; onAdd: (d: Dish) => void }) {
-  const dishes = useKarinderyaStore((s) => s.dishes);
-  const [suggestions, setSuggestions] = useState<Dish[]>([]);
-
-  const inCart = cart.map((l) => l.dish.id).join(',');
-
-  useEffect(() => {
-    const ids = inCart ? inCart.split(',') : [];
-    if (!ids.length) return setSuggestions([]);
-
-    supabase
-      .from('dish_pairings')
-      .select('with_dish_id, times_together')
-      .in('dish_id', ids)
-      .order('times_together', { ascending: false })
-      .limit(12)
-      .then(({ data }) => {
-        const seen = new Set(ids);
-        const picks: Dish[] = [];
-        for (const row of data ?? []) {
-          const id = row.with_dish_id as string;
-          if (seen.has(id)) continue;
-          const dish = dishes.find((d) => d.id === id && d.available);
-          if (!dish) continue;
-          seen.add(id);
-          picks.push(dish);
-          if (picks.length === 2) break;
-        }
-        setSuggestions(picks);
-      });
-  }, [inCart, dishes]);
-
-  if (!suggestions.length) return null;
-
-  return (
-    <div className="pt-3">
-      <div className="text-[11px] tracking-[0.2em] uppercase opacity-55 mb-2">Goes well with</div>
-      <div className="space-y-2">
-        {suggestions.map((d) => (
-          <div
-            key={d.id}
-            className="flex items-center gap-3 p-2.5 rounded-2xl bg-diner-card border border-diner-ink/10"
-          >
-            <ImageWithFallback
-              src={d.image}
-              alt={d.name}
-              className="w-11 h-11 rounded-xl object-cover shrink-0"
-            />
-            <div className="flex-1 min-w-0">
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }} className="truncate text-sm">
-                {d.name}
-              </div>
-              <div className="text-xs opacity-60">₱{d.price.toFixed(2)}</div>
-            </div>
-            <button
-              onClick={() => onAdd(d)}
-              className="px-3 py-1.5 rounded-full border border-diner-ink/25 text-xs hover:bg-diner-ink hover:text-diner-ground transition-colors"
-            >
-              Add
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
 

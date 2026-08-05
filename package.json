@@ -1,12 +1,15 @@
 {
-  "name": "@figma/my-make-file",
+  "name": "bencris",
   "private": true,
   "version": "0.0.1",
   "type": "module",
   "scripts": {
     "tokens": "node scripts/gen-tokens.mjs",
     "build": "npm run tokens && vite build",
-    "dev": "npm run tokens && vite"
+    "dev": "npm run tokens && vite",
+    "check:ui": "node scripts/check-ui.mjs",
+    "check:backend": "node scripts/verify-backend.mjs && node scripts/verify-phase4.mjs && node scripts/verify-payment-proof.mjs && node scripts/verify-accounts.mjs",
+    "check": "npm run check:backend && npm run check:ui"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
