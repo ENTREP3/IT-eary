@@ -14,7 +14,7 @@ type DishRow = {
 };
 type InvRow = {
   id: string; name: string; unit: string; stock: number; reorder_at: number;
-  last_delivery: string;
+  par_level: number; last_delivery: string; last_received_at: string | null;
 };
 
 const toDish = (r: DishRow): Dish => ({
@@ -24,7 +24,8 @@ const toDish = (r: DishRow): Dish => ({
 });
 const toInv = (r: InvRow): InventoryItem => ({
   id: r.id, name: r.name, unit: r.unit, stock: Number(r.stock),
-  reorderAt: Number(r.reorder_at), lastDelivery: r.last_delivery,
+  reorderAt: Number(r.reorder_at), parLevel: Number(r.par_level ?? 0),
+  lastDelivery: r.last_delivery, lastReceivedAt: r.last_received_at,
 });
 
 function dishPatchToRow(patch: Partial<Dish>) {
@@ -175,7 +176,8 @@ export const useKarinderyaStore = create<KarinderyaState>((set, get) => ({
       name: partial.name,
       unit: partial.unit,
       stock: partial.stock,
-      reorder_at: partial.reorderAt,
+      reorder_at: partial.reorderAt ?? 0,
+      par_level: partial.parLevel ?? 0,
       last_delivery: partial.lastDelivery,
     };
     const { data, error } = await supabase.from('inventory').insert(row).select('*').single();
@@ -190,6 +192,7 @@ export const useKarinderyaStore = create<KarinderyaState>((set, get) => ({
     if (patch.unit !== undefined) row.unit = patch.unit;
     if (patch.stock !== undefined) row.stock = patch.stock;
     if (patch.reorderAt !== undefined) row.reorder_at = patch.reorderAt;
+    if (patch.parLevel !== undefined) row.par_level = patch.parLevel;
     if (patch.lastDelivery !== undefined) row.last_delivery = patch.lastDelivery;
     const { data, error } = await supabase.from('inventory').update(row).eq('id', id).select('*').single();
     if (error) throw error;
