@@ -24,6 +24,7 @@ import {
   ShoppingBag,
   X,
   ChefHat,
+  Store,
   Clock,
   Menu,
   FlagTriangleRight,
@@ -64,6 +65,7 @@ import { supabase } from '../lib/supabase';
 import { PromotionsPanel } from './admin/PromotionsPanel';
 import { KitchenBoard } from './shared/KitchenBoard';
 import { RecipePanel } from './admin/RecipePanel';
+import { ShopPanel } from './admin/ShopPanel';
 import {
   Dialog,
   DialogContent,
@@ -85,7 +87,7 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 
-type Tab = 'dashboard' | 'kitchen' | 'inventory' | 'analytics' | 'menu' | 'payments' | 'promos';
+type Tab = 'dashboard' | 'kitchen' | 'inventory' | 'analytics' | 'menu' | 'payments' | 'promos' | 'shop';
 
 /** payment_method is null until a cashier settles the ticket. */
 function PaymentBadge({ method }: { method: Order['payment_method'] }) {
@@ -183,6 +185,7 @@ export function AdminApp() {
             ['menu', 'Menu', UtensilsCrossed],
             ['payments', 'Payments', CreditCard],
             ['promos', 'Promotions', Tag],
+            ['shop', 'Shop', Store],
           ] as const
         ).map(([k, l, Icon]) => {
           const badge = k === 'inventory' ? low.length : k === 'kitchen' ? activeCount : 0;
@@ -264,6 +267,7 @@ export function AdminApp() {
                 {tab === 'menu' && '— Menu control'}
                 {tab === 'payments' && '— Payment settings'}
                 {tab === 'promos' && '— Promotions'}
+                {tab === 'shop' && '— Shop details'}
               </div>
               <h1
                 style={{ fontFamily: 'var(--font-display)', fontWeight: 500, letterSpacing: '-0.02em' }}
@@ -276,6 +280,7 @@ export function AdminApp() {
                 {tab === 'menu' && "Today's menu"}
                 {tab === 'payments' && 'How customers pay you'}
                 {tab === 'promos' && 'Discount codes'}
+                {tab === 'shop' && 'Details, staff and ratings'}
               </h1>
             </div>
           </div>
@@ -345,6 +350,7 @@ export function AdminApp() {
           {tab === 'menu' && <MenuControl />}
           {tab === 'payments' && <PaymentsPanel />}
           {tab === 'promos' && <PromotionsPanel />}
+          {tab === 'shop' && <ShopPanel />}
         </div>
       </main>
     </div>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router';
 import { UserRound } from 'lucide-react';
-import { BUSINESS, addressOneLine, isOpenNow } from '../../lib/business';
+import { useBusinessStore, addressOf, isOpenNow } from '../../store/businessStore';
 import { useAuthStore } from '../../store/authStore';
 
 /**
@@ -13,8 +13,9 @@ import { useAuthStore } from '../../store/authStore';
  */
 
 export function Wordmark({ size = 'md' }: { size?: 'md' | 'lg' }) {
+  const district = useBusinessStore((s) => s.profile.district);
   return (
-    <Link to="/" className="inline-block text-left" aria-label={`${BUSINESS.name} home`}>
+    <Link to="/" className="inline-block text-left" aria-label="Bencris home">
       <div
         style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.02em' }}
         className={size === 'lg' ? 'text-3xl leading-none' : 'text-2xl leading-none'}
@@ -22,14 +23,15 @@ export function Wordmark({ size = 'md' }: { size?: 'md' | 'lg' }) {
         Ben<span style={{ fontStyle: 'italic' }} className="text-diner-accent">cris</span>
       </div>
       <div className="text-[10px] tracking-[0.3em] uppercase opacity-55 mt-0.5">
-        {BUSINESS.address.district}
+        {district}
       </div>
     </Link>
   );
 }
 
 export function OpenPill() {
-  const open = isOpenNow();
+  const hours = useBusinessStore((s) => s.profile.hours);
+  const open = isOpenNow(hours);
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] tracking-wide border ${
@@ -86,12 +88,13 @@ function AccountLink() {
 }
 
 export function SiteFooter() {
+  const p = useBusinessStore((s) => s.profile);
   return (
     <footer className="border-t border-diner-ink/10 mt-16">
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-10 grid gap-8 sm:grid-cols-3 text-sm">
         <div>
           <Wordmark />
-          <p className="mt-3 opacity-65 leading-relaxed max-w-xs">{BUSINESS.tagline}</p>
+          <p className="mt-3 opacity-65 leading-relaxed max-w-xs">{p.tagline}</p>
           <div className="mt-3">
             <OpenPill />
           </div>
@@ -99,14 +102,14 @@ export function SiteFooter() {
 
         <div>
           <h2 className="text-[11px] tracking-[0.25em] uppercase opacity-55 mb-2">Where to find us</h2>
-          <address className="not-italic opacity-75 leading-relaxed">{addressOneLine}</address>
-          <p className="mt-2 opacity-75">{BUSINESS.contact.phone}</p>
+          <address className="not-italic opacity-75 leading-relaxed">{addressOf(p)}</address>
+          <p className="mt-2 opacity-75">{p.phone}</p>
         </div>
 
         <div>
           <h2 className="text-[11px] tracking-[0.25em] uppercase opacity-55 mb-2">Opening hours</h2>
           <ul className="opacity-75 space-y-1">
-            {BUSINESS.hours.map((h) => (
+            {p.hours.map((h) => (
               <li key={h.days}>
                 {h.days}
                 <br />
@@ -127,7 +130,7 @@ export function SiteFooter() {
           <Link to="/refund" className="hover:opacity-100">Order issues</Link>
           <Link to="/privacy" className="hover:opacity-100">Privacy</Link>
           <span className="ml-auto">
-            &copy; {new Date().getFullYear()} {BUSINESS.name}
+            &copy; {new Date().getFullYear()} {p.name}
           </span>
         </div>
       </div>

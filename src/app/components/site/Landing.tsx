@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { ArrowRight, Clock, MapPin, Phone, ShieldCheck, Utensils } from 'lucide-react';
 import { useKarinderyaStore } from '../../store/karinderyaStore';
 import { ImageWithFallback } from '../sigma/ImageWithFallback';
-import { BUSINESS, addressOneLine } from '../../lib/business';
+import { useBusinessStore, addressOf } from '../../store/businessStore';
 import { SiteHeader, SiteFooter, OpenPill } from './SiteChrome';
 
 /**
@@ -15,6 +15,7 @@ import { SiteHeader, SiteFooter, OpenPill } from './SiteChrome';
  * dishes are previewed here so the page is never a dead end.
  */
 export function Landing() {
+  const biz = useBusinessStore((s) => s.profile);
   const dishes = useKarinderyaStore((s) => s.dishes);
   const loaded = useKarinderyaStore((s) => s.loaded);
 
@@ -44,7 +45,7 @@ export function Landing() {
           >
             Kain na, <em className="text-diner-accent">tayo na.</em>
           </h1>
-          <p className="mt-5 max-w-xl opacity-75 leading-relaxed">{BUSINESS.blurb}</p>
+          <p className="mt-5 max-w-xl opacity-75 leading-relaxed">{biz.blurb}</p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link
@@ -69,13 +70,13 @@ export function Landing() {
           <InfoCard
             icon={<Clock size={18} />}
             title="Opening hours"
-            lines={BUSINESS.hours.map((h) => `${h.days}: ${h.opens} to ${h.closes}`)}
+            lines={biz.hours.map((h) => `${h.days}: ${h.opens} to ${h.closes}`)}
           />
-          <InfoCard icon={<MapPin size={18} />} title="Where to find us" lines={[addressOneLine]} />
+          <InfoCard icon={<MapPin size={18} />} title="Where to find us" lines={[addressOf(biz)]} />
           <InfoCard
             icon={<Phone size={18} />}
             title="Contact"
-            lines={[BUSINESS.contact.phone, 'Cash and GCash accepted']}
+            lines={[biz.phone, 'Cash and GCash accepted']}
           />
         </div>
       </section>
