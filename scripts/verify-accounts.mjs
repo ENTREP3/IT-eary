@@ -155,9 +155,71 @@ let myTicket = null;
   check(!!tooMany, 'cooking is refused when an ingredient would run out');
 }
 
+// ---------------------------------------------------------------------------
+// 7. The owner can change the shop's own details, and nobody else can.
+// ---------------------------------------------------------------------------
+{
+  const owner = await staff('admin@bencris.local', 'admin123');
+  const anon = fresh();
+
+  const original = (await anon.from('business_settings').select('phone').single()).data.phone;
+
+  const { error: ownerErr } = await owner
+    .from('business_settings').update({ phone: '0917 000 0000' }).eq('id', 1);
+  check(!ownerErr, `the owner can change the shop details (${ownerErr?.message ?? 'ok'})`);
+
+  const seen = (await anon.from('business_settings').select('phone').single()).data.phone;
+  check(seen === '0917 000 0000', 'the change is immediately visible to customers');
+
+  // A blocked write returns success with zero rows, so read it back rather
+  // than trusting the absence of an error.
+  await anon.from('business_settings').update({ phone: 'HACKED' }).eq('id', 1);
+  const after = (await anon.from('business_settings').select('phone').single()).data.phone;
+  check(after === '0917 000 0000', 'an anonymous visitor cannot change the shop details');
+
+  await owner.from('business_settings').update({ phone: original }).eq('id', 1);
+}
+
+// ---------------------------------------------------------------------------
+// 8. Staff administration, including the guard against locking the shop out.
+// ---------------------------------------------------------------------------
+{
+  const owner = await staff('admin@bencris.local', 'admin123');
+  const cashier = await staff('cashier@bencris.local', 'cashier123');
+
+  const { data: list, error: listErr } = await owner.rpc('list_staff');
+  check(!listErr && list?.length >= 2, `the owner can see who has staff access (${list?.length} accounts)`);
+
+  const { error: cashierErr } = await cashier.rpc('list_staff');
+  check(!!cashierErr, 'a cashier cannot see the staff list');
+
+  const { error: lastOwner } = await owner.rpc('revoke_staff', { target_email: 'admin@bencris.local' });
+  check(!!lastOwner, 'the only owner cannot have their own access removed');
+
+  const { error: reviewsErr, data: reviews } = await owner.rpc('all_reviews');
+  check(!reviewsErr && Array.isArray(reviews), 'the owner can read every rating for moderation');
+}
+
+// ---------------------------------------------------------------------------
+// 9. Every dish on the menu is linked to the inventory.
+// ---------------------------------------------------------------------------
+{
+  const anon = fresh();
+  const { data: dishes } = await anon.from('dishes').select('id, name');
+  const { data: recipes } = await anon.from('recipe_items').select('dish_id');
+  const withRecipe = new Set((recipes ?? []).map((r) => r.dish_id));
+  const missing = (dishes ?? []).filter((d) => !withRecipe.has(d.id));
+  check(
+    missing.length === 0,
+    missing.length === 0
+      ? `all ${dishes.length} dishes deduct ingredients when cooked`
+      : `no recipe for: ${missing.map((d) => d.name).join(', ')}`,
+  );
+}
+
 console.log(
   failures === 0
-    ? '\n🎉 All account, status, rating and recipe checks passed.'
+    ? '\n🎉 All account, status, rating, recipe and owner checks passed.'
     : `\n${failures} check(s) failed.`,
 );
 process.exitCode = failures === 0 ? 0 : 1;

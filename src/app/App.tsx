@@ -19,14 +19,30 @@ const CashierApp = lazy(() =>
   import('./components/CashierApp').then((m) => ({ default: m.CashierApp })),
 );
 import { Landing } from './components/site/Landing';
-import { AccountPage } from './components/site/AccountPage';
-import {
-  AboutPage,
-  ContactPage,
-  FaqPage,
-  PrivacyPage,
-  RefundPage,
-} from './components/site/InfoPages';
+
+/**
+ * The trust pages and the account page are read rarely, and never on the way to
+ * placing an order, so they load on demand as well. Only the landing page and
+ * the menu are in the first download a diner pays for.
+ */
+const AccountPage = lazy(() =>
+  import('./components/site/AccountPage').then((m) => ({ default: m.AccountPage })),
+);
+const AboutPage = lazy(() =>
+  import('./components/site/InfoPages').then((m) => ({ default: m.AboutPage })),
+);
+const FaqPage = lazy(() =>
+  import('./components/site/InfoPages').then((m) => ({ default: m.FaqPage })),
+);
+const ContactPage = lazy(() =>
+  import('./components/site/InfoPages').then((m) => ({ default: m.ContactPage })),
+);
+const RefundPage = lazy(() =>
+  import('./components/site/InfoPages').then((m) => ({ default: m.RefundPage })),
+);
+const PrivacyPage = lazy(() =>
+  import('./components/site/InfoPages').then((m) => ({ default: m.PrivacyPage })),
+);
 import { AuthScreen } from './components/auth/AuthScreen';
 import { useAuthStore } from './store/authStore';
 import { usePaymentStore } from './store/paymentStore';
@@ -67,12 +83,12 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/menu" element={<StorefrontApp />} />
-        <Route path="/about" element={<AboutPage />} />
-        <Route path="/faq" element={<FaqPage />} />
-        <Route path="/contact" element={<ContactPage />} />
-        <Route path="/refund" element={<RefundPage />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/account" element={<AccountPage />} />
+        <Route path="/about" element={<Page><AboutPage /></Page>} />
+        <Route path="/faq" element={<Page><FaqPage /></Page>} />
+        <Route path="/contact" element={<Page><ContactPage /></Page>} />
+        <Route path="/refund" element={<Page><RefundPage /></Page>} />
+        <Route path="/privacy" element={<Page><PrivacyPage /></Page>} />
+        <Route path="/account" element={<Page><AccountPage /></Page>} />
         <Route
           path="/admin"
           element={
@@ -96,6 +112,21 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+  );
+}
+
+/** Suspense boundary for the diner-facing pages that load on demand. */
+function Page({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen grid place-items-center bg-diner-ground text-diner-ink">
+          <Loader2 className="animate-spin opacity-50" />
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
   );
 }
 
