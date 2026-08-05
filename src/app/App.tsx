@@ -32,6 +32,7 @@ import { useAuthStore } from './store/authStore';
 import { usePaymentStore } from './store/paymentStore';
 import { useKarinderyaStore } from './store/karinderyaStore';
 import { useReviewStore } from './store/reviewStore';
+import { useBusinessStore } from './store/businessStore';
 import type { UserRole } from './lib/types';
 
 /**
@@ -50,14 +51,16 @@ export default function App() {
   const loadMenu = useKarinderyaStore((s) => s.loadAll);
   const subscribeMenu = useKarinderyaStore((s) => s.subscribe);
   const loadRatings = useReviewStore((s) => s.load);
+  const loadBusiness = useBusinessStore((s) => s.load);
 
   useEffect(() => {
     initAuth();
     loadPayments();
     loadMenu();
     loadRatings();
+    loadBusiness();
     return subscribeMenu();
-  }, [initAuth, loadPayments, loadMenu, loadRatings, subscribeMenu]);
+  }, [initAuth, loadPayments, loadMenu, loadRatings, loadBusiness, subscribeMenu]);
 
   return (
     <BrowserRouter>

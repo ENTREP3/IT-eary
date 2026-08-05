@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router';
-import { BUSINESS, addressOneLine } from '../../lib/business';
+import { useBusinessStore, addressOf } from '../../store/businessStore';
 import { SiteHeader, SiteFooter } from './SiteChrome';
 
 /**
@@ -45,6 +45,7 @@ function H2({ children }: { children: React.ReactNode }) {
 }
 
 export function AboutPage() {
+  const biz = useBusinessStore((s) => s.profile);
   return (
     <Page
       title="About Bencris"
@@ -72,9 +73,9 @@ export function AboutPage() {
       </p>
 
       <H2>Where to find us</H2>
-      <p>{addressOneLine}</p>
+      <p>{addressOf(biz)}</p>
       <ul className="mt-2 space-y-1">
-        {BUSINESS.hours.map((h) => (
+        {biz.hours.map((h) => (
           <li key={h.days}>
             {h.days}: {h.opens} to {h.closes}
           </li>
@@ -150,17 +151,18 @@ export function FaqPage() {
 }
 
 export function ContactPage() {
+  const biz = useBusinessStore((s) => s.profile);
   return (
     <Page title="Contact us" standfirst="The fastest way to reach us is to call during opening hours.">
       <H2>Phone</H2>
-      <p>{BUSINESS.contact.phone}</p>
+      <p>{biz.phone}</p>
 
       <H2>Address</H2>
-      <p>{addressOneLine}</p>
+      <p>{addressOf(biz)}</p>
 
       <H2>Opening hours</H2>
       <ul className="space-y-1">
-        {BUSINESS.hours.map((h) => (
+        {biz.hours.map((h) => (
           <li key={h.days}>
             {h.days}: {h.opens} to {h.closes}
           </li>
@@ -215,6 +217,7 @@ export function RefundPage() {
 }
 
 export function PrivacyPage() {
+  const biz = useBusinessStore((s) => s.profile);
   return (
     <Page
       title="Privacy notice"
@@ -249,7 +252,7 @@ export function PrivacyPage() {
 
       <H2>Questions</H2>
       <p>
-        Call {BUSINESS.contact.phone} or ask at the counter.
+        Call {biz.phone} or ask at the counter.
       </p>
     </Page>
   );
