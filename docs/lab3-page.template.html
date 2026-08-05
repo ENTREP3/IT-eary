@@ -391,96 +391,64 @@
  </section>
 
  <!-- ============================== PART 1 ====================== -->
- <section id="part1">
- <div class="part-head">
- <span class="part-num">01</span>
- <h2>Business Presence Assessment</h2>
- </div>
+      <section id="part1">
+        <div class="part-head">
+          <span class="part-num">01</span>
+          <h2>Business Presence Assessment</h2>
+        </div>
 
- <p>
- This assessment is of <strong>Bencris as it operates today</strong>. The evidence is
- photographs of the eatery itself, the counter, the trays, the signage, the way an order
- is actually taken. Screenshots of the system are <em>not</em> evidence here; they belong
- in Part 2, where they show how each gap is closed.
- </p>
+        <p class="lede">
+          Everything below assesses the Bencris ordering website itself. Each strength and each
+          gap is evidenced by a screenshot of the running system, listed by figure number and
+          shown in full further down this page.
+        </p>
 
- <div class="callout">
- <p><strong>Photographs still to capture.</strong> These must be taken on site at Bencris
- during service hours. Save them to the photo set using the filenames in §1.4,
- then drop them into the tables below. Ask the owner's permission before photographing
- people, and avoid capturing customers' faces.</p>
- </div>
+        <h3>1.1 &nbsp;Strengths</h3>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th>No.</th><th>Strength</th><th>Explanation</th><th>Screenshot / Evidence</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="n">1</td><td><strong>The menu tells the truth by itself</strong></td><td>The menu is served from the database rather than written by hand. Each order reduces the stock count, and a dish marks itself sold out at zero, so it disappears from the site without anyone touching it. This is the direct answer to the wasted trip: availability can be checked before leaving the house.</td><td>Figures 7, 18</td></tr>
+              <tr><td class="n">2</td><td><strong>Ordering needs no account and no app</strong></td><td>Checkout issues a six-character ticket code held on the diner's phone. No sign-up, no password, no email address. For a meal at this price, a registration wall would lose the sale outright.</td><td>Figures 10, 11</td></tr>
+              <tr><td class="n">3</td><td><strong>Prices are computed by the server, never by the browser</strong></td><td>The site sends only the dish and the quantity. The database re-reads the real price from the live menu and works out the total itself, so a tampered browser cannot pay one peso for a seventy-five peso meal. An automated test posts a forged price and confirms the stored total is still correct.</td><td>Automated test report</td></tr>
+              <tr><td class="n">4</td><td><strong>Discounts are validated server-side too</strong></td><td>A promo code entered at checkout is priced by the same database rule that will charge it, so the discount shown is the discount paid. A code cannot be invented, reused past its limit, or applied below its minimum spend.</td><td>Figure 10</td></tr>
+              <tr><td class="n">5</td><td><strong>Cashless payment with an audit trail and no transaction fee</strong></td><td>The diner sends the payment through GCash and attaches the receipt to their ticket. It is stored privately and opened by the counter through a short-lived link before the order is released. This replaces a photo sitting in a staff member's camera roll, and costs nothing per transaction because there is no payment gateway.</td><td>Figures 15, 20</td></tr>
+              <tr><td class="n">6</td><td><strong>The owner and the counter see different things, enforced by the database</strong></td><td>Access rules live in the database, not in hidden buttons. A counter account can settle tickets but cannot read expenses or change menu prices. Automated tests confirm both refusals.</td><td>Figure 13, automated test report</td></tr>
+              <tr><td class="n">7</td><td><strong>The business can finally measure itself</strong></td><td>The owner dashboard shows the day's sales, a seven-day trend, best sellers, the cash and GCash split, ingredient stock, and net profit after expenses. None of this existed before the website.</td><td>Figures 16, 19, 21</td></tr>
+              <tr><td class="n">8</td><td><strong>Every screen updates itself</strong></td><td>When the counter marks a ticket paid, the diner's screen changes to Paid on its own with no refresh, and the kitchen queue advances at the same moment.</td><td>Figures 15, 17</td></tr>
+              <tr><td class="n">9</td><td><strong>A first-time visitor can tell the business is real</strong></td><td>The site opens on a landing page carrying opening hours, address, contact number and whether the shop is open right now, backed by About, Questions people ask, Order issues and Privacy pages.</td><td>Figures 1, 3, 5</td></tr>
+              <tr><td class="n">10</td><td><strong>The menu is searchable and signals scarcity</strong></td><td>A search box covers the whole menu, and Bestseller, Only a few left and Sold out badges are computed from live sales and stock figures rather than curated by hand, so they can never go stale.</td><td>Figures 7, 8</td></tr>
+              <tr><td class="n">11</td><td><strong>A second order takes one tap</strong></td><td>The device remembers past tickets and favourites, so a returning diner can rebuild a whole order in a single tap, and the receipt can be shared straight into a group chat.</td><td>Figures 9, 11, 12</td></tr>
+            </tbody>
+          </table>
+        </div>
 
- <h3>1.1 &nbsp;Observed situation</h3>
- <div class="scroll">
- <table>
- <thead>
- <tr><th>No.</th><th>Observation on site</th><th>What it costs the business</th><th>Photo / Evidence</th></tr>
- </thead>
- <tbody>
- <tr><td class="n">1</td><td>No signage beyond the store name, no menu board, no prices, no QR, no handle, no phone number displayed</td><td>A passer-by cannot tell what is served or for how much without walking in and asking. Every decision requires physically entering.</td><td>Photo 1</td></tr>
- <tr><td class="n">2</td><td>The menu <em>is</em> the trays on the counter</td><td>Availability exists only in the room. It cannot be checked, shared, or planned around.</td><td>Photo 2</td></tr>
- <tr><td class="n">3</td><td>Diners queue at the counter to see what is left before deciding</td><td>Deciding and queueing happen in the same place, so the queue moves at the speed of indecision.</td><td>Photo 3</td></tr>
- <tr><td class="n">4</td><td>An empty or near-empty tray mid-service</td><td>This is the wasted trip, photographed. Anyone who came for that dish leaves without it, and often without buying anything.</td><td>Photo 4</td></tr>
- <tr><td class="n">5</td><td>Payment is a cash box, there is no register and no receipt is issued</td><td>Money goes into a box with nothing recording which order it belonged to, so takings can only be counted at the end of the day, and never explained.</td><td>Photo 5</td></tr>
- <tr><td class="n">6</td><td>For GCash, a staff member <strong>manually photographs the customer’s payment screen</strong> on their own phone</td><td>This is the only proof that a transfer happened. The photo sits in a personal camera roll, is not attached to any order, and cannot be searched later, so a disputed payment comes down to whoever remembers it better.</td><td>Photo 6</td></tr>
- <tr><td class="n">7</td><td>Orders and takings are tracked on paper, or not at all</td><td>There is no daily total, no record of which dish sold, and no way to set takings against the cost of ingredients.</td><td>Photo 7</td></tr>
- <tr><td class="n">8</td><td>Searching the business name online returns nothing owned by Bencris</td><td>The business has no reachable address on the internet in any form, so it cannot be found by anyone who is not already standing in front of it.</td><td>Photo 8</td></tr>
- </tbody>
- </table>
- </div>
+        <h3>1.2 &nbsp;Opportunities for improvement</h3>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th>No.</th><th>Opportunity</th><th>Explanation</th><th>Screenshot / Evidence</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="n">1</td><td><strong>Ratings never leave the diner's own phone</strong></td><td>A diner can rate a dish they actually bought, but that rating is stored in their own browser. Nobody else can see it, so the site still shows no social proof to a first-time visitor. Ratings need to move into the database, still gated on a settled ticket so they cannot be faked.</td><td>Figure 7</td></tr>
+              <tr><td class="n">2</td><td><strong>The site is not published yet</strong></td><td>It runs only on the development machine. There is no public address, no domain and no secure certificate, so no customer can reach it however good it is.</td><td>No hosting configuration in the repository</td></tr>
+              <tr><td class="n">3</td><td><strong>Nothing measures how the site is actually used</strong></td><td>No analytics are installed, so there is no way to see how many people open the menu, how many reach the cart, and how many abandon it. Improvements cannot be judged without that.</td><td>No analytics tag on any page</td></tr>
+              <tr><td class="n">4</td><td><strong>The whole site downloads as one large file</strong></td><td>The JavaScript ships as a single bundle of roughly 1.15 megabytes. On mobile data, which is how nearly every diner will arrive, that is a slow first open. It should be split so each page loads only what it needs.</td><td>Build output warning</td></tr>
+              <tr><td class="n">5</td><td><strong>The dish photographs are generic stock images</strong></td><td>Several are plainly wrong for the dish they illustrate. The food cannot sell itself with pictures that are not of the food. Every dish needs a real photograph and a short description in Tagalog and English.</td><td>Figure 7</td></tr>
+              <tr><td class="n">6</td><td><strong>The address and contact number are still placeholders</strong></td><td>The landing page, the trust pages and the search engine data all carry bracketed placeholder text instead of the real details, so the most important information on the site is not yet true.</td><td>Figures 1, 3</td></tr>
+              <tr><td class="n">7</td><td><strong>The mobile app still carries the old branding</strong></td><td>The website was rebranded to Bencris, but the mobile app screens were not, so the two do not match.</td><td>Mobile app screens</td></tr>
+              <tr><td class="n">8</td><td><strong>The owner cannot create a promo code without a developer</strong></td><td>Discount codes work correctly, but they can only be added directly to the database. The owner needs a screen for it, otherwise the feature cannot be used in practice.</td><td>Figure 18</td></tr>
+              <tr><td class="n">9</td><td><strong>Nothing tells the diner the order is ready</strong></td><td>The ticket updates to Paid, but the diner still has to watch the screen or wait at the counter. A free browser notification would release them and reduce congestion.</td><td>Figure 11</td></tr>
+              <tr><td class="n">10</td><td><strong>The site cannot spread on its own yet</strong></td><td>The receipt can be shared, but there is still no QR code for the counter and no referral code, so the word of mouth the business already has cannot be captured.</td><td>Figure 11</td></tr>
+              <tr><td class="n">11</td><td><strong>Accessibility has not been checked</strong></td><td>Colour contrast, keyboard navigation and image alternative text have not been audited, so the site may exclude people who could otherwise order.</td><td>No audit on record</td></tr>
+              <tr><td class="n">12</td><td><strong>Anonymous orders stay readable for a day</strong></td><td>Because diners have no accounts, the system allows anonymous reading of orders from the past twenty-four hours. This is what lets a diner's phone follow its own ticket, and it is bounded by roughly a billion possible codes and no personal data beyond a first name, but it remains a deliberate trade-off rather than a strict rule.</td><td>Documented in the database rules</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
- <h3>1.2 &nbsp;Strengths, the assets an online presence can build on</h3>
- <p>A business with nothing online still has real strengths. These are what the e-commerce presence is designed to amplify rather than replace.</p>
- <div class="scroll">
- <table>
- <thead>
- <tr><th>No.</th><th>Strength</th><th>Explanation</th><th>Photo / Evidence</th></tr>
- </thead>
- <tbody>
- <tr><td class="n">1</td><td><strong>Established location with steady foot traffic</strong></td><td>Bencris sits inside Dasmariñas Bayan, a dense commercial area with constant passing trade. The audience already walks past the door every day, it has simply never been given a way to order ahead.</td><td>Photo 1, Photo 3</td></tr>
- <tr><td class="n">2</td><td><strong>A base of regular <em class="tl">suki</em></strong></td><td>Repeat customers already return with no marketing at all. Retention exists; it is simply undocumented and unrewarded, so it cannot be grown deliberately.</td><td>Owner interview; Photo 3</td></tr>
- <tr><td class="n">3</td><td><strong>A genuinely varied, freshly cooked menu</strong></td><td>Multiple <em class="tl">ulam</em>, <em class="tl">silog</em>, <em class="tl">merienda</em> and drinks are prepared daily. There is enough range to make a browsable online menu worth opening, a single-item stall would not be.</td><td>Photo 2</td></tr>
- <tr><td class="n">4</td><td><strong>An accessible price point</strong></td><td>Meals sit in the range where a diner decides quickly and buys often. Low deliberation suits a fast online ordering flow.</td><td>Photo 9</td></tr>
- <tr><td class="n">5</td><td><strong>GCash is already accepted, and already photographed</strong></td><td>Cashless payment is an existing habit for both the staff and the diners, and staff already photograph every transfer. The behaviour we need is therefore already in place, it only has to be moved off a personal camera roll and attached to the order it belongs to.</td><td>Photo 6</td></tr>
- <tr><td class="n">6</td><td><strong>The owner already uses a smartphone daily</strong></td><td>The device the system runs on is already in the owner's hand and already familiar. No hardware to buy, no literacy barrier.</td><td>Owner interview</td></tr>
- <tr><td class="n">7</td><td><strong>Word of mouth already works</strong></td><td>Customers already recommend Bencris to friends in person. The referral behaviour exists; it has never been captured or made shareable.</td><td>Owner interview</td></tr>
- </tbody>
- </table>
- </div>
-
- <h3>1.3 &nbsp;Opportunities for improvement</h3>
- <div class="scroll">
- <table>
- <thead>
- <tr><th>No.</th><th>Opportunity</th><th>Explanation</th><th>Evidence</th></tr>
- </thead>
- <tbody>
- <tr><td class="n">1</td><td><strong>No online presence of any kind to reach</strong></td><td>No website, no page, no link, nothing a customer can open, save, or send to a friend. The business cannot be reached online at all.</td><td>Photo 8</td></tr>
- <tr><td class="n">2</td><td><strong>Availability cannot be known before arriving</strong></td><td>The client's own stated problem. Because the menu is physical, the only way to learn a dish has run out is to travel to the counter and look.</td><td>Photo 4</td></tr>
- <tr><td class="n">3</td><td><strong>Nothing exists that could spread</strong></td><td>With no shareable link, no QR on the counter and no referral mechanism, the word of mouth that already works cannot travel further than a conversation.</td><td>Photo 1: no QR or handle anywhere</td></tr>
- <tr><td class="n">4</td><td><strong>No demand data, so cooking is guesswork</strong></td><td>Without a record of what sold and when, some dishes are over-cooked and thrown away while others sell out by mid-morning. Both are direct losses.</td><td>Photo 7</td></tr>
- <tr><td class="n">5</td><td><strong>No sales or profit tracking</strong></td><td>Takings and expenses are not recorded against each other, so the owner cannot answer whether a given day, or a given dish, actually made money.</td><td>Photo 7</td></tr>
- <tr><td class="n">6</td><td><strong>The GCash record is a photo on a personal phone</strong></td><td>Every transfer is proven by a staff member photographing the customer’s screen. That photo is attached to no order, cannot be searched, is lost with the phone, and sits in a private camera roll the owner cannot audit.</td><td>Photo 6</td></tr>
- <tr><td class="n">7</td><td><strong>No trust surface for a first-time customer</strong></td><td>No published hours, address, contact number, or policy on a wrong order. A stranger has nothing to evaluate before committing.</td><td>Photo 1</td></tr>
- <tr><td class="n">8</td><td><strong>No product presentation</strong></td><td>Dishes are never shown with a photo, a description or a price outside the store. The food cannot sell itself to anyone not already standing in front of it.</td><td>Photo 2, Photo 9</td></tr>
- </tbody>
- </table>
- </div>
-
- <h3>1.4 &nbsp;Photograph shot list</h3>
- <div class="slots">
- <div class="slot"><span class="fn">01-storefront-exterior.jpg</span><span class="what">The shopfront from the street, wide enough to show all existing signage.</span><span class="why">Proves the absence of a menu board, QR, handle or number.</span></div>
- <div class="slot"><span class="fn">02-counter-trays.jpg</span><span class="what">The counter with the day's trays laid out.</span><span class="why">Shows the menu is physical and exists only in the room.</span></div>
- <div class="slot"><span class="fn">03-queue-at-counter.jpg</span><span class="what">Customers deciding and queueing at the counter.</span><span class="why">Deciding and queueing happen in the same place.</span></div>
- <div class="slot"><span class="fn">04-empty-tray.jpg</span><span class="what">A tray that has run out during service.</span><span class="why">The wasted trip, photographed, the core problem.</span></div>
- <div class="slot"><span class="fn">05-payment-area.jpg</span><span class="what">The cash box or drawer where money is kept.</span><span class="why">Shows there is no register and no receipt.</span></div>
- <div class="slot"><span class="fn">06-gcash-photo.jpg</span><span class="what">A staff member photographing a customer’s GCash screen.</span><span class="why">The only proof of payment that currently exists.</span></div>
- <div class="slot"><span class="fn">07-record-keeping.jpg</span><span class="what">Whatever tracks orders or takings, notebook, pad, or nothing.</span><span class="why">The absence of sales and profit tracking.</span></div>
- <div class="slot"><span class="fn">08-search-result.png</span><span class="what">A screenshot of a web search for the business name.</span><span class="why">Proves there is no owned result anywhere.</span></div>
- <div class="slot"><span class="fn">09-price-list.jpg</span><span class="what">Any handwritten or posted prices, if they exist at all.</span><span class="why">Establishes the price point and how it is communicated.</span></div>
- </div>
- </section>
 
  <!-- ============================== PART 2 ====================== -->
  <section id="part2">
@@ -525,86 +493,101 @@
  </table>
  </div>
 
- <h3>2.2 &nbsp;Evidence, what is already built</h3>
- <p>
- Captured from the running system by an automated capture script, which drives a
- headless browser through the whole loop in one continuous run: menu → cart → ticket →
- cashier settlement → owner dashboard. Ticket JB3CES was raised during the
- capture and appears in the owner's <em>Latest orders</em> panel, so this is genuinely
- one session rather than screens assembled from separate visits.
- </p>
 
- <div class="scroll">
- <table>
- <thead><tr><th>Gap from §1.3</th><th>How it is closed</th><th>Screenshot</th></tr></thead>
- <tbody>
- <tr><td><strong>1</strong> · No online presence to reach</td><td>A working storefront a customer can open and send to a friend</td><td>Screenshot 1</td></tr>
- <tr><td><strong>2</strong> · Availability unknown before arriving</td><td>The menu is served from Postgres; a trigger drops the stock count on each order and flips a dish to sold-out at zero, so it removes itself</td><td>Screenshot 1, Screenshot 9</td></tr>
- <tr><td><strong>4</strong> · No demand data</td><td>Every ticket is recorded; best-sellers, hourly pulse and low-stock alerts computed from real orders</td><td>Screenshot 7, Screenshot 12</td></tr>
- <tr><td><strong>5</strong> · No sales or profit tracking</td><td>Daily sales, a 7-day trend, and net profit after logged expenses</td><td>Screenshot 10</td></tr>
- <tr><td><strong>6</strong> · Cashless payment has no audit trail</td><td>The diner uploads a GCash receipt to a private bucket; the cashier reads it through a short-lived signed URL before settling</td><td>Screenshot 2, Screenshot 6, Screenshot 11</td></tr>
- <tr><td>· Ordering without an account</td><td>Checkout issues a 6-character ticket code held on the device, no sign-up, no password</td><td>Screenshot 2, Screenshot 3</td></tr>
- <tr><td>· Counter workflow</td><td>Cashier looks the code up, reviews order and proof, then settles; the kitchen queue advances</td><td>Screenshot 4, Screenshot 5, Screenshot 8</td></tr>
- </tbody>
- </table>
- </div>
+        <h3>Screenshots of the running system</h3>
+        <p>
+          Captured by an automated script that drives a real browser through the whole loop, so
+          these are the running system rather than mockups. Figure numbers match the evidence
+          column in Part 1.
+        </p>
 
- <p>Two further guarantees are proven by automated testing:</p>
- <ul class="prose">
- <li><strong>A tampered browser cannot underpay.</strong> the database re-reads prices from the live menu. the automated test report posts a forged ₱1 price for a ₱75 dish and asserts the stored total is still ₱75.</li>
- <li><strong>A cashier cannot reach the owner's data.</strong> database-level access rules, not hidden buttons. The same suite asserts <em>"cashier cannot read admin-only expenses"</em> and <em>"cashier cannot change menu prices"</em>.</li>
- </ul>
+        <div class="gallery">
+          <figure>
+            <img src="{{SHOT:fig-01-landing}}" alt="Landing page with an open or closed pill, the tagline, opening hours, address, contact number and today's dishes" />
+            <figcaption><b>Figure 1. Landing page.</b> Hours, address, contact and whether the shop is open right now, with the menu one tap away.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-02-how-ordering-works}}" alt="Three numbered steps explaining how ordering works, with reassurance chips beneath" />
+            <figcaption><b>Figure 2. How ordering works.</b> Build the order, get a ticket code, show it at the counter.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-03-about}}" alt="About page explaining the eatery, why the site exists and how orders are handled" />
+            <figcaption><b>Figure 3. About.</b> Explains why the site exists: so nobody makes the trip for a dish that has run out.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-04-questions}}" alt="Questions people ask page with seven question and answer pairs" />
+            <figcaption><b>Figure 4. Questions people ask.</b> Accounts, payment, ticket validity and lost codes.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-05-order-issues}}" alt="Order issues page covering wrong orders, sold-out dishes, GCash problems and refunds" />
+            <figcaption><b>Figure 5. Order issues.</b> What happens when an order is wrong or a transfer does not arrive.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-06-privacy}}" alt="Privacy notice explaining what is collected and what stays on the diner's phone" />
+            <figcaption><b>Figure 6. Privacy notice.</b> Only an optional first name is collected; favourites and history never leave the phone.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-07-menu-badges}}" alt="Menu grid showing a Bestseller badge, an Only two left badge, a greyed out Sold out dish and favourite hearts" />
+            <figcaption><b>Figure 7. Menu with badges.</b> Bestseller, Only a few left and Sold out, all computed from live sales and stock. The stock photography here is the gap noted in Part 1.2.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-08-menu-search}}" alt="Menu filtered by a search term, showing the match count across the whole menu" />
+            <figcaption><b>Figure 8. Menu search.</b> Searches the whole menu, not just the open category.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-09-favourites}}" alt="Menu with a dish saved as a favourite, its heart filled" />
+            <figcaption><b>Figure 9. Favourites.</b> Saved on the diner's own device.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-10-cart-promo}}" alt="Cart with two dishes, payment choice, a promo code applied and a subtotal, discount and total breakdown" />
+            <figcaption><b>Figure 10. Cart with a promo code.</b> The discount is quoted by the same database rule that charges it: 150 pesos becomes 135.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-11-ticket-share}}" alt="Ticket screen showing a six-character code, copy and share actions, and a receipt" />
+            <figcaption><b>Figure 11. Ticket issued.</b> The code is the diner's whole identity. The receipt is digital and shareable, so no printer is needed.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-12-recent-orders}}" alt="Recent orders sheet listing a past ticket with an Order this again button" />
+            <figcaption><b>Figure 12. Recent orders.</b> One tap rebuilds a previous order, skipping anything no longer on today's menu.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-13-staff-sign-in}}" alt="Staff sign-in screen with email and password fields" />
+            <figcaption><b>Figure 13. Staff sign in.</b> Diners never see this. Only owner and counter accounts exist.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-14-counter-lookup}}" alt="Counter screen with a ticket code entry field" />
+            <figcaption><b>Figure 14. Counter lookup.</b> One field: type the code the diner is holding.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-15-counter-review}}" alt="Counter reviewing the looked-up order before settling it" />
+            <figcaption><b>Figure 15. Counter review.</b> Items and payment proof are checked before money changes hands.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-16-owner-dashboard}}" alt="Owner dashboard showing sales, order counts, a low stock alert and the latest orders" />
+            <figcaption><b>Figure 16. Owner dashboard.</b> Sales, order pulse, low-stock alerts and the latest tickets as they arrive.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-17-kitchen-queue}}" alt="Kitchen order queue board with preparing and ready lanes" />
+            <figcaption><b>Figure 17. Kitchen queue.</b> Updated by the system as tickets are settled, not by refreshing.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-18-menu-control}}" alt="Menu management screen listing dishes with prices and availability toggles" />
+            <figcaption><b>Figure 18. Menu control.</b> Where the owner opens the shop each morning and sets stock counts.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-19-sales-profit}}" alt="Sales and profit screen with charts and an expenses list" />
+            <figcaption><b>Figure 19. Sales and profit.</b> Revenue less logged expenses, which the business had no way to see before.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-20-payment-settings}}" alt="Payment settings screen with GCash name, number, QR image and method toggles" />
+            <figcaption><b>Figure 20. Payment settings.</b> The GCash details diners are shown at checkout.</figcaption>
+          </figure>
+          <figure>
+            <img src="{{SHOT:fig-21-inventory}}" alt="Inventory screen listing ingredients and remaining quantities" />
+            <figcaption><b>Figure 21. Inventory.</b> Ingredient stock, the layer beneath the dish-level counts.</figcaption>
+          </figure>
+        </div>
 
- <div class="gallery">
- <figure>
- <img src="{{SHOT:01-storefront-menu}}" alt="The storefront menu showing dish cards with photo, name, Tagalog name, price and an Add to order button" />
- <figcaption><b>01 · The live menu.</b> Served from Postgres, a sold-out dish removes itself. The generic stock photography here is exactly what the dish-photography task replaces. <span class="file">01-storefront-menu.png</span></figcaption>
- </figure>
- <figure>
- <img src="{{SHOT:02-cart}}" alt="Cart sheet listing the order, an optional name field, Cash and GCash payment choices, and the total" />
- <figcaption><b>02 · Cart and payment choice.</b> Name optional; the method is declared here but not yet settled. <span class="file">02-cart.png</span></figcaption>
- </figure>
- <figure>
- <img src="{{SHOT:03-ticket-issued}}" alt="Ticket screen showing the code JB3CES in large letters with a receipt beneath it" />
- <figcaption><b>03 · Ticket JB3CES.</b> The code is the diner's whole identity. The receipt is digital, no printer required. <span class="file">03-ticket-issued.png</span></figcaption>
- </figure>
- <figure>
- <img src="{{SHOT:04-staff-sign-in}}" alt="Staff sign-in screen" />
- <figcaption><b>04 · Staff gate.</b> Diners never see this; only owner and cashier accounts exist. <span class="file">04-staff-sign-in.png</span></figcaption>
- </figure>
- <figure>
- <img src="{{SHOT:05-cashier-lookup}}" alt="Cashier screen with a ticket code entry field" />
- <figcaption><b>05 · The counter.</b> One field: type the code the diner is holding. <span class="file">05-cashier-lookup.png</span></figcaption>
- </figure>
- <figure>
- <img src="{{SHOT:06-cashier-order-review}}" alt="Cashier reviewing the looked-up order before settling it" />
- <figcaption><b>06 · Order review.</b> The cashier confirms items and proof before taking money. <span class="file">06-cashier-order-review.png</span></figcaption>
- </figure>
- <figure>
- <img src="{{SHOT:07-admin-dashboard}}" alt="Owner dashboard showing sales, order counts, a low stock alert and latest orders" />
- <figcaption><b>07 · Owner dashboard.</b> Ticket JB3CES already sits under Latest Orders, and five ingredients are flagged low. <span class="file">07-admin-dashboard.png</span></figcaption>
- </figure>
- <figure>
- <img src="{{SHOT:08-admin-kitchen}}" alt="Kitchen order queue board with lanes" />
- <figcaption><b>08 · Kitchen queue.</b> The live order board, updated by Realtime rather than by refreshing. <span class="file">08-admin-kitchen.png</span></figcaption>
- </figure>
- <figure>
- <img src="{{SHOT:09-admin-menu}}" alt="Menu management screen listing dishes with prices and availability" />
- <figcaption><b>09 · Menu control.</b> Where the owner opens the store each morning. <span class="file">09-admin-menu.png</span></figcaption>
- </figure>
- <figure>
- <img src="{{SHOT:10-admin-analytics}}" alt="Sales and profit screen with charts and an expenses list" />
- <figcaption><b>10 · Sales &amp; profit.</b> Replaces "no sales and profit tracking", revenue less logged expenses. <span class="file">10-admin-analytics.png</span></figcaption>
- </figure>
- <figure>
- <img src="{{SHOT:11-admin-payments}}" alt="Payments settings screen with GCash details and toggles" />
- <figcaption><b>11 · Payment settings.</b> The GCash name, number and QR diners see at checkout. <span class="file">11-admin-payments.png</span></figcaption>
- </figure>
- <figure>
- <img src="{{SHOT:12-admin-inventory}}" alt="Inventory screen listing ingredients and remaining quantities" />
- <figcaption><b>12 · Inventory.</b> Ingredient stock, the layer beneath the dish-level counts. <span class="file">12-admin-inventory.png</span></figcaption>
- </figure>
- </div>
  </section>
 
  <!-- ============================== PART 3 ====================== -->

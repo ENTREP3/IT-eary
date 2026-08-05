@@ -9,5 +9,5 @@ import 'staff/staff_entry.dart';
 /// A cashier account is rejected at sign-in here, and the database refuses the
 /// same data regardless of which build is asking.
 Future<void> main() => bootstrap(
-      const StaffEntry(area: StaffArea.admin, title: 'IT-eary Operations'),
+      const StaffEntry(area: StaffArea.admin, title: 'Bencris Operations'),
     );

@@ -306,7 +306,7 @@ drop function if exists public.create_ticket(jsonb, text, text);
 -- ---------------------------------------------------------------------------
 insert into public.promo_codes (code, label, kind, value, min_subtotal, max_discount, usage_limit)
 values
-  ('SULIT10',  '10% off — merienda promo',        'percent', 10, 100, 30,  null),
-  ('BAGONG20', '₱20 off your first order',        'fixed',   20, 120, null, 200),
-  ('BALIKBAYAN','₱15 off — salamat sa pagbalik!', 'fixed',   15, 90,  null, null)
+  ('SULIT10',  '10% off, merienda promo',        'percent', 10, 100, 30,  null),
+  ('BAGONG20', '20 pesos off your first order',        'fixed',   20, 120, null, 200),
+  ('BALIKBAYAN','15 pesos off, salamat sa pagbalik', 'fixed',   15, 90,  null, null)
 on conflict (code) do nothing;
