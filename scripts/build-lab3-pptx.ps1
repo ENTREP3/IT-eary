@@ -127,47 +127,41 @@ try {
   Add-Footer $s '02'
 
   # -------------------------------------------------------- 3. part 1 (a)
-  $s = New-ContentSlide 'PART 1  -  BUSINESS PRESENCE ASSESSMENT' 'What the website already does well'
-  Add-Bullets $s 60 144 400 350 @(
-    'The menu is served from the database, so a dish marks itself sold out and disappears without anyone touching it.',
-    'Ordering needs no account and no app. Checkout issues a six-character ticket code to the phone.',
-    'Prices are computed by the server, so a tampered browser cannot underpay. An automated test proves it.',
-    'Promo codes are validated by the same database rule that charges them.'
+  $s = New-ContentSlide 'PART 1  -  BUSINESS PRESENCE ASSESSMENT' 'Five strengths of the system'
+  Add-Bullets $s 60 150 400 340 @(
+    'The menu is always true. A dish hides itself once it runs out, so nobody makes a wasted trip.',
+    'Ordering suits everyone. A ticket code needs no account, and a free account adds order history, live tracking and loyalty rewards.',
+    'The money side is safe and free to run. Totals and discount codes are worked out by the shop records, not the phone, and no payment company takes a cut.'
   ) 13 | Out-Null
-  Add-Bullets $s 500 144 400 350 @(
-    'GCash receipts are attached to the ticket and stored privately, giving an audit trail at no transaction fee.',
-    'The owner and the counter see different things, enforced by the database rather than by hidden buttons.',
-    'The owner dashboard finally measures the business: sales, best sellers, stock and net profit.',
-    'A landing page, trust pages, menu search, scarcity badges and one-tap reorder now exist.'
+  Add-Bullets $s 500 150 400 340 @(
+    'The owner can finally run and measure the business: takings, profit, best sellers, stock levels, what to buy, and prices and staff logins they can change themselves.',
+    'One shop on every screen. Website, counter, dashboard, three mobile apps and an installable Android app share one identity and one set of records, and update each other live.'
   ) 13 | Out-Null
   Add-Footer $s '03'
 
   # -------------------------------------------------------- 4. part 1 (b)
-  $s = New-ContentSlide 'PART 1  -  BUSINESS PRESENCE ASSESSMENT' 'What the website still needs'
-  Add-Bullets $s 60 144 400 350 @(
-    "Ratings never leave the diner's own phone, so the site still shows no social proof.",
-    'The site is not published yet. There is no public address, so no customer can reach it.',
-    'Nothing measures how the site is used, so cart abandonment is invisible.',
-    'The whole site downloads as one large file, which is slow on mobile data.'
+  $s = New-ContentSlide 'PART 1  -  BUSINESS PRESENCE ASSESSMENT' 'Five opportunities that remain'
+  Add-Bullets $s 60 150 400 340 @(
+    'Nobody can find Bencris online. It is not published, so a search for a karinderya in the Bayan finds nothing and the shop still lives on passing foot traffic.',
+    'The shop does not look like a real business yet. The address and contact number on the page are still placeholder text.',
+    'The food does not look appetising. Every dish uses a stock picture, and several show the wrong food entirely.'
   ) 13 | Out-Null
-  Add-Bullets $s 500 144 400 350 @(
-    'The dish photographs are generic stock images, and several are wrong for the dish.',
-    'The address and contact number are still placeholders.',
-    'The owner cannot create a promo code without a developer.',
-    'There is still no QR code or referral code, so word of mouth cannot be captured.'
+  Add-Bullets $s 500 150 400 340 @(
+    'A first-time visitor sees no proof the food is good. Word of mouth is what this business runs on, and none of it is visible online.',
+    'There is no way to reach a customer once they leave. Every visit starts from scratch, so the business keeps winning the same customer again.'
   ) 13 | Out-Null
   Add-Footer $s '04'
 
   # --------------------------------------------------- 5. part 2 plan
-  $s = New-ContentSlide 'PART 2  -  BUSINESS PRESENCE IMPROVEMENT PLAN' 'Growth built into the product itself'
-  Add-Text $s 60 142 840 20 'There is no social page to maintain. The website itself is the marketing channel, and every mechanism below is free to run.' 13 $false $SOFT 'Calibri' | Out-Null
+  $s = New-ContentSlide 'PART 2  -  BUSINESS PRESENCE IMPROVEMENT PLAN' 'What we will do next, and why'
+  Add-Text $s 60 142 840 20 'Seven areas, each closing one weakness from Part 1. DONE is already built; NEXT is what remains. Everything here is free to run.' 13 $false $SOFT 'Calibri' | Out-Null
   $items = @(
-    @('Shareable menu link', 'The link previews with the shop name and a dish photo, so a diner can drop Bencris into a group chat in one tap.'),
-    @('Share on the receipt', 'A Share action on the receipt turns every satisfied diner into a distribution channel at no cost.'),
-    @('Referral codes', 'A personal code rewards the diner who brings a friend, and costs a discount only when it produces a sale.'),
-    @('QR code at the counter', "A QR displayed at the counter turns today's walk-in customer into tomorrow's online order."),
-    @('Timed promotional codes', 'A code such as HAPON15 runs only between 2 and 4 PM, pulling demand into the quiet hours.'),
-    @('Verified reviews', 'Only a ticket code that was actually paid can leave a rating, so the reviews cannot be faked.')
+    @('Branding', "DONE  One identity on every screen and all three apps, shop details stored once.`rNEXT  Put the owner real address and contact in, and agree a mark and colour."),
+    @('UX', "DONE  Four taps to order, cart within thumb reach, menu search, one-tap reorder.`rNEXT  Walk the whole path on a cheap phone on mobile data and fix what is slow."),
+    @('SEO', "DONE  Real text naming the shop and the area, dishes in Tagalog and English.`rNEXT  Publish with a real address, and add hours and prices in the form search engines read."),
+    @('Product presentation', "DONE  Bestseller, Only a few left and Sold out labels from real sales and stock.`rNEXT  Photograph every dish in daylight and replace all the stock pictures."),
+    @('Trust', "DONE  Hours, address and open-now up front, trust pages, and ratings only a paid ticket can leave.`rNEXT  Gather the first real ratings once the shop is live."),
+    @('Marketing and engagement', "DONE  Discount codes, a printable QR poster, accounts with history and loyalty.`rNEXT  Put the poster up, run a quiet-hours discount, and notify when food is ready.")
   )
   $x = 60.0; $y = 176.0
   foreach ($it in $items) {
@@ -182,9 +176,10 @@ try {
   # ------------------------------------------------------- 6. part 3 journey
   $s = New-ContentSlide 'PART 3  -  CUSTOMER JOURNEY MAPPING' 'Fifteen stages, and two loops that close'
   Add-Bullets $s 60 160 380 320 @(
-    'Discovery now has three doors: a link forwarded in a chat, the QR at the counter, or a web search.',
+    'Discovery now has three doors: a link forwarded in a chat, the printed QR poster on the wall, or a web search.',
     'The journey branches at payment. A GCash diner uploads their receipt, while a cash diner goes straight to the counter.',
-    'Two loops close the journey: a reorder returns the diner to Browse, and a shared receipt starts a new person at Discover.'
+    'Waiting is no longer guesswork. The diner watches the order move from preparing to ready.',
+    'Two loops close the journey: a reorder returns the diner to Browse, and a shared receipt or a scanned poster starts a new person at Discover.'
   ) 13 | Out-Null
   $flow = Join-Path $shots '00-journey-flowchart.png'
   if (Test-Path $flow) {
@@ -202,9 +197,9 @@ try {
   $s = New-ContentSlide 'PART 4  -  WEBSITE OPERATIONS PLAN' 'Developing and launching the website'
   Add-Text $s 60 140 840 18 'Every activity below is owned by a named member, has a timeline, and leaves evidence behind.' 12 $false $SOFT 'Calibri' | Out-Null
   $dev = @(
-    @('DEVELOPMENT ACTIVITIES', "Interview the owner and observe a full service at the store.`rDesign the database and put the ordering rules in PostgreSQL.`rBuild the customer storefront, the counter screen and the owner dashboard.`rBuild the proof-of-payment flow and the promotional code engine.", '[Member 1] and [Member 2]'),
-    @('LAUNCH ACTIVITIES', "Photograph every dish and write descriptions in Tagalog and English.`rAdd search visibility and proper link previews.`rBuild the share action, the counter QR and the referral codes.`rDeploy the site to free hosting with a public address.", '[Member 3]'),
-    @('TESTING AND HANDOVER', "Run the three backend test suites and the mobile test suite.`rWalk the whole diner-to-owner path by hand on a phone.`rTrain the owner and leave a one-page cheat sheet behind.`rProduce the worksheet, the journey diagram and this deck.", '[Member 4] and [Member 5]')
+    @('DEVELOPMENT ACTIVITIES', "Interview the owner and watch a full service at the store.`rKeep the ordering rules in the shop records, not on the phone.`rBuild the diner site, the counter screen and the owner dashboard.`rAdd accounts, live order tracking, loyalty and stock control.", '[Member 1] and [Member 2]'),
+    @('LAUNCH ACTIVITIES', "Photograph every dish and write Tagalog and English descriptions.`rMake the site findable and give shared links a proper preview.`rBuild the three mobile apps, the installable app and the QR poster.`rPublish to free hosting with a public address.", '[Member 3]'),
+    @('TESTING AND HANDOVER', "Run the automated checks across the whole system.`rWalk the whole path by hand on a real phone, browsing to collecting.`rTrain the owner and leave a one-page cheat sheet behind.`rProduce the worksheet, the journey diagram and this deck.", '[Member 4] and [Member 5]')
   )
   $x = 60.0
   foreach ($d in $dev) {
@@ -225,10 +220,10 @@ try {
     'Weekly: read best sellers, slow movers and net profit, then tell the owner which dishes to cook more or less of.'
   ) 13 | Out-Null
   Add-Bullets $s 500 150 400 320 @(
-    'Monthly: choose the next promotional code, set its discount and expiry, and announce it.',
-    'Monthly: export the database and keep the migration history in version control.',
-    'Monthly: re-run the role-separation and security tests, and rotate the staff passwords.',
-    'Monthly: confirm the stored payment proofs still fit inside the free tier.'
+    'Weekly: publish genuine ratings and reply to any complaint.',
+    'Monthly: choose the next discount code, set its amount and expiry, and announce it.',
+    'Monthly: export the records and keep the change history safe.',
+    'Monthly: re-run the access checks and change the staff passwords.'
   ) 13 | Out-Null
   Add-Text $s 60 442 840 24 'Cost to keep the website running: nothing per month. No payment gateway, no paid hosting, and no printer.' 14 $true $INK 'Georgia' | Out-Null
   Add-Footer $s '08'
