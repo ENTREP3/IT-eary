@@ -9,7 +9,8 @@
     "dev": "npm run tokens && vite",
     "check:ui": "node scripts/check-ui.mjs",
     "check:backend": "node scripts/verify-backend.mjs && node scripts/verify-phase4.mjs && node scripts/verify-payment-proof.mjs && node scripts/verify-accounts.mjs",
-    "check": "npm run check:backend && npm run check:ui"
+    "check": "npm run typecheck && npm run check:backend && npm run check:ui",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -54,6 +55,7 @@
     "lucide-react": "0.487.0",
     "motion": "12.23.24",
     "next-themes": "0.4.6",
+    "qrcode": "^1.5.4",
     "react-day-picker": "8.10.1",
     "react-dnd": "16.0.1",
     "react-dnd-html5-backend": "16.0.1",
@@ -72,8 +74,10 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.12",
+    "@types/qrcode": "^1.5.6",
     "@vitejs/plugin-react": "4.7.0",
     "tailwindcss": "4.1.12",
+    "typescript": "^7.0.2",
     "vite": "6.3.5"
   },
   "peerDependencies": {
