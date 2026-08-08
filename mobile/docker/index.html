@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bencris mobile apps</title>
+    <style>
+      :root { color-scheme: light; }
+      body {
+        margin: 0; min-height: 100vh; display: grid; place-items: center;
+        background: #f4ead5; color: #1a1410;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        padding: 1.5rem;
+      }
+      .wrap { width: 100%; max-width: 26rem; }
+      h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -0.02em; }
+      p.lede { margin: 0 0 1.75rem; opacity: .65; line-height: 1.5; font-size: .95rem; }
+      a.app {
+        display: block; text-decoration: none; color: inherit;
+        border: 1px solid rgba(26,20,16,.14); border-radius: 1rem;
+        padding: 1rem 1.15rem; margin-bottom: .75rem; background: #fffdf7;
+      }
+      a.app:hover { border-color: rgba(26,20,16,.35); }
+      .name { font-weight: 650; margin-bottom: .15rem; }
+      .desc { font-size: .85rem; opacity: .6; line-height: 1.4; }
+      footer { margin-top: 1.5rem; font-size: .78rem; opacity: .5; line-height: 1.5; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Bencris mobile</h1>
+      <p class="lede">
+        The three Flutter apps, built and served from this container. On a phone,
+        reach this page at the laptop's network address rather than localhost,
+        which on a phone means the phone itself.
+      </p>
+
+      <a class="app" href="/customer/">
+        <div class="name">Bencris</div>
+        <div class="desc">Order from the live menu and hold your ticket. No account needed.</div>
+      </a>
+      <a class="app" href="/cashier/">
+        <div class="name">Bencris Counter</div>
+        <div class="desc">Look up a ticket, check the payment, settle it.</div>
+      </a>
+      <a class="app" href="/admin/">
+        <div class="name">Bencris Operations</div>
+        <div class="desc">Sales, kitchen queue, stock, menu and payments.</div>
+      </a>
+
+      <footer>
+        All three read the hosted Supabase project, the same database the web app
+        uses. The data never comes from this machine, so once these files are
+        deployed a phone no longer needs to be on this network at all.
+        <br /><br />
+        Installing to the home screen needs HTTPS, which a plain address on the
+        local network cannot offer, so browsers will refuse it here and give a
+        bookmark instead. Served over HTTPS the same files install properly, with
+        no change to the build.
+      </footer>
+    </div>
+  </body>
+</html>

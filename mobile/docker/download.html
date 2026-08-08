@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Get the Bencris app</title>
+    <style>
+      :root { color-scheme: light; }
+      body {
+        margin: 0; min-height: 100vh; display: grid; place-items: center;
+        background: #f4ead5; color: #1a1410;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        padding: 1.5rem; text-align: center;
+      }
+      .wrap { width: 100%; max-width: 22rem; }
+      .mark { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: .2rem; }
+      .mark em { font-style: italic; color: #c8442a; }
+      .kicker { font-size: .72rem; letter-spacing: .28em; text-transform: uppercase; opacity: .5; margin-bottom: 1.75rem; }
+      h1 { font-size: 1.35rem; margin: 0 0 .5rem; letter-spacing: -0.01em; }
+      p { margin: 0 0 1.5rem; opacity: .68; line-height: 1.55; font-size: .93rem; }
+      a.get {
+        display: block; text-decoration: none;
+        background: #1a1410; color: #f4ead5;
+        border-radius: 999px; padding: .95rem 1.25rem; font-weight: 600;
+      }
+      ol { text-align: left; margin: 1.75rem 0 0; padding-left: 1.15rem; font-size: .85rem; opacity: .6; line-height: 1.65; }
+      .alt { margin-top: 1.5rem; font-size: .85rem; }
+      .alt a { color: #c8442a; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="mark">Ben<em>cris</em></div>
+      <div class="kicker">Dasmariñas Bayan</div>
+
+      <h1>Get the app</h1>
+      <p>
+        See what is actually cooking today, order ahead, and hold your ticket on
+        your phone. No account needed.
+      </p>
+
+      <a class="get" href="/download/bencris.apk" download>Download for Android</a>
+
+      <!-- Android blocks installs from outside the Play Store until the user
+           allows it for the browser doing the downloading. Saying so up front
+           turns a scary warning into an expected step. -->
+      <ol>
+        <li>Tap Download above.</li>
+        <li>Open the downloaded file.</li>
+        <li>Android will ask permission to install from this source. Allow it.</li>
+        <li>Tap Install.</li>
+      </ol>
+
+      <p class="alt">
+        On iPhone, or would rather not install anything?
+        <a href="/customer/">Use it in your browser instead.</a>
+      </p>
+    </div>
+  </body>
+</html>
