@@ -23,9 +23,11 @@ The frontend splits by audience:
 Each mobile app is its own build with its own name and icon, so the three
 install side by side and a cashier's phone never carries the owner UI at all.
 
+All three are built and served by the `mobile` container, so Flutter does not
+need to be installed to run them:
+
 ```bash
-cd mobile && node build_pwas.mjs       # all three, against hosted Supabase
-node build_pwas.mjs --local            # against the local Docker stack
+docker compose up -d mobile            # → http://localhost:5180
 ```
 
 ### What keeps six frontends in step
@@ -58,25 +60,88 @@ comes from two shared layers instead:
 
 ## Quick start
 
-Prerequisites: **Node.js**, **Docker Desktop** running.
+Prerequisites: **Docker Desktop**. Nothing else — not Node, not Flutter, not
+Postgres. The database is the hosted Supabase project, so there is no backend to
+boot; the containers run the two frontends and nothing more.
 
 ```bash
-npm install              # install dependencies
-npx supabase start       # boot the local Supabase stack (Docker)
-npx supabase db reset    # apply schema + seed data
-cp .env.example .env.local   # then paste values from `npx supabase status`
-npm run dev              # start the app at http://localhost:5173
+cp .env.example .env.local          # paste the Supabase project URL + publishable key
+docker compose up -d --build -V     # build and start both apps
 ```
 
-Or run it fully in Docker:
+That one command is the whole workflow, first run and every run after. It builds
+what changed, leaves the rest cached, and starts both apps. A rebuild after a
+code change takes about half a minute, because only the affected layers run
+again.
+
+`-V` renews the containers' anonymous volumes. It is there so a newly installed
+package cannot be masked by a stale `node_modules`, which is the failure
+described under [Adding a dependency](#adding-a-dependency) below.
+
+> Avoid `docker compose build --no-cache` as a routine update command. It throws
+> away every cached layer, so the mobile image re-downloads the Flutter SDK and
+> redoes all three web builds and the Android build from scratch, turning half a
+> minute into the best part of half an hour. Reach for it only when you suspect
+> the cache itself is wrong.
+
+| | Address | What it is |
+| --- | --- | --- |
+| Web | http://localhost:5173 | Storefront, counter and owner dashboard (React) |
+| Mobile | http://localhost:5180 | The three Flutter apps, as PWAs |
+
+To open the mobile apps on a real phone, use this machine's address on the
+network — `http://<your-lan-ip>:5180` — because `localhost` on a phone is the
+phone. Allow inbound TCP on 5173 and 5180 if the firewall blocks it.
+
+Installing to the home screen needs a secure context, so browsers will not offer
+it over a plain LAN address; they give a bookmark shortcut instead. The apps
+themselves work fully either way, and install properly once served over HTTPS.
 
 ```bash
-docker compose up -d web                      # dev server  → http://localhost:5174
-docker compose --profile prod up -d --build web-prod   # nginx build → http://localhost:5173
+docker compose --profile prod up -d --build web-prod   # nginx build → :8080
 ```
 
-**Staff logins (local only):** `admin@bencris.local` / `admin123` ·
-`cashier@bencris.local` / `cashier123`
+> Do not run `npm run dev` alongside the `web` container: both want port 5173,
+> and two servers showing the same site is exactly the confusion this layout is
+> meant to remove. Working without Docker is still fine, just pick one.
+
+### Before you trust a change
+
+```bash
+npm run typecheck    # fastest, and the one that catches missing imports
+npm run check        # typecheck, then the backend suites, then every screen
+```
+
+Vite strips TypeScript **without checking it**, so a component using a name
+nobody imported builds cleanly and only crashes on the one path that renders it.
+Three such bugs reached the browser before `tsconfig.json` existed. Run the
+typecheck after editing components; it takes seconds.
+
+### Adding a dependency
+
+`npm install <package>` on your own machine is **not** enough. The `web`
+container keeps its `node_modules` in its own volume, built into the image, and
+your install never reaches it. The symptom is confusing: the editor and
+`npm run build` are both happy, while the running site dies with
+`Failed to resolve import "<package>"`.
+
+```bash
+npm install <package>              # updates package.json + the lockfile
+docker compose up -d --build -V    # the usual command; -V does the rest
+```
+
+`-V` is the part that matters. Without it Docker keeps the existing anonymous
+volume across the recreate, so the stale `node_modules` survives the rebuild and
+the import fails exactly as before. It costs nothing to leave on, which is why
+the quick start above already includes it.
+
+After editing `.env.local`, restart with `docker compose restart web` — Vite
+reads the environment when the server starts, not on hot reload.
+
+**Staff logins** are real accounts the owner creates on the Staff access screen.
+None are published here or shown on the sign-in pages. To bring up a brand new
+project, run [`docs/hosted-setup.sql`](docs/hosted-setup.sql) once to create the
+first owner — the app cannot, because creating staff requires an existing owner.
 
 **Practice tickets** (seeded unpaid): `PAY001` · `PAY002` · `PAY003`
 

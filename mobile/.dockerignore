@@ -1,0 +1,18 @@
+# Host build output must not leak into the image. Flutter's build/ and
+# .dart_tool/ hold absolute paths from this machine, and copying them in makes
+# the container's build depend on whatever state the laptop happened to be in.
+build/
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Platform folders neither build needs. android/ is deliberately NOT here: the
+# APK stage needs its Gradle config.
+ios/
+macos/
+linux/
+windows/
+
+.git
+*.log

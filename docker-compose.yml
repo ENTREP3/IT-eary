@@ -1,18 +1,48 @@
+# Everything runs here. The database does not.
+#
+#   docker compose up -d              web + mobile, the normal way to run this
+#   docker compose --profile prod up -d --build web-prod
+#
+# There is no Supabase service. Postgres, Auth, Storage and Realtime all live in
+# the hosted Supabase project, and both apps talk to it directly over HTTPS.
+# Running a second Supabase here is what previously let the web app and the
+# dashboard disagree about what the data was.
+#
+# Ports are deliberately distinct so nothing is ambiguous about which app is on
+# which address:
+#
+#   5173  web, React storefront + counter + owner dashboard
+#   5180  mobile, the three Flutter apps as installable PWAs
+#
+# 5173 is also Vite's default, so do not run `npm run dev` at the same time as
+# the web container. Pick one. Two servers showing the same site at different
+# addresses is confusing, and only one of them is the one you are editing.
+
 services:
   web:
     build:
       context: .
       target: dev
     ports:
-      - "5174:5173"
+      - "5173:5173"
     volumes:
       - .:/app
       - /app/node_modules
+    # The Supabase URL and publishable key. Vite reads these when the server
+    # starts, so after editing .env.local restart the container rather than
+    # waiting for hot reload to notice.
     env_file:
       - path: .env.local
         required: false
     environment:
       - CHOKIDAR_USEPOLLING=true
+
+  mobile:
+    build:
+      context: ./mobile
+      target: serve
+    ports:
+      - "5180:80"
 
   web-prod:
     profiles: ["prod"]
@@ -20,4 +50,4 @@ services:
       context: .
       target: production
     ports:
-      - "5173:80"
+      - "8080:80"
