@@ -22,6 +22,25 @@ class Api {
     return rows.map<Dish>((r) => Dish.fromMap(r)).toList();
   }
 
+  /// The shop's own hero line, as the owner set it on the web dashboard.
+  ///
+  /// Read rather than hardcoded so the two apps cannot disagree about what the
+  /// karinderya calls itself. Returns null when the row cannot be read, and the
+  /// caller shows nothing rather than a stale guess.
+  static Future<String?> tagline() async {
+    try {
+      final row = await _db
+          .from('business_settings')
+          .select('tagline')
+          .eq('id', 1)
+          .maybeSingle();
+      final value = (row?['tagline'] as String?)?.trim();
+      return (value == null || value.isEmpty) ? null : value;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// How the karinderya is accepting money right now, so a method the owner has
   /// switched off is never offered at checkout.
   static Future<PaymentSettings> paymentSettings() async {

@@ -11,7 +11,7 @@
 export const BUSINESS = {
   name: 'Bencris',
   kind: 'Karinderya',
-  tagline: 'Kain na, tayo na.',
+  tagline: 'Kain mga sir!!',
   blurb:
     'Home-cooked Filipino food served fresh every day in Dasmariñas Bayan. ' +
     'Check what is actually cooking before you make the trip.',

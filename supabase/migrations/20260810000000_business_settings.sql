@@ -14,7 +14,7 @@
 create table public.business_settings (
   id            int primary key default 1 check (id = 1),
   name          text not null default 'Bencris',
-  tagline       text not null default 'Kain na, tayo na.',
+  tagline       text not null default 'Kain mga sir!!',
   blurb         text not null default '',
 
   address_line  text not null default '',
@@ -51,7 +51,7 @@ insert into public.business_settings
 values (
   1,
   'Bencris',
-  'Kain na, tayo na.',
+  'Kain mga sir!!',
   'Home-cooked Filipino food served fresh every day in Dasmariñas Bayan. Check what is actually cooking before you make the trip.',
   '[Stall number and building]',
   'Dasmariñas Bayan',
