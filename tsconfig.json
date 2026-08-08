@@ -1,0 +1,36 @@
+{
+  // Type checking only. Vite compiles the app and strips types WITHOUT checking
+  // them, so nothing here affects the build; this config exists purely so
+  // `npm run typecheck` can catch what the bundler silently lets through.
+  //
+  // Three runtime crashes shipped before this file existed, all the same shape:
+  // a component using a name nobody imported. The bundler is happy, the page
+  // loads, and it only explodes on the one path that renders that component.
+  //
+  // `strict` is off deliberately. Turning it on floods the output with hundreds
+  // of pre-existing nullability warnings and buries the errors that actually
+  // break the app. Tighten it later, in its own pass.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+
+    "noEmit": true,
+    "skipLibCheck": true,
+    // Vite resolves `./App.tsx` style imports itself, and the app already
+    // writes them that way, so the checker has to accept them too.
+    "allowImportingTsExtensions": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["src"]
+}

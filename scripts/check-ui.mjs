@@ -7,12 +7,32 @@
 // the staff tabs were never rendered and a missing component in the kitchen
 // board went unnoticed. Signing in is the point.
 //
+// The staff logins are real accounts the owner created, so they are not
+// hardcoded here. Put them in .env.local or pass them on the command line:
+//
+//   CHECK_ADMIN_EMAIL=... CHECK_ADMIN_PASSWORD=... \
+//   CHECK_CASHIER_EMAIL=... CHECK_CASHIER_PASSWORD=... node scripts/check-ui.mjs
+//
+// Without them the public pages are still checked and the staff screens are
+// skipped, which is more useful than failing outright.
+//
 // Run with `npm run dev` up:  node scripts/check-ui.mjs
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import os from 'node:os';
+import {
+  URL as BACKEND,
+  ADMIN_EMAIL,
+  ADMIN_PASSWORD,
+  CASHIER_EMAIL,
+  CASHIER_PASSWORD,
+} from './lib/backend.mjs';
 
 const APP = 'http://localhost:5173';
+const canSignIn = Boolean(ADMIN_EMAIL && ADMIN_PASSWORD && CASHIER_EMAIL && CASHIER_PASSWORD);
+
+console.log(`checking ${APP} against ${BACKEND}`);
+if (!canSignIn) console.log('no staff credentials set, so the staff screens are skipped\n');
 const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 const PORT = 9410;
 
@@ -90,35 +110,54 @@ for (const r of ['/', '/menu', '/about', '/faq', '/contact', '/refund', '/privac
   await step(r, () => go(r));
 }
 
-// ------------------------------------------------------------------ counter
-await step('/cashier sign-in', () => go('/cashier'));
-await step('/cashier counter', async () => {
-  await setVal('input[type=email]', 'cashier@bencris.local');
-  await setVal('input[type=password]', 'cashier123');
-  await click('sign in');
-  await sleep(4500);
-});
-await step('/cashier kitchen tab', async () => {
-  await click('kitchen');
-  await sleep(2200);
+// Loading a page is not the same as exercising it. A component that only
+// appears for a sold-out dish, or behind a category the first render does not
+// show, stays unmounted through a plain page load, so a missing import in it
+// looks like a pass. Two such crashes shipped before this loop existed.
+await step('/menu categories', async () => {
+  await go('/menu');
+  for (const name of ['Ulam', 'Silog', 'Merienda', 'Inumin']) {
+    await ev(`
+      (function(){const b=[...document.querySelectorAll('button')]
+        .find(x=>(x.innerText||'').trim()===${JSON.stringify(name)});
+       if(b) b.click(); return !!b;})()`);
+    await sleep(1400);
+  }
 });
 
-// -------------------------------------------------------------------- owner
-await step('/admin sign-in', async () => {
-  await ev(`Object.keys(localStorage).filter(k=>k.includes('auth-token')).forEach(k=>localStorage.removeItem(k)); 'ok'`);
-  await go('/admin');
-});
-await step('/admin dashboard', async () => {
-  await setVal('input[type=email]', 'admin@bencris.local');
-  await setVal('input[type=password]', 'admin123');
-  await click('sign in');
-  await sleep(5000);
-});
-for (const tab of ['Kitchen', 'Inventory', 'Sales', 'Menu', 'Payments', 'Promotions', 'Shop']) {
-  await step(`/admin ${tab}`, async () => {
-    await click(tab);
+// The sign-in screens themselves render for anyone, so they are always checked.
+await step('/cashier sign-in', () => go('/cashier'));
+await step('/admin sign-in', () => go('/admin'));
+
+if (canSignIn) {
+  // ---------------------------------------------------------------- counter
+  await step('/cashier counter', async () => {
+    await go('/cashier');
+    await setVal('input[type=email]', CASHIER_EMAIL);
+    await setVal('input[type=password]', CASHIER_PASSWORD);
+    await click('sign in');
+    await sleep(4500);
+  });
+  await step('/cashier kitchen tab', async () => {
+    await click('kitchen');
     await sleep(2200);
   });
+
+  // ------------------------------------------------------------------ owner
+  await step('/admin dashboard', async () => {
+    await ev(`Object.keys(localStorage).filter(k=>k.includes('auth-token')).forEach(k=>localStorage.removeItem(k)); 'ok'`);
+    await go('/admin');
+    await setVal('input[type=email]', ADMIN_EMAIL);
+    await setVal('input[type=password]', ADMIN_PASSWORD);
+    await click('sign in');
+    await sleep(5000);
+  });
+  for (const tab of ['Kitchen', 'Inventory', 'Sales', 'Menu', 'Payments', 'Promotions', 'Shop']) {
+    await step(`/admin ${tab}`, async () => {
+      await click(tab);
+      await sleep(2200);
+    });
+  }
 }
 
 console.log(failures === 0 ? '\nevery screen renders cleanly' : `\n${failures} screen(s) need attention`);

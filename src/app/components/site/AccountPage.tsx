@@ -187,10 +187,30 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
   const [claiming, setClaiming] = useState(false);
   const [claimed, setClaimed] = useState<string | null>(null);
 
+  const role = useAuthStore((s) => s.profile?.role);
+  const isStaff = role === 'admin' || role === 'cashier';
+
+  /**
+   * This page shows the signed-in customer's OWN orders, so the filter has to
+   * be written here explicitly.
+   *
+   * Leaving it off did not look broken, because the access rules still returned
+   * rows: an owner is staff and may read every order in the shop, and anybody
+   * at all may read orders from the last 24 hours, which is what lets a guest
+   * ticket follow itself. So "My orders" quietly listed other people's orders
+   * while the loyalty count, which does filter by customer, disagreed with it.
+   * Access rules decide what you MAY read, not what this screen MEANS.
+   */
   const loadOrders = async () => {
+    const uid = (await supabase.auth.getUser()).data.user?.id;
+    if (!uid) {
+      setOrders([]);
+      return;
+    }
     const { data } = await supabase
       .from('orders')
       .select('*')
+      .eq('customer_id', uid)
       .order('created_at', { ascending: false })
       .limit(30);
     setOrders((data ?? []) as Order[]);
@@ -255,8 +275,28 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
         </button>
       </header>
 
+      {/* A staff account is not a customer. create_ticket() deliberately leaves
+          customer_id empty when a signed-in member of staff checks out, so a
+          cashier testing the storefront does not quietly bank orders and
+          loyalty against their own account. Without saying so, this page looks
+          broken to the one person most likely to be looking at it: the owner. */}
+      {isStaff && (
+        <section className="rounded-3xl border border-diner-accent/30 bg-diner-accent/5 p-5">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <Gift size={16} className="text-diner-accent" /> This is a staff account
+          </h2>
+          <p className="mt-2 text-sm opacity-70 leading-relaxed">
+            Orders you place while signed in here are not attached to you, so this
+            page stays empty and no loyalty is counted. That is deliberate: it keeps
+            staff testing out of the shop's customer figures. To see the customer
+            experience, sign out and order as a guest, or use a separate customer
+            account.
+          </p>
+        </section>
+      )}
+
       {/* ------------------------------------------------------- loyalty */}
-      {loyalty && (
+      {!isStaff && loyalty && (
         <section className="rounded-3xl bg-diner-card border border-diner-ink/10 p-5">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
             <Gift size={16} className="text-diner-accent" /> Loyalty

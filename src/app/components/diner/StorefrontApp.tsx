@@ -23,14 +23,16 @@ import {
   History,
   Tag,
   Flame,
+  BellRing,
 } from 'lucide-react';
 import { useKarinderyaStore } from '../../store/karinderyaStore';
 import { usePaymentStore } from '../../store/paymentStore';
 import { useReviewStore } from '../../store/reviewStore';
+import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabase';
 import { Receipt } from '../Receipt';
 import { ImageWithFallback } from '../sigma/ImageWithFallback';
-import { Wordmark } from '../site/SiteChrome';
+import { Wordmark, Tagline } from '../site/SiteChrome';
 import {
   getFavourites,
   getHistory,
@@ -213,12 +215,7 @@ export function StorefrontApp() {
       {stage === 'menu' && (
         <>
           <section className="max-w-5xl mx-auto px-4 md:px-8 pt-8 pb-4">
-            <h1
-              style={{ fontFamily: 'var(--font-display)', fontWeight: 500, letterSpacing: '-0.03em', lineHeight: 0.95 }}
-              className="text-4xl md:text-6xl"
-            >
-              Kain na, <em className="text-diner-accent">tayo na.</em>
-            </h1>
+            <Tagline className="text-4xl md:text-6xl" />
             <p className="mt-3 opacity-70 max-w-lg text-sm md:text-base">
               Only what's cooking right now. If it isn't here, it's sold out, balik ka bukas.
             </p>
