@@ -2,23 +2,16 @@
 // loyalty and the recipe-driven inventory.
 //
 // Run with the local stack up:  node scripts/verify-accounts.mjs
-import { createClient } from '@supabase/supabase-js';
+import { URL, fresh, staff, announce, ADMIN_EMAIL, ADMIN_PASSWORD, CASHIER_EMAIL, CASHIER_PASSWORD } from './lib/backend.mjs';
 
-const URL = 'http://127.0.0.1:55321';
-const ANON = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+announce("Customer accounts, order status, ratings, loyalty and recipes");
+
 
 const log = (ok, msg) => console.log(`${ok ? '✅' : '❌'} ${msg}`);
 let failures = 0;
 const check = (cond, msg) => { if (!cond) failures++; log(cond, msg); };
 
-const fresh = () => createClient(URL, ANON, { auth: { persistSession: false } });
 
-const staff = async (email, password) => {
-  const sb = fresh();
-  const { error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) throw new Error(`${email}: ${error.message}`);
-  return sb;
-};
 
 // ---------------------------------------------------------------------------
 // 1. Guest ordering still works, with no account anywhere.
@@ -62,7 +55,7 @@ let myTicket = null;
 // 3. Staff move the order through the kitchen. The cashier can do this too.
 // ---------------------------------------------------------------------------
 {
-  const cashier = await staff('cashier@bencris.local', 'cashier123');
+  const cashier = await staff('cashier');
 
   const { error: earlyErr } = await cashier.rpc('advance_order_status', {
     p_ticket_code: myTicket, p_status: 'preparing',
@@ -132,7 +125,7 @@ let myTicket = null;
 // 6. Cooking a batch draws its ingredients out of the inventory.
 // ---------------------------------------------------------------------------
 {
-  const owner = await staff('admin@bencris.local', 'admin123');
+  const owner = await staff('admin');
 
   const before = await owner.from('inventory').select('stock').eq('id', 'pork').single();
   const batches = await owner.rpc('can_cook', { p_dish_id: 'sinigang' });
@@ -147,7 +140,7 @@ let myTicket = null;
     `cooking drew the pork down by the recipe amount (${before.data.stock} to ${after.data.stock})`,
   );
 
-  const cashier = await staff('cashier@bencris.local', 'cashier123');
+  const cashier = await staff('cashier');
   const { error: notOwner } = await cashier.rpc('cook_batch', { p_dish_id: 'sinigang', p_batches: 1 });
   check(!!notOwner, 'only the owner may record cooking');
 
@@ -159,7 +152,7 @@ let myTicket = null;
 // 7. The owner can change the shop's own details, and nobody else can.
 // ---------------------------------------------------------------------------
 {
-  const owner = await staff('admin@bencris.local', 'admin123');
+  const owner = await staff('admin');
   const anon = fresh();
 
   const original = (await anon.from('business_settings').select('phone').single()).data.phone;
@@ -184,8 +177,8 @@ let myTicket = null;
 // 8. Staff administration, including the guard against locking the shop out.
 // ---------------------------------------------------------------------------
 {
-  const owner = await staff('admin@bencris.local', 'admin123');
-  const cashier = await staff('cashier@bencris.local', 'cashier123');
+  const owner = await staff('admin');
+  const cashier = await staff('cashier');
 
   const { data: list, error: listErr } = await owner.rpc('list_staff');
   check(!listErr && list?.length >= 2, `the owner can see who has staff access (${list?.length} accounts)`);
@@ -193,7 +186,7 @@ let myTicket = null;
   const { error: cashierErr } = await cashier.rpc('list_staff');
   check(!!cashierErr, 'a cashier cannot see the staff list');
 
-  const { error: lastOwner } = await owner.rpc('revoke_staff', { target_email: 'admin@bencris.local' });
+  const { error: lastOwner } = await owner.rpc('revoke_staff', { target_email: ADMIN_EMAIL });
   check(!!lastOwner, 'the only owner cannot have their own access removed');
 
   const { error: reviewsErr, data: reviews } = await owner.rpc('all_reviews');

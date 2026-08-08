@@ -3,18 +3,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Backend selection, shared by both entrypoints.
 ///
-/// Defaults to the **hosted** project, so the real staff accounts created in
-/// the Supabase dashboard work with a plain `flutter run` — no flags, no demo
-/// credentials.
+/// The hosted Supabase project, the same one the web app uses. A plain
+/// `flutter run` or `flutter build apk` needs no flags and no local server.
 ///
-/// To develop against the local Docker stack instead:
-///
-///   flutter run -t lib/main_diner.dart \
-///     --dart-define=SUPABASE_URL=http://127.0.0.1:55321 \
-///     --dart-define=SUPABASE_ANON_KEY=sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH
-///
-/// Android emulator note: 127.0.0.1 inside the emulator is the emulator itself,
-/// so use http://10.0.2.2:55321 to reach Supabase running on the host machine.
+/// This is why a released APK works anywhere. The app talks straight to
+/// Supabase over HTTPS, so it never needs to reach the development laptop and
+/// is not tied to the Wi-Fi the laptop happens to be on. Overriding these with
+/// `--dart-define` to point at a machine on the LAN is what creates a
+/// same-network requirement, so do not ship a build made that way.
 ///
 /// The publishable key is safe to ship — it is designed to be public, and every
 /// rule that matters is enforced by RLS and SECURITY DEFINER functions.
