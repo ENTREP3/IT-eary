@@ -2,14 +2,13 @@
 // the diner's declared payment method, the private proof bucket and its RLS, the
 // three cashier outcomes, owner reconciliation, and the analytics regression
 // guard.
-import { createClient } from '@supabase/supabase-js';
+import { URL, ANON, fresh, staff, announce } from './lib/backend.mjs';
 
-const URL = 'http://127.0.0.1:55321';
-const ANON = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+announce("GCash payment proof upload and review");
+
 
 let failures = 0;
 const check = (cond, msg) => { if (!cond) failures++; console.log(`${cond ? '✅' : '❌'} ${msg}`); };
-const fresh = () => createClient(URL, ANON, { auth: { persistSession: false } });
 
 // Smallest valid PNG, stands in for a GCash screenshot.
 const PNG = Buffer.from(
@@ -17,11 +16,6 @@ const PNG = Buffer.from(
   'base64',
 );
 
-const staff = async (email, password) => {
-  const sb = fresh();
-  await sb.auth.signInWithPassword({ email, password });
-  return sb;
-};
 
 const anonCanRead = async (path) => {
   const { data, error } = await fresh().storage.from('payment-proofs').download(path);
@@ -127,7 +121,7 @@ let proofPath = `${ticket.ticket_code}/receipt.png`;
 // ---------------------------------------------------------------------------
 // 4. Cashier settles it after seeing the proof.
 // ---------------------------------------------------------------------------
-const cashier = await staff('cashier@bencris.local', 'cashier123');
+const cashier = await staff('cashier');
 {
   const { data, error } = await cashier.storage.from('payment-proofs').createSignedUrl(proofPath, 60);
   check(!error && data?.signedUrl, `cashier can sign a proof URL (${error?.message ?? 'ok'})`);
@@ -168,7 +162,7 @@ const cashier = await staff('cashier@bencris.local', 'cashier123');
   });
   check(!!cErr, 'cashier cannot resolve a flagged payment (owner only)');
 
-  const admin = await staff('admin@bencris.local', 'admin123');
+  const admin = await staff('admin');
   const { data: res, error: rErr } = await admin.rpc('resolve_payment_review', {
     p_ticket_code: t2.ticket_code, p_verified: true, p_note: 'Found in GCash history',
   });
@@ -194,7 +188,7 @@ const cashier = await staff('cashier@bencris.local', 'cashier123');
 //    `payment_method is not null` filter would count every unplaced order.
 // ---------------------------------------------------------------------------
 {
-  const admin = await staff('admin@bencris.local', 'admin123');
+  const admin = await staff('admin');
   await fresh().rpc('create_ticket', { p_items: [{ id: 'halohalo', qty: 1 }], p_payment_method: 'gcash' });
 
   const { data: mix } = await admin.rpc('admin_payment_mix', { p_days: 7 });

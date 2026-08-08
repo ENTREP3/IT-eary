@@ -8,45 +8,58 @@ phases that were requested.
 
 ## Phase 1 — Backend Setup & Authentication
 
-### Running Supabase locally (via Docker)
+### One backend: the hosted Supabase project
 
-Supabase runs as a set of Docker containers, orchestrated by the Supabase CLI.
-You do **not** need to write a `docker-compose.yml` — the CLI generates and
-manages the stack from [`supabase/config.toml`](supabase/config.toml).
+There is exactly **one** database for this system, the hosted Supabase project
+`tgazemsmihvodammodfu`. Nothing runs in Docker. Both the web app and the Flutter
+app talk to it directly over HTTPS, so what the owner sees in the dashboard is
+what the apps are actually using.
 
-**Prerequisites:** Docker Desktop running, Node.js installed.
+This matters more than it sounds. The project previously ran a full Supabase
+stack in Docker for development, and the two apps drifted onto different
+databases: rows added in the web app never appeared in the dashboard, and staff
+accounts created in the dashboard could not sign in. Keeping one backend removes
+that whole class of confusion, and it is the same backend that will be live once
+the site is deployed.
+
+**Prerequisites:** Docker Desktop. There is no local Postgres to install and no
+stack to boot — the containers run the two frontends, and both reach the hosted
+database over HTTPS.
 
 ```bash
-# 1. Install JS deps (includes @supabase/supabase-js)
-npm install
+# 1. Point the apps at the project. Dashboard -> Settings -> API gives you the
+#    project URL and the publishable key.
+cp .env.example .env.local   # then fill in the two values
 
-# 2. Start the Supabase stack (Postgres, Auth, Storage, Realtime, Studio…)
-npx supabase start
-
-# 3. Apply schema + seed data (also re-runs on demand)
-npx supabase db reset
-
-# 4. Copy env values into .env.local (already done for this machine)
-npx supabase status        # shows Project URL + publishable key
-cp .env.example .env.local # then paste the values
-
-# 5. Run the app
-npm run dev
+# 2. Run everything
+docker compose up -d
 ```
-
-> **Ports:** This project is pinned to **55321–55327** (API `55321`, DB `55322`,
-> Studio `55323`, Mailpit `55324`) so it can run alongside another local
-> Supabase project that already uses the default `54321–54327` range. See
-> `[api]`, `[db]`, `[studio]`, etc. in `config.toml`.
-
-Useful URLs once started:
 
 | Service | URL |
 | --- | --- |
-| API | http://127.0.0.1:55321 |
-| Studio (DB GUI) | http://127.0.0.1:55323 |
-| Mailpit (test emails) | http://127.0.0.1:55324 |
-| App (Vite) | http://localhost:5173 |
+| API | https://tgazemsmihvodammodfu.supabase.co |
+| Dashboard / SQL Editor | https://supabase.com/dashboard/project/tgazemsmihvodammodfu |
+| Web app | http://localhost:5173 |
+| Mobile apps | http://localhost:5180 |
+
+### Applying schema changes
+
+Migrations live in [`supabase/migrations/`](supabase/migrations) and remain the
+source of truth. `supabase db push` needs an account with privileges on the
+project; where that is not available, generate a paste-able script instead:
+
+```bash
+node scripts/build-hosted-catchup.mjs   # writes docs/hosted-catchup.sql
+```
+
+Run the result in the dashboard's **SQL Editor**, which executes as the database
+owner. Each generated script is wrapped in a single `begin`/`commit`, so a
+failure applies nothing, and it records the versions it applied in
+`supabase_migrations.schema_migrations` so a later `db push` does not repeat them.
+
+One-time setup for a fresh project is [`docs/hosted-setup.sql`](docs/hosted-setup.sql):
+it creates the first owner login, which the app itself cannot do because creating
+staff requires an existing owner.
 
 ### Auth model — staff only
 

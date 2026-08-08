@@ -4,16 +4,15 @@
 // Covers the ticket-based ordering model: anonymous diners create tickets via
 // create_ticket(), staff settle them via mark_ticket_paid(), and neither the
 // diner nor a tampered client can write to `orders` directly.
-import { createClient } from '@supabase/supabase-js';
+import { URL, fresh, staff, announce, ADMIN_EMAIL, ADMIN_PASSWORD, CASHIER_EMAIL, CASHIER_PASSWORD } from './lib/backend.mjs';
 
-const URL = 'http://127.0.0.1:55321';
-const ANON = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+announce("Ticket ordering, settlement and row-level security");
+
 
 const log = (ok, msg) => console.log(`${ok ? '✅' : '❌'} ${msg}`);
 let failures = 0;
 const check = (cond, msg) => { if (!cond) failures++; log(cond, msg); };
 
-const fresh = () => createClient(URL, ANON, { auth: { persistSession: false } });
 
 // ---------------------------------------------------------------------------
 // 1. Anonymous diners can create a ticket — no account involved.
@@ -99,7 +98,7 @@ let ticket = null;
 {
   const sb = fresh();
   const { data: signin, error } = await sb.auth.signInWithPassword({
-    email: 'cashier@bencris.local', password: 'cashier123',
+    email: CASHIER_EMAIL, password: CASHIER_PASSWORD,
   });
   check(!error, `cashier signIn (${error?.message ?? 'ok'})`);
 
@@ -135,7 +134,7 @@ let ticket = null;
 // ---------------------------------------------------------------------------
 {
   const sb = fresh();
-  await sb.auth.signInWithPassword({ email: 'cashier@bencris.local', password: 'cashier123' });
+  await sb.auth.signInWithPassword({ email: CASHIER_EMAIL, password: CASHIER_PASSWORD });
 
   const { data: exp } = await sb.from('expenses').select('id');
   check((exp ?? []).length === 0, 'cashier cannot read admin-only expenses');
@@ -153,7 +152,7 @@ let ticket = null;
 {
   const sb = fresh();
   const { data, error } = await sb.auth.signInWithPassword({
-    email: 'admin@bencris.local', password: 'admin123',
+    email: ADMIN_EMAIL, password: ADMIN_PASSWORD,
   });
   check(!error, `admin signIn (${error?.message ?? 'ok'})`);
 

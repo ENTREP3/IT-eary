@@ -1,7 +1,11 @@
 // Builds all three mobile apps as installable PWAs.
 //
-//   node build_pwas.mjs                       -> hosted Supabase (default)
-//   node build_pwas.mjs --local               -> local Docker stack
+//   node build_pwas.mjs
+//
+// The backend is the hosted Supabase project, the same one the React app and
+// the Android build talk to. There is deliberately no local option: a build
+// that quietly points at a second database is how the apps end up disagreeing
+// about what the data is.
 //
 // Flutter shares one web/ folder across every target, so all three builds would
 // otherwise ship the same manifest and be indistinguishable once installed —
@@ -10,23 +14,23 @@
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const LOCAL = process.argv.includes('--local');
+// Not `import.meta.dirname`: that landed in Node 20, and the Flutter image this
+// runs in inside Docker ships Node 18, where it is silently undefined. The
+// three web builds all succeeded and then the manifest rewrite crashed on it.
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-const backend = LOCAL
-  ? {
-      url: 'http://127.0.0.1:55321',
-      key: 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH',
-    }
-  : {
-      url: 'https://tgazemsmihvodammodfu.supabase.co',
-      key: 'sb_publishable_B3mvYfF2pMn2owzwGoHR8Q_Wx74GB7R',
-    };
+const backend = {
+  url: 'https://tgazemsmihvodammodfu.supabase.co',
+  key: 'sb_publishable_B3mvYfF2pMn2owzwGoHR8Q_Wx74GB7R',
+};
 
 const apps = [
   {
     target: 'lib/main_customer.dart',
     out: 'build/customer',
+    base: '/customer/',
     name: 'Bencris',
     short: 'Bencris',
     description: "Order from the karinderya's live menu and hold your ticket.",
@@ -36,6 +40,7 @@ const apps = [
   {
     target: 'lib/main_cashier.dart',
     out: 'build/cashier',
+    base: '/cashier/',
     name: 'Bencris Counter',
     short: 'Counter',
     description: 'Look up a ticket, check the payment, settle it.',
@@ -45,6 +50,7 @@ const apps = [
   {
     target: 'lib/main_admin.dart',
     out: 'build/admin',
+    base: '/admin/',
     name: 'Bencris Operations',
     short: 'Operations',
     description: 'Sales, kitchen queue, stock, menu and payments.',
@@ -60,14 +66,17 @@ for (const app of apps) {
       'flutter build web --release',
       `-t ${app.target}`,
       `--output ${app.out}`,
+      // The three are served side by side under one host, so each needs to know
+      // the folder it lives in or every asset request would resolve to the root.
+      `--base-href ${app.base}`,
       `--dart-define=SUPABASE_URL=${backend.url}`,
       `--dart-define=SUPABASE_ANON_KEY=${backend.key}`,
     ].join(' '),
-    { stdio: 'inherit', cwd: import.meta.dirname },
+    { stdio: 'inherit', cwd: HERE },
   );
 
   // Give each build its own identity so the three install side by side.
-  const manifestPath = path.join(import.meta.dirname, app.out, 'manifest.json');
+  const manifestPath = path.join(HERE, app.out, 'manifest.json');
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   Object.assign(manifest, {
     name: app.name,
@@ -80,7 +89,7 @@ for (const app of apps) {
   });
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
-  const title = path.join(import.meta.dirname, app.out, 'index.html');
+  const title = path.join(HERE, app.out, 'index.html');
   fs.writeFileSync(
     title,
     fs
@@ -94,4 +103,4 @@ for (const app of apps) {
   console.log(`   manifest + title set to "${app.name}"`);
 }
 
-console.log(`\nAll three built against ${LOCAL ? 'LOCAL' : 'HOSTED'} Supabase.`);
+console.log(`\nAll three built against ${backend.url}`);

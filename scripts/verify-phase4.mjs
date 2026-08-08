@@ -1,13 +1,12 @@
 // Verifies the Phase 4 additions: menu/inventory/expenses in Postgres, RLS,
 // and the order-fulfillment trigger (sold_today ++ / stock_count --).
-import { createClient } from '@supabase/supabase-js';
+import { URL, fresh, staff, announce, ADMIN_EMAIL, ADMIN_PASSWORD, CASHIER_EMAIL, CASHIER_PASSWORD } from './lib/backend.mjs';
 
-const URL = 'http://127.0.0.1:55321';
-const ANON = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+announce("Realtime menu and inventory");
+
 
 let failures = 0;
 const check = (cond, msg) => { if (!cond) failures++; console.log(`${cond ? '✅' : '❌'} ${msg}`); };
-const fresh = () => createClient(URL, ANON, { auth: { persistSession: false } });
 
 // --- public menu reads (anon) ---
 {
@@ -29,7 +28,7 @@ const fresh = () => createClient(URL, ANON, { auth: { persistSession: false } })
 const cust = fresh();
 
 const admin = fresh();
-await admin.auth.signInWithPassword({ email: 'admin@bencris.local', password: 'admin123' });
+await admin.auth.signInWithPassword({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
 // --- trigger: ticketing bumps dishes.sold_today ---
 {

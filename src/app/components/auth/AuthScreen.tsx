@@ -6,26 +6,21 @@ import type { UserRole } from '../../lib/types';
 
 type Area = 'admin' | 'cashier';
 
-const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '';
 /**
- * The seeded demo accounts only exist in the local Docker stack — `db push`
- * never runs seeds. Advertising them against a hosted project sends people
- * chasing credentials that were never created there.
+ * No credentials are printed on this screen, by design. Staff sign in with the
+ * account the owner created for them on the Staff access screen, which is a
+ * real row in auth.users. Anything shown here would be a second, weaker way in.
  */
-const isLocalBackend = /localhost|127\.0\.0\.1/.test(supabaseUrl);
-
 const COPY = {
   admin: {
     icon: ShieldCheck,
     title: 'Owner sign in',
     blurb: 'Owner access only. Cashier accounts cannot sign in here.',
-    demo: 'admin@bencris.local / admin123',
   },
   cashier: {
     icon: Store,
     title: 'Counter sign in',
     blurb: 'Sign in to take payments at the counter.',
-    demo: 'cashier@bencris.local / cashier123',
   },
 } as const;
 
@@ -119,11 +114,9 @@ export function AuthScreen({ area, allowed }: { area: Area; allowed: UserRole[] 
           </button>
         </form>
 
-        {/* Staff accounts only. Never surface backend hosts or keys here:
-            the counter has no use for them, and it is not ours to publish. */}
-        {isLocalBackend && (
-          <p className="text-[11px] opacity-40 mt-4 text-center">Staff account · {copy.demo}</p>
-        )}
+        <p className="text-[11px] opacity-40 mt-4 text-center">
+          No account? The owner creates staff logins on the Staff access screen.
+        </p>
       </motion.div>
     </div>
   );
