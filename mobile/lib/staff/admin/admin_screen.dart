@@ -208,9 +208,9 @@ class _AdminScreenState extends State<AdminScreen> {
                           fontWeight: FontWeight.w800,
                           color: Tokens.staffInk),
                       children: [
-                        TextSpan(text: 'IT'),
+                        TextSpan(text: 'Ben'),
                         TextSpan(
-                          text: '-eary',
+                          text: 'cris',
                           style: TextStyle(
                               fontStyle: FontStyle.italic,
                               color: Tokens.staffAccent),

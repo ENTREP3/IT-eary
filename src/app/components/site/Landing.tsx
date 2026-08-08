@@ -5,7 +5,7 @@ import { ArrowRight, Clock, MapPin, Phone, ShieldCheck, Utensils } from 'lucide-
 import { useKarinderyaStore } from '../../store/karinderyaStore';
 import { ImageWithFallback } from '../sigma/ImageWithFallback';
 import { useBusinessStore, addressOf } from '../../store/businessStore';
-import { SiteHeader, SiteFooter, OpenPill } from './SiteChrome';
+import { SiteHeader, SiteFooter, OpenPill, Tagline } from './SiteChrome';
 
 /**
  * The home page a stranger lands on.
@@ -34,17 +34,7 @@ export function Landing() {
           transition={{ duration: 0.6 }}
         >
           <OpenPill />
-          <h1
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 500,
-              letterSpacing: '-0.03em',
-              lineHeight: 0.95,
-            }}
-            className="mt-5 text-5xl md:text-7xl"
-          >
-            Kain na, <em className="text-diner-accent">tayo na.</em>
-          </h1>
+          <Tagline className="mt-5 text-5xl md:text-7xl" />
           <p className="mt-5 max-w-xl opacity-75 leading-relaxed">{biz.blurb}</p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">

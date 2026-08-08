@@ -23,6 +23,10 @@ class _MenuScreenState extends State<MenuScreen> {
   bool _loading = true;
   String? _error;
 
+  /// Null until the shop's settings arrive. The hero line stays blank rather
+  /// than showing a bundled guess that the database then contradicts.
+  String? _tagline;
+
   @override
   void initState() {
     super.initState();
@@ -37,10 +41,12 @@ class _MenuScreenState extends State<MenuScreen> {
     try {
       final dishes = await Api.menu();
       final cats = await Api.categories();
+      final tagline = await Api.tagline();
       if (!mounted) return;
       setState(() {
         _dishes = dishes;
         _categories = cats;
+        _tagline = tagline;
         // Open on a category that actually has food today — landing on one
         // where everything is sold out reads as though the shop is closed.
         _category ??= cats.isEmpty
@@ -216,9 +222,9 @@ class _MenuScreenState extends State<MenuScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Kain na, tayo na.',
-                  style: TextStyle(
+                Text(
+                  _tagline ?? '',
+                  style: const TextStyle(
                     fontSize: 34,
                     fontWeight: FontWeight.w600,
                     height: 1.05,
@@ -472,9 +478,9 @@ class _Wordmark extends StatelessWidget {
           color: Palette.ink,
         ),
         children: [
-          TextSpan(text: 'IT'),
+          TextSpan(text: 'Ben'),
           TextSpan(
-            text: '-eary',
+            text: 'cris',
             style: TextStyle(fontStyle: FontStyle.italic, color: Palette.red),
           ),
         ],

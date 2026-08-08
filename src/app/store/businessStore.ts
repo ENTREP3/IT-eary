@@ -23,6 +23,8 @@ export type BusinessProfile = {
   phone: string;
   email: string;
   hours: Hours[];
+  /** Address the printed QR code points at. Empty until the owner sets it. */
+  app_download_url: string;
 };
 
 const FALLBACK: BusinessProfile = {
@@ -36,7 +38,43 @@ const FALLBACK: BusinessProfile = {
   phone: BUSINESS.contact.phone,
   email: '',
   hours: BUSINESS.hours as unknown as Hours[],
+  app_download_url: '',
 };
+
+/**
+ * The last profile this device saw, kept so the first paint is already right.
+ *
+ * The row takes a few hundred milliseconds to arrive from Supabase. Painting
+ * the bundled constants in the meantime showed a tagline the shop had changed
+ * and then swapped it, which is a visible flicker on every refresh; waiting
+ * instead left the largest text on the page blank for the whole round trip.
+ * Remembering the answer avoids both, because on every visit after the first
+ * the value painted immediately is the value the network is about to confirm.
+ */
+const CACHE_KEY = 'bencris.business.v1';
+
+function cached(): BusinessProfile {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return FALLBACK;
+    const parsed = JSON.parse(raw) as Partial<BusinessProfile>;
+    return {
+      ...FALLBACK,
+      ...parsed,
+      hours: Array.isArray(parsed.hours) && parsed.hours.length ? parsed.hours : FALLBACK.hours,
+    };
+  } catch {
+    return FALLBACK;
+  }
+}
+
+function remember(profile: BusinessProfile) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(profile));
+  } catch {
+    // A full or blocked localStorage costs us the head start, nothing more.
+  }
+}
 
 type State = {
   profile: BusinessProfile;
@@ -46,7 +84,7 @@ type State = {
 };
 
 export const useBusinessStore = create<State>((set, get) => ({
-  profile: FALLBACK,
+  profile: cached(),
   loaded: false,
 
   async load() {
@@ -55,14 +93,13 @@ export const useBusinessStore = create<State>((set, get) => ({
       set({ loaded: true });
       return;
     }
-    set({
-      loaded: true,
-      profile: {
-        ...FALLBACK,
-        ...data,
-        hours: Array.isArray(data.hours) && data.hours.length ? (data.hours as Hours[]) : FALLBACK.hours,
-      },
-    });
+    const profile: BusinessProfile = {
+      ...FALLBACK,
+      ...data,
+      hours: Array.isArray(data.hours) && data.hours.length ? (data.hours as Hours[]) : FALLBACK.hours,
+    };
+    remember(profile);
+    set({ loaded: true, profile });
   },
 
   async save(patch) {

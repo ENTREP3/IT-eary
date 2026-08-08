@@ -29,6 +29,42 @@ export function Wordmark({ size = 'md' }: { size?: 'md' | 'lg' }) {
   );
 }
 
+/**
+ * The hero line, read from the shop's own settings rather than hardcoded.
+ *
+ * It used to be typed straight into both hero headings, which meant the owner
+ * could edit the tagline on the Shop screen and watch the two biggest pieces of
+ * text on the site ignore them. The last word is emphasised for rhythm, so the
+ * styling survives whatever they write.
+ *
+ * Painted immediately, never held back for the network. Waiting for the row to
+ * arrive left the largest text on the page blank for the whole round trip,
+ * which is far worse than the flicker it was meant to prevent. The store hands
+ * over the last profile this device saw, so the first paint is already the
+ * right words and there is nothing to wait for.
+ */
+export function Tagline({ className = '' }: { className?: string }) {
+  const tagline = useBusinessStore((s) => s.profile.tagline);
+
+  const words = tagline.trim().split(/\s+/);
+  const last = words.pop() ?? '';
+
+  return (
+    <h1
+      style={{
+        fontFamily: 'var(--font-display)',
+        fontWeight: 500,
+        letterSpacing: '-0.03em',
+        lineHeight: 0.95,
+      }}
+      className={className}
+    >
+      {words.join(' ')}{words.length > 0 ? ' ' : ''}
+      <em className="text-diner-accent">{last}</em>
+    </h1>
+  );
+}
+
 export function OpenPill() {
   const hours = useBusinessStore((s) => s.profile.hours);
   const open = isOpenNow(hours);
