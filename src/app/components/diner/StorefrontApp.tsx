@@ -813,6 +813,7 @@ function CartSheet({
   onPlaced: (o: Order) => void;
 }) {
   const settings = usePaymentStore((s) => s.settings);
+  const user = useAuthStore((s) => s.user);
   const [name, setName] = useState('');
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [busy, setBusy] = useState(false);
@@ -952,26 +953,41 @@ function CartSheet({
             />
           </label>
 
-          <div className="pt-2">
-            <div className="text-[11px] tracking-[0.2em] uppercase opacity-55 mb-2">
-              When will you collect?
+          {/* Booking a time for later is only offered to a signed-in diner, and
+              that is not an arbitrary gate. A scheduled order needs somebody the
+              kitchen can reach if the dish sells out or the shop closes early,
+              and it needs a place for the diner to watch it. A guest ticket has
+              neither: it is a code on a phone that may be closed by then. */}
+          {user ? (
+            <div className="pt-2">
+              <div className="text-[11px] tracking-[0.2em] uppercase opacity-55 mb-2">
+                When will you collect?
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {PICKUP_CHOICES.map((c) => (
+                  <button
+                    key={c.minutes ?? 'asap'}
+                    onClick={() => setPickup(c.minutes)}
+                    className={`px-3.5 py-2 rounded-full text-sm border transition-colors ${
+                      pickup === c.minutes
+                        ? 'bg-diner-ink text-diner-ground border-diner-ink'
+                        : 'bg-diner-card border-diner-ink/15 hover:border-diner-ink/40'
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              {PICKUP_CHOICES.map((c) => (
-                <button
-                  key={c.minutes ?? 'asap'}
-                  onClick={() => setPickup(c.minutes)}
-                  className={`px-3.5 py-2 rounded-full text-sm border transition-colors ${
-                    pickup === c.minutes
-                      ? 'bg-diner-ink text-diner-ground border-diner-ink'
-                      : 'bg-diner-card border-diner-ink/15 hover:border-diner-ink/40'
-                  }`}
-                >
-                  {c.label}
-                </button>
-              ))}
+          ) : (
+            <div className="pt-2 text-sm opacity-70">
+              Cooking starts as soon as you have paid.{' '}
+              <Link to="/account" className="text-diner-accent hover:underline">
+                Sign in
+              </Link>{' '}
+              if you would rather collect at a set time.
             </div>
-          </div>
+          )}
 
           <div className="pt-2">
             <div className="text-[11px] tracking-[0.2em] uppercase opacity-55 mb-2">
