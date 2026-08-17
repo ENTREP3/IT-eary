@@ -44,6 +44,28 @@ services:
       target: serve
     ports:
       - "5180:80"
+    volumes:
+      # Whatever the apk service last produced. Empty until it is run, and the
+      # download link simply 404s until then, which is the right trade while the
+      # system is not deployed.
+      - apk-files:/usr/share/nginx/html/apk:ro
+
+  # The Android build, deliberately behind a profile.
+  #
+  # It adds roughly fifteen minutes to every rebuild and produces something
+  # nobody can install until the system is actually deployed, so it is opt-in:
+  #
+  #   docker compose --profile apk run --rm --build apk
+  #
+  # Everything else stays a fast rebuild.
+  apk:
+    profiles: ["apk"]
+    build:
+      context: ./mobile
+      target: apk
+    volumes:
+      - apk-files:/dist
+    command: ["sh", "-c", "cp /out/bencris.apk /dist/bencris.apk && echo 'apk published to the mobile container'"]
 
   # The Laravel API. Reads the same hosted Postgres the other two use, and
   # verifies the tokens Supabase already issued rather than running a login of
@@ -69,3 +91,8 @@ services:
       target: production
     ports:
       - "8080:80"
+
+volumes:
+  # Holds the built APK so the mobile container can serve it without the site
+  # build ever depending on the Android toolchain.
+  apk-files:

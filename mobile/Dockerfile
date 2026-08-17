@@ -54,7 +54,6 @@ FROM nginx:alpine AS serve
 COPY --from=build /app/build/customer /usr/share/nginx/html/customer
 COPY --from=build /app/build/cashier  /usr/share/nginx/html/cashier
 COPY --from=build /app/build/admin    /usr/share/nginx/html/admin
-COPY --from=apk   /out/bencris.apk    /usr/share/nginx/html/download/bencris.apk
 COPY docker/index.html    /usr/share/nginx/html/index.html
 COPY docker/download.html /usr/share/nginx/html/download/index.html
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
