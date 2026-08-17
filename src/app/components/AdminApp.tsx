@@ -24,6 +24,7 @@ import {
   ShoppingBag,
   X,
   ChefHat,
+  Star,
   Store,
   Clock,
   Menu,
@@ -68,6 +69,7 @@ import { RecipePanel } from './admin/RecipePanel';
 import { ShopPanel } from './admin/ShopPanel';
 import { PriceSuggestions } from './admin/PriceSuggestions';
 import { CogsPanel } from './admin/CogsPanel';
+import { ConfirmProvider, useConfirm } from './shared/useConfirm';
 import {
   Dialog,
   DialogContent,
@@ -107,7 +109,19 @@ const dialogSurface = 'bg-[#0a0d0a] border-[#e8dfc8]/15 text-[#e8dfc8] sm:max-w-
 const fieldCls =
   'bg-[#0f1410] border-[#e8dfc8]/15 text-[#e8dfc8] placeholder:text-[#e8dfc8]/40 focus-visible:ring-[#e8a84a]/40';
 
+/**
+ * Wrapped so every panel below can confirm a destructive action without each
+ * one mounting its own dialog.
+ */
 export function AdminApp() {
+  return (
+    <ConfirmProvider>
+      <AdminDashboard />
+    </ConfirmProvider>
+  );
+}
+
+function AdminDashboard() {
   const [tab, setTab] = useState<Tab>('dashboard');
   const [query, setQuery] = useState('');
   const [navOpen, setNavOpen] = useState(false);
@@ -782,6 +796,9 @@ function InventoryPanel() {
   // Which ingredient is having a delivery recorded, and how much arrived.
   const [receiving, setReceiving] = useState<string | null>(null);
   const [received, setReceived] = useState('');
+  // Blank means the price has not changed since last time, which is the common
+  // case and should not force the owner to retype a number they already gave.
+  const [receivedCost, setReceivedCost] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [receiveError, setReceiveError] = useState<string | null>(null);
@@ -794,6 +811,7 @@ function InventoryPanel() {
   const [stock, setStock] = useState('');
   const [reorderAt, setReorderAt] = useState('');
   const [parLevel, setParLevel] = useState('');
+  const [costPerUnit, setCostPerUnit] = useState('');
   const [lastDelivery, setLastDelivery] = useState('');
 
   const openNew = () => {
@@ -803,6 +821,7 @@ function InventoryPanel() {
     setStock('');
     setReorderAt('');
     setParLevel('');
+    setCostPerUnit('');
     setLastDelivery('');
     setOpen(true);
   };
@@ -814,6 +833,7 @@ function InventoryPanel() {
     setStock(String(i.stock));
     setReorderAt(String(i.reorderAt));
     setParLevel(String(i.parLevel ?? 0));
+    setCostPerUnit(i.costPerUnit ? String(i.costPerUnit) : '');
     setLastDelivery(i.lastDelivery);
     setOpen(true);
   };
@@ -833,6 +853,7 @@ function InventoryPanel() {
       stock: Number(stock) || 0,
       reorderAt: Number(reorderAt) || 0,
       parLevel: Number(parLevel) || 0,
+      costPerUnit: Number(costPerUnit) || 0,
       lastDelivery: lastDelivery.trim() || '—',
     };
     try {
@@ -938,6 +959,26 @@ function InventoryPanel() {
                     <span className="opacity-70">Set a full stock to track this</span>
                   )}
                 </div>
+
+                {/* An uncosted ingredient is not a small gap: one of them makes
+                    every dish containing it uncostable, so the margin warnings
+                    go quiet without saying why. Better to name it here. */}
+                <div className="mt-1 text-[10px]">
+                  {i.costPerUnit > 0 ? (
+                    <span className="opacity-55">
+                      ₱{i.costPerUnit.toFixed(2)} per {i.unit}
+                      <span className="opacity-70"> · stock worth ₱{(i.costPerUnit * i.stock).toFixed(2)}</span>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => openEdit(i)}
+                      className="text-[#e8a84a]/80 hover:text-[#e8a84a] underline underline-offset-2"
+                    >
+                      No price set. Dishes using this cannot be costed.
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="md:col-span-2 text-sm opacity-60">
                 <span className="md:hidden opacity-70">Last delivery · </span>
@@ -991,6 +1032,28 @@ function InventoryPanel() {
                     This is added to your stock, and today's date is recorded for you.
                   </p>
                 </div>
+
+                {/* Asking the price here is what keeps the costing honest. It
+                    is the one moment the owner definitely knows the number,
+                    because they have just paid it. Left blank it keeps the last
+                    price, so an unchanged delivery is two taps. */}
+                <div>
+                  <Label className="text-[#e8dfc8]/70">
+                    Price per {item?.unit ?? 'unit'} (leave blank if unchanged)
+                  </Label>
+                  <Input
+                    type="number"
+                    className={fieldCls}
+                    value={receivedCost}
+                    onChange={(e) => setReceivedCost(e.target.value)}
+                    placeholder={item?.costPerUnit ? String(item.costPerUnit) : '350'}
+                  />
+                  <p className="text-[10px] opacity-45 mt-1">
+                    {Number(received) > 0 && Number(receivedCost || item?.costPerUnit || 0) > 0
+                      ? `Records a ₱${(Number(received) * Number(receivedCost || item?.costPerUnit || 0)).toFixed(2)} expense for you, and updates the cost of every dish using this.`
+                      : 'The expense is recorded for you, so you never type a delivery twice.'}
+                  </p>
+                </div>
               </div>
             );
           })()}
@@ -1013,6 +1076,9 @@ function InventoryPanel() {
                 const { error } = await supabase.rpc('receive_stock', {
                   p_inventory_id: receiving,
                   p_quantity: Number(received),
+                  // Null, not 0. Zero would wipe the recorded price; null means
+                  // "unchanged", which is what an empty field actually says.
+                  p_unit_cost: receivedCost.trim() === '' ? null : Number(receivedCost),
                 });
                 if (error) {
                   setReceiveError(error.message);
@@ -1020,6 +1086,7 @@ function InventoryPanel() {
                 }
                 setReceiving(null);
                 setReceived('');
+                setReceivedCost('');
                 loadAll();
               }}
               className="px-4 py-2 rounded-lg bg-[#8cc07a] text-[#0a0d0a] font-medium disabled:opacity-40"
@@ -1080,6 +1147,26 @@ function InventoryPanel() {
                   How much of this you should have. The screen then shows your count out of it.
                 </p>
               </div>
+            </div>
+
+            {/* Everything the dish costing rests on. Without a price here the
+                system can count the pork but not tell you whether the sinigang
+                still makes money, so the margin and the cost of goods sold both
+                stay blank rather than guess. */}
+            <div>
+              <Label className="text-[#e8dfc8]/70">Price per {unit || 'unit'}</Label>
+              <Input
+                type="number"
+                className={fieldCls}
+                value={costPerUnit}
+                onChange={(e) => setCostPerUnit(e.target.value)}
+                placeholder="350"
+              />
+              <p className="text-[10px] opacity-45 mt-1">
+                What you pay for one {unit || 'unit'}. This is what lets the system
+                work out the cost of each dish and warn you when a price rise has
+                eaten your margin.
+              </p>
             </div>
           </div>
           <DialogFooter>
@@ -1350,6 +1437,7 @@ function AnalyticsPanel({ orders }: { orders: Order[] }) {
 const EXPENSE_CATEGORIES = ['Supplies', 'Utilities', 'Labor', 'Rent', 'Other'];
 
 function ExpensesManager() {
+  const confirm = useConfirm();
   const expenses = useExpensesStore((s) => s.expenses);
   const add = useExpensesStore((s) => s.add);
   const remove = useExpensesStore((s) => s.remove);
@@ -1451,7 +1539,15 @@ function ExpensesManager() {
               <span className="text-[10px] opacity-40">{e.spent_on}</span>
               <span style={{ fontFamily: 'var(--font-display)' }}>₱{Number(e.amount).toLocaleString()}</span>
               <button
-                onClick={() => remove(e.id)}
+                onClick={() =>
+                  confirm({
+                    title: 'Delete this expense?',
+                    body: 'It stops counting against your profit for that day.',
+                    action: 'Delete expense',
+                    danger: true,
+                    onConfirm: () => remove(e.id),
+                  })
+                }
                 className="p-1.5 rounded-md hover:bg-[#c8442a]/20 text-[#e87a5c]"
                 aria-label="Delete expense"
               >
@@ -1687,6 +1783,7 @@ const emptyDish: Omit<Dish, 'id'> = {
 };
 
 function MenuControl() {
+  const confirm = useConfirm();
   const categories = useKarinderyaStore((s) => s.categories);
   const dishes = useKarinderyaStore((s) => s.dishes);
   const addCategory = useKarinderyaStore((s) => s.addCategory);
@@ -1791,7 +1888,15 @@ function MenuControl() {
                 <button
                   type="button"
                   className="p-0.5 rounded-full hover:bg-[#e8dfc8]/10"
-                  onClick={() => removeCategory(c)}
+                  onClick={() =>
+                    confirm({
+                      title: 'Delete the ' + c + ' category?',
+                      body: 'Dishes in it stay on the menu but lose their grouping.',
+                      action: 'Delete category',
+                      danger: true,
+                      onConfirm: () => removeCategory(c),
+                    })
+                  }
                   aria-label={`Remove ${c}`}
                 >
                   <Trash2 size={12} />
@@ -1846,6 +1951,28 @@ function MenuControl() {
                     }`}
                   >
                     <ChefHat size={13} /> Recipe
+                  </button>
+
+                  {/* The one lever the owner has over the front page. The
+                      automatic badges only ever promote what already sells, so
+                      a new dish could never be highlighted no matter how good
+                      it is. This is how the owner says "try this one". */}
+                  <button
+                    type="button"
+                    onClick={() => updateDish(d.id, { featured: !d.featured })}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border transition-colors ${
+                      d.featured
+                        ? 'border-[#e8a84a]/50 bg-[#e8a84a]/15 text-[#e8a84a]'
+                        : 'border-[#e8dfc8]/15 text-[#e8dfc8]/60 hover:border-[#e8dfc8]/35'
+                    }`}
+                    title={
+                      d.featured
+                        ? 'Showing on the front page'
+                        : 'Show this off on the front page'
+                    }
+                  >
+                    <Star size={13} className={d.featured ? 'fill-[#e8a84a]' : ''} />
+                    {d.featured ? 'Featured' : 'Feature'}
                   </button>
                 </div>
               </div>
