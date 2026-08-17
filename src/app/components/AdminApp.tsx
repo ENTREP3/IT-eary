@@ -66,6 +66,8 @@ import { PromotionsPanel } from './admin/PromotionsPanel';
 import { KitchenBoard } from './shared/KitchenBoard';
 import { RecipePanel } from './admin/RecipePanel';
 import { ShopPanel } from './admin/ShopPanel';
+import { PriceSuggestions } from './admin/PriceSuggestions';
+import { CogsPanel } from './admin/CogsPanel';
 import {
   Dialog,
   DialogContent,
@@ -1211,6 +1213,16 @@ function AnalyticsPanel({ orders }: { orders: Order[] }) {
 
   return (
     <div className="space-y-6">
+      {/* Sits above the figures on purpose. A margin quietly eaten by a supplier
+          price rise is the thing most worth acting on, and it is invisible in a
+          sales chart, which only ever shows money coming in. */}
+      <PriceSuggestions />
+
+      {/* Sales minus what was bought is cash flow. Sales minus what was sold is
+          profit. Both are shown, because the owner needs the first to survive
+          the week and the second to know whether the menu is priced right. */}
+      <CogsPanel />
+
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 flex-1 w-full">
           <Stat label="Today's gross" value={`₱${todayGross.toLocaleString()}`} />
