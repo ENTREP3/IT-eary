@@ -7,6 +7,8 @@ export type Dish = {
   description: string;
   image: string;
   available: boolean;
+  /** Owner chose to show this off on the storefront. */
+  featured?: boolean;
   soldToday: number;
   /** NULL/undefined = unlimited; when set, the order trigger decrements it. */
   stockCount?: number | null;
@@ -122,21 +124,23 @@ export type InventoryItem = {
   reorderAt: number;
   /** How much the kitchen should have for a normal day; the shortfall is what to buy. */
   parLevel: number;
+  /** Buying price for one unit. 0 means nobody has costed it yet. */
+  costPerUnit: number;
   lastDelivery: string;
   lastReceivedAt?: string | null;
 };
 
 export const INVENTORY: InventoryItem[] = [
-  { id: 'rice', name: 'Bigas (Rice)', unit: 'kg', stock: 48, reorderAt: 20, parLevel: 80, lastDelivery: 'Apr 20' },
-  { id: 'chicken', name: 'Manok (Chicken)', unit: 'kg', stock: 6.2, reorderAt: 8, parLevel: 32, lastDelivery: 'Apr 22' },
-  { id: 'pork', name: 'Baboy (Pork)', unit: 'kg', stock: 14.5, reorderAt: 10, parLevel: 40, lastDelivery: 'Apr 22' },
-  { id: 'goat', name: 'Kambing (Goat)', unit: 'kg', stock: 0, reorderAt: 5, parLevel: 20, lastDelivery: 'Apr 14' },
-  { id: 'soy', name: 'Toyo (Soy Sauce)', unit: 'L', stock: 3.1, reorderAt: 2, parLevel: 8, lastDelivery: 'Apr 18' },
-  { id: 'vinegar', name: 'Suka (Vinegar)', unit: 'L', stock: 1.4, reorderAt: 2, parLevel: 8, lastDelivery: 'Apr 10' },
-  { id: 'garlic', name: 'Bawang (Garlic)', unit: 'kg', stock: 2.8, reorderAt: 1.5, parLevel: 6, lastDelivery: 'Apr 21' },
-  { id: 'onion', name: 'Sibuyas (Onion)', unit: 'kg', stock: 3.6, reorderAt: 2, parLevel: 8, lastDelivery: 'Apr 21' },
-  { id: 'kangkong', name: 'Kangkong', unit: 'bundle', stock: 4, reorderAt: 6, parLevel: 24, lastDelivery: 'Apr 22' },
-  { id: 'eggs', name: 'Itlog (Eggs)', unit: 'tray', stock: 2.5, reorderAt: 3, parLevel: 12, lastDelivery: 'Apr 20' },
+  { id: 'rice', name: 'Bigas (Rice)', unit: 'kg', stock: 48, reorderAt: 20, parLevel: 80, costPerUnit: 0, lastDelivery: 'Apr 20' },
+  { id: 'chicken', name: 'Manok (Chicken)', unit: 'kg', stock: 6.2, reorderAt: 8, parLevel: 32, costPerUnit: 0, lastDelivery: 'Apr 22' },
+  { id: 'pork', name: 'Baboy (Pork)', unit: 'kg', stock: 14.5, reorderAt: 10, parLevel: 40, costPerUnit: 0, lastDelivery: 'Apr 22' },
+  { id: 'goat', name: 'Kambing (Goat)', unit: 'kg', stock: 0, reorderAt: 5, parLevel: 20, costPerUnit: 0, lastDelivery: 'Apr 14' },
+  { id: 'soy', name: 'Toyo (Soy Sauce)', unit: 'L', stock: 3.1, reorderAt: 2, parLevel: 8, costPerUnit: 0, lastDelivery: 'Apr 18' },
+  { id: 'vinegar', name: 'Suka (Vinegar)', unit: 'L', stock: 1.4, reorderAt: 2, parLevel: 8, costPerUnit: 0, lastDelivery: 'Apr 10' },
+  { id: 'garlic', name: 'Bawang (Garlic)', unit: 'kg', stock: 2.8, reorderAt: 1.5, parLevel: 6, costPerUnit: 0, lastDelivery: 'Apr 21' },
+  { id: 'onion', name: 'Sibuyas (Onion)', unit: 'kg', stock: 3.6, reorderAt: 2, parLevel: 8, costPerUnit: 0, lastDelivery: 'Apr 21' },
+  { id: 'kangkong', name: 'Kangkong', unit: 'bundle', stock: 4, reorderAt: 6, parLevel: 24, costPerUnit: 0, lastDelivery: 'Apr 22' },
+  { id: 'eggs', name: 'Itlog (Eggs)', unit: 'tray', stock: 2.5, reorderAt: 3, parLevel: 12, costPerUnit: 0, lastDelivery: 'Apr 20' },
 ];
 
 export const SALES_7D = [

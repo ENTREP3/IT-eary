@@ -8,6 +8,7 @@ function nextId(prefix: string) {
 
 // ---- row <-> app-model mappers (DB is snake_case, app is camelCase) ---------
 type DishRow = {
+  featured: boolean;
   id: string; name: string; tagalog: string; price: number; category: string;
   description: string; image: string; available: boolean; sold_today: number;
   stock_count: number | null;
@@ -15,16 +16,19 @@ type DishRow = {
 type InvRow = {
   id: string; name: string; unit: string; stock: number; reorder_at: number;
   par_level: number; last_delivery: string; last_received_at: string | null;
+  cost_per_unit: number;
 };
 
 const toDish = (r: DishRow): Dish => ({
   id: r.id, name: r.name, tagalog: r.tagalog, price: Number(r.price),
   category: r.category, description: r.description, image: r.image,
   available: r.available, soldToday: r.sold_today, stockCount: r.stock_count,
+  featured: r.featured ?? false,
 });
 const toInv = (r: InvRow): InventoryItem => ({
   id: r.id, name: r.name, unit: r.unit, stock: Number(r.stock),
   reorderAt: Number(r.reorder_at), parLevel: Number(r.par_level ?? 0),
+  costPerUnit: Number(r.cost_per_unit ?? 0),
   lastDelivery: r.last_delivery, lastReceivedAt: r.last_received_at,
 });
 
@@ -39,6 +43,7 @@ function dishPatchToRow(patch: Partial<Dish>) {
   if (patch.available !== undefined) row.available = patch.available;
   if (patch.soldToday !== undefined) row.sold_today = patch.soldToday;
   if (patch.stockCount !== undefined) row.stock_count = patch.stockCount;
+  if (patch.featured !== undefined) row.featured = patch.featured;
   return row;
 }
 
@@ -145,6 +150,7 @@ export const useKarinderyaStore = create<KarinderyaState>((set, get) => ({
       available: partial.available ?? true,
       sold_today: partial.soldToday ?? 0,
       stock_count: partial.stockCount ?? null,
+      featured: partial.featured ?? false,
     };
     const { data, error } = await supabase.from('dishes').insert(row).select('*').single();
     if (error) throw error;
@@ -178,6 +184,7 @@ export const useKarinderyaStore = create<KarinderyaState>((set, get) => ({
       stock: partial.stock,
       reorder_at: partial.reorderAt ?? 0,
       par_level: partial.parLevel ?? 0,
+      cost_per_unit: partial.costPerUnit ?? 0,
       last_delivery: partial.lastDelivery,
     };
     const { data, error } = await supabase.from('inventory').insert(row).select('*').single();
@@ -193,6 +200,7 @@ export const useKarinderyaStore = create<KarinderyaState>((set, get) => ({
     if (patch.stock !== undefined) row.stock = patch.stock;
     if (patch.reorderAt !== undefined) row.reorder_at = patch.reorderAt;
     if (patch.parLevel !== undefined) row.par_level = patch.parLevel;
+    if (patch.costPerUnit !== undefined) row.cost_per_unit = patch.costPerUnit;
     if (patch.lastDelivery !== undefined) row.last_delivery = patch.lastDelivery;
     const { data, error } = await supabase.from('inventory').update(row).eq('id', id).select('*').single();
     if (error) throw error;

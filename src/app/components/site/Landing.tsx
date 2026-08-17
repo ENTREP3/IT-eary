@@ -20,7 +20,22 @@ export function Landing() {
   const loaded = useKarinderyaStore((s) => s.loaded);
 
   const cookingNow = dishes.filter((d) => d.available);
-  const preview = cookingNow.slice(0, 3);
+
+  /**
+   * The owner's own picks come first, then whatever else is cooking.
+   *
+   * Left to itself the front page could only ever promote what already sold
+   * well, so a new dish was invisible by definition however good it was. The
+   * owner knows things the figures do not: that today's kaldereta came out
+   * especially well, or that the kambing needs to move. This is where they say
+   * so, and it stays honest because a featured dish still has to be available.
+   */
+  const preview = [
+    ...cookingNow.filter((d) => d.featured),
+    ...cookingNow.filter((d) => !d.featured),
+  ].slice(0, 3);
+
+  const hasPicks = cookingNow.some((d) => d.featured);
 
   return (
     <div className="min-h-screen bg-diner-ground text-diner-ink">
@@ -79,7 +94,7 @@ export function Landing() {
               style={{ fontFamily: 'var(--font-display)', fontWeight: 500, letterSpacing: '-0.02em' }}
               className="text-2xl md:text-3xl"
             >
-              Cooking today
+              {hasPicks ? 'What we recommend today' : 'Cooking today'}
             </h2>
             <Link to="/menu" className="text-sm text-diner-accent hover:underline whitespace-nowrap">
               See the whole menu
