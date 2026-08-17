@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import '../../models/models.dart';
 import '../../services/api.dart';
 import '../state/cart.dart';
+import '../state/favourites.dart';
 import '../../theme.dart';
 import 'about_screen.dart';
+import 'account_screen.dart';
 import 'cart_screen.dart';
 import 'ticket_screen.dart';
 
@@ -27,6 +29,19 @@ class _MenuScreenState extends State<MenuScreen> {
   /// than showing a bundled guess that the database then contradicts.
   String? _tagline;
 
+  /// Star ratings by dish id, from diners who actually bought the dish.
+  Map<String, DishRating> _ratings = const {};
+
+  /// What the diner has typed. Empty means browse by category as before.
+  String _query = '';
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -41,12 +56,14 @@ class _MenuScreenState extends State<MenuScreen> {
     try {
       final dishes = await Api.menu();
       final cats = await Api.categories();
-      final tagline = await Api.tagline();
+      final shop = await Api.shop();
+      final ratings = await Api.dishRatings();
       if (!mounted) return;
       setState(() {
         _dishes = dishes;
         _categories = cats;
-        _tagline = tagline;
+        _tagline = shop?.tagline;
+        _ratings = ratings;
         // Open on a category that actually has food today — landing on one
         // where everything is sold out reads as though the shop is closed.
         _category ??= cats.isEmpty
@@ -69,7 +86,21 @@ class _MenuScreenState extends State<MenuScreen> {
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<Cart>();
-    final visible = _dishes.where((d) => d.category == _category).toList();
+    // Searching looks across the whole menu, not inside the chosen category.
+    // Narrowing to the category first would mean a diner searching "adobo"
+    // while Merienda happens to be selected finds nothing, and concludes the
+    // shop does not serve it.
+    final q = _query.trim().toLowerCase();
+    final visible = q.isEmpty
+        ? _dishes.where((d) => d.category == _category).toList()
+        : _dishes
+            .where(
+              (d) =>
+                  d.name.toLowerCase().contains(q) ||
+                  d.tagalog.toLowerCase().contains(q) ||
+                  d.description.toLowerCase().contains(q),
+            )
+            .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -116,6 +147,19 @@ class _MenuScreenState extends State<MenuScreen> {
             onPressed: () => Navigator.of(
               context,
             ).push(MaterialPageRoute(builder: (_) => const FindTicketScreen())),
+          ),
+          // The account was reachable only from the storefront, so a diner
+          // already browsing had to go backwards to sign in or to check an
+          // order they were waiting on. The menu is where people actually
+          // spend their time, so it needs the same door.
+          IconButton(
+            tooltip: Api.signedIn ? 'My orders' : 'Sign in',
+            icon: Icon(
+              Api.signedIn ? Icons.person : Icons.person_outline,
+            ),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const AccountScreen())),
           ),
           // Always-visible cart, so the order is reachable even after scrolling
           // past the bottom bar or landing here from another screen.
@@ -236,6 +280,47 @@ class _MenuScreenState extends State<MenuScreen> {
                   style: TextStyle(color: Palette.ink.withValues(alpha: 0.65)),
                 ),
                 const SizedBox(height: 16),
+
+                // A diner hunting one ulam should not have to remember which
+                // category the kitchen filed it under. Searching looks across
+                // the whole menu and ignores the category chips entirely, the
+                // same way the website behaves.
+                TextField(
+                  onChanged: (v) => setState(() => _query = v),
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    hintText: 'Hanapin ang ulam',
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            tooltip: 'Clear search',
+                            onPressed: () => setState(() {
+                              _query = '';
+                              _searchController.clear();
+                            }),
+                          ),
+                    filled: true,
+                    fillColor: Palette.card,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(999),
+                      borderSide: BorderSide(color: Palette.ink.withValues(alpha: 0.15)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(999),
+                      borderSide: BorderSide(color: Palette.ink.withValues(alpha: 0.15)),
+                    ),
+                  ),
+                  controller: _searchController,
+                ),
+
+                const SizedBox(height: 14),
+                // Hidden while searching: the chips filter by category, and
+                // leaving them visible suggests they narrow the results when
+                // they do not.
+                if (_query.trim().isEmpty)
                 SizedBox(
                   height: 40,
                   child: ListView.separated(
@@ -278,7 +363,7 @@ class _MenuScreenState extends State<MenuScreen> {
             sliver: SliverList.separated(
               itemCount: visible.length,
               separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (_, i) => _DishCard(dish: visible[i]),
+              itemBuilder: (_, i) => _DishCard(dish: visible[i], rating: _ratings[visible[i].id]),
             ),
           ),
       ],
@@ -287,14 +372,16 @@ class _MenuScreenState extends State<MenuScreen> {
 }
 
 class _DishCard extends StatelessWidget {
-  const _DishCard({required this.dish});
+  const _DishCard({required this.dish, this.rating});
 
   final Dish dish;
+  final DishRating? rating;
 
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<Cart>();
     final qty = cart.qtyOf(dish.id);
+    final fav = context.watch<Favourites>().contains(dish.id);
 
     return Opacity(
       opacity: dish.available ? 1 : 0.5,
@@ -382,9 +469,53 @@ class _DishCard extends StatelessWidget {
                                   color: Palette.ink.withValues(alpha: 0.55),
                                 ),
                               ),
+                            // Shown only once somebody has actually rated it.
+                            // "No ratings yet" on every card would make a new
+                            // menu look unloved rather than simply new.
+                            if (rating != null && rating!.total > 0)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.star_rounded, size: 15, color: Palette.gold),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      rating!.average.toStringAsFixed(1),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '(${rating!.total})',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Palette.ink.withValues(alpha: 0.45),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
                       ),
+                      // Kept on the device, not in the database. A favourite
+                      // helps one person find their usual faster; it is not
+                      // something the shop needs to know, and it works without
+                      // an account.
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                        iconSize: 20,
+                        tooltip: fav ? 'Remove from favourites' : 'Save to favourites',
+                        icon: Icon(
+                          fav ? Icons.favorite : Icons.favorite_border,
+                          color: fav ? Palette.red : Palette.ink.withValues(alpha: 0.3),
+                        ),
+                        onPressed: () => context.read<Favourites>().toggle(dish.id),
+                      ),
+                      const SizedBox(width: 4),
                       Text(
                         '₱${dish.price.toStringAsFixed(0)}',
                         style: const TextStyle(
@@ -407,15 +538,25 @@ class _DishCard extends StatelessWidget {
                   ],
                   const SizedBox(height: 14),
                   if (!dish.available)
-                    const Center(
-                      child: Text(
-                        'SOLD OUT',
-                        style: TextStyle(
-                          letterSpacing: 3,
-                          fontSize: 12,
-                          color: Palette.red,
+                    Column(
+                      children: [
+                        const Center(
+                          child: Text(
+                            'SOLD OUT',
+                            style: TextStyle(
+                              letterSpacing: 3,
+                              fontSize: 12,
+                              color: Palette.red,
+                            ),
+                          ),
                         ),
-                      ),
+                        // A diner who came for this and found it gone is a sale
+                        // already lost. Asking to be told when it returns is the
+                        // cheapest way to win it back, and costs the shop
+                        // nothing.
+                        const SizedBox(height: 8),
+                        _RestockAlert(dish: dish),
+                      ],
                     )
                   else if (qty == 0)
                     OutlinedButton.icon(
@@ -485,6 +626,82 @@ class _Wordmark extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// "Tell me when this is back", on a dish that has sold out.
+///
+/// Needs an account, because there has to be somewhere to send the answer. That
+/// is one of the few genuinely good reasons to sign in, so the signed-out state
+/// says what it would buy rather than just refusing.
+class _RestockAlert extends StatefulWidget {
+  const _RestockAlert({required this.dish});
+
+  final Dish dish;
+
+  @override
+  State<_RestockAlert> createState() => _RestockAlertState();
+}
+
+class _RestockAlertState extends State<_RestockAlert> {
+  bool _asked = false;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Api.myStockAlerts().then((ids) {
+      if (mounted && ids.contains(widget.dish.id)) setState(() => _asked = true);
+    });
+  }
+
+  Future<void> _ask() async {
+    setState(() => _busy = true);
+    try {
+      await Api.alertMeWhenBack(widget.dish.id);
+      if (mounted) setState(() => _asked = true);
+    } catch (_) {
+      // Already asked, most likely: one alert per dish per diner is a database
+      // rule. Showing it as done is the honest outcome either way.
+      if (mounted) setState(() => _asked = true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!Api.signedIn) {
+      return TextButton.icon(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AccountScreen()),
+        ),
+        icon: const Icon(Icons.notifications_none, size: 16),
+        label: const Text('Sign in to be told when this is back'),
+      );
+    }
+
+    if (_asked) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.check, size: 15, color: Palette.green),
+          const SizedBox(width: 6),
+          Text(
+            'We will tell you when this is back',
+            style: TextStyle(fontSize: 12, color: Palette.green),
+          ),
+        ],
+      );
+    }
+
+    return TextButton.icon(
+      onPressed: _busy ? null : _ask,
+      icon: _busy
+          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.notifications_none, size: 16),
+      label: const Text('Tell me when this is back'),
     );
   }
 }

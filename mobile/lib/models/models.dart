@@ -266,3 +266,168 @@ class Ticket {
       ? 'The counter is confirming your payment — your order is being prepared.'
       : null;
 }
+
+/// The shop's own details, owned by the owner and read by every client.
+///
+/// Kept here rather than hardcoded so the address, hours and tagline can be
+/// corrected on the dashboard without anyone rebuilding an app. The website
+/// reads the same row, which is what stops the two disagreeing.
+class Shop {
+  final String name;
+  final String tagline;
+  final String blurb;
+  final String addressLine;
+  final String district;
+  final String city;
+  final String province;
+  final String phone;
+  final List<ShopHours> hours;
+
+  const Shop({
+    required this.name,
+    required this.tagline,
+    required this.blurb,
+    required this.addressLine,
+    required this.district,
+    required this.city,
+    required this.province,
+    required this.phone,
+    required this.hours,
+  });
+
+  factory Shop.fromMap(Map<String, dynamic> m) => Shop(
+    name: m['name'] as String? ?? 'Bencris',
+    tagline: m['tagline'] as String? ?? '',
+    blurb: m['blurb'] as String? ?? '',
+    addressLine: m['address_line'] as String? ?? '',
+    district: m['district'] as String? ?? '',
+    city: m['city'] as String? ?? '',
+    province: m['province'] as String? ?? '',
+    phone: m['phone'] as String? ?? '',
+    hours: ((m['hours'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(ShopHours.fromMap)
+        .toList(),
+  );
+
+  /// "Stall 12, Dasmariñas Bayan, Dasmariñas, Cavite"
+  String get address => [
+    addressLine,
+    district,
+    [city, province].where((p) => p.isNotEmpty).join(', '),
+  ].where((p) => p.isNotEmpty).join(', ');
+
+  /// Whether the shop is open right now, against the owner's own hours.
+  ///
+  /// Sunday takes the second row where there is one, matching the website. A row
+  /// that cannot be parsed counts as closed: telling someone the shop is open
+  /// when it is not is the failure that wastes a trip, which is the whole thing
+  /// this system exists to prevent.
+  bool get isOpenNow {
+    if (hours.isEmpty) return false;
+    final now = DateTime.now();
+    final row = now.weekday == DateTime.sunday && hours.length > 1
+        ? hours[1]
+        : hours.first;
+
+    final open = row.minutesFrom(row.opens);
+    final close = row.minutesFrom(row.closes);
+    if (open == null || close == null) return false;
+
+    final mins = now.hour * 60 + now.minute;
+    return mins >= open && mins < close;
+  }
+}
+
+class ShopHours {
+  final String days;
+  final String opens;
+  final String closes;
+
+  const ShopHours({required this.days, required this.opens, required this.closes});
+
+  factory ShopHours.fromMap(Map<String, dynamic> m) => ShopHours(
+    days: m['days'] as String? ?? '',
+    opens: m['opens'] as String? ?? '',
+    closes: m['closes'] as String? ?? '',
+  );
+
+  /// Parses "6:00 AM" into minutes past midnight, or null if it is not a time.
+  int? minutesFrom(String value) {
+    final match = RegExp(r'^(\d{1,2}):(\d{2})\s*(AM|PM)$', caseSensitive: false)
+        .firstMatch(value.trim());
+    if (match == null) return null;
+
+    var hour = int.parse(match.group(1)!) % 12;
+    if (match.group(3)!.toUpperCase() == 'PM') hour += 12;
+    return hour * 60 + int.parse(match.group(2)!);
+  }
+}
+
+/// Loyalty progress, counted from completed orders rather than a separate tally
+/// so the number can never drift from what actually happened.
+class Loyalty {
+  final int completed;
+  final int untilNext;
+
+  const Loyalty({required this.completed, required this.untilNext});
+
+  factory Loyalty.fromMap(Map<String, dynamic> m) => Loyalty(
+    completed: (m['completed'] as num?)?.toInt() ?? 0,
+    untilNext: (m['until_next'] as num?)?.toInt() ?? 5,
+  );
+
+  /// Filled stamps on the current card, 0 to 4.
+  int get stamps => completed % 5;
+}
+
+/// A discount the owner is running now.
+class Promo {
+  final String code;
+  final String label;
+
+  const Promo({required this.code, required this.label});
+
+  factory Promo.fromMap(Map<String, dynamic> m) => Promo(
+    code: m['code'] as String? ?? '',
+    label: m['label'] as String? ?? '',
+  );
+}
+
+/// What a discount code is worth on a given order, and why not if it is not.
+class PromoPreview {
+  final bool valid;
+  final double discount;
+  final String label;
+
+  /// Empty when valid. Otherwise something the diner can act on, such as
+  /// "Spend at least 100 to use this", rather than a bare rejection.
+  final String reason;
+
+  const PromoPreview({
+    required this.valid,
+    required this.discount,
+    required this.label,
+    required this.reason,
+  });
+
+  factory PromoPreview.fromMap(Map<String, dynamic> m) => PromoPreview(
+    valid: m['valid'] as bool? ?? false,
+    discount: (m['discount'] as num?)?.toDouble() ?? 0,
+    label: m['label'] as String? ?? '',
+    reason: m['reason'] as String? ?? '',
+  );
+}
+
+/// How a dish has been rated by people who actually bought it.
+class DishRating {
+  final double average;
+  final int total;
+
+  const DishRating({required this.average, required this.total});
+
+  factory DishRating.fromMap(Map<String, dynamic> m) => DishRating(
+    average: (m['average'] as num?)?.toDouble() ?? 0,
+    total: (m['total'] as num?)?.toInt() ?? 0,
+  );
+}
