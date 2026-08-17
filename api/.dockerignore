@@ -1,0 +1,16 @@
+# vendor/ is installed inside the image against the container's own PHP, so the
+# host copy must not be layered over it.
+vendor/
+node_modules/
+
+# Secrets and local state never belong in an image.
+.env
+.env.*
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+database/*.sqlite
+
+.git
+*.log

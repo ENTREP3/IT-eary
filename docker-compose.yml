@@ -13,6 +13,7 @@
 #
 #   5173  web, React storefront + counter + owner dashboard
 #   5180  mobile, the three Flutter apps as installable PWAs
+#   8000  api, the Laravel backend
 #
 # 5173 is also Vite's default, so do not run `npm run dev` at the same time as
 # the web container. Pick one. Two servers showing the same site at different
@@ -43,6 +44,23 @@ services:
       target: serve
     ports:
       - "5180:80"
+
+  # The Laravel API. Reads the same hosted Postgres the other two use, and
+  # verifies the tokens Supabase already issued rather than running a login of
+  # its own. Its .env is not baked into the image; it is mounted at run time so
+  # the database password never becomes part of a layer.
+  api:
+    build:
+      context: ./api
+      target: dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api:/app
+      - /app/vendor
+    env_file:
+      - path: ./api/.env
+        required: false
 
   web-prod:
     profiles: ["prod"]
