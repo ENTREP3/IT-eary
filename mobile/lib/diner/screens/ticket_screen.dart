@@ -276,6 +276,10 @@ class _TicketScreenState extends State<TicketScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
           children: [
+            // Only once the meal is actually paid for. The database refuses a
+            // rating from an unsettled ticket anyway, so offering it earlier
+            // would just be a button that fails.
+            if (paid) _RateOrder(ticket: _ticket),
             Container(
               padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
               decoration: BoxDecoration(
@@ -674,6 +678,116 @@ class _FindTicketScreenState extends State<FindTicketScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Rating what you just ate, from the ticket that proves you bought it.
+///
+/// The ticket code IS the proof of purchase, which is what lets ratings work
+/// without accounts. The database refuses a rating unless that ticket was
+/// settled and actually contained the dish, so nobody can manufacture praise
+/// for food they never ordered.
+class _RateOrder extends StatefulWidget {
+  const _RateOrder({required this.ticket});
+
+  final Ticket ticket;
+
+  @override
+  State<_RateOrder> createState() => _RateOrderState();
+}
+
+class _RateOrderState extends State<_RateOrder> {
+  final _sent = <String, int>{};
+  String? _busy;
+
+  Future<void> _rate(String dishId, int stars) async {
+    setState(() => _busy = dishId);
+    try {
+      await Api.leaveReview(
+        ticketCode: widget.ticket.ticketCode,
+        dishId: dishId,
+        rating: stars,
+      );
+      if (mounted) setState(() => _sent[dishId] = stars);
+    } catch (_) {
+      // Rating is a courtesy, not part of getting fed. A failure here should
+      // never interrupt somebody collecting their food.
+    } finally {
+      if (mounted) setState(() => _busy = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Palette.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Palette.ink.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('How was it?', style: TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
+          Text(
+            'Your rating helps the next person choose.',
+            style: TextStyle(fontSize: 12, color: Palette.ink.withValues(alpha: 0.6)),
+          ),
+          const SizedBox(height: 12),
+          ...widget.ticket.items.map((item) {
+            final given = _sent[item.id];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  if (_busy == item.id)
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(5, (i) {
+                        final star = i + 1;
+                        final on = given != null && star <= given;
+                        return IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                          iconSize: 22,
+                          tooltip: '$star star${star == 1 ? '' : 's'}',
+                          icon: Icon(
+                            on ? Icons.star_rounded : Icons.star_outline_rounded,
+                            color: on ? Palette.gold : Palette.ink.withValues(alpha: 0.3),
+                          ),
+                          onPressed: () => _rate(item.id, star),
+                        );
+                      }),
+                    ),
+                ],
+              ),
+            );
+          }),
+          if (_sent.isNotEmpty)
+            Text(
+              'Salamat po.',
+              style: TextStyle(fontSize: 12, color: Palette.green),
+            ),
+        ],
       ),
     );
   }

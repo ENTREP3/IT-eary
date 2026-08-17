@@ -21,6 +21,10 @@ class _CartScreenState extends State<CartScreen> {
   bool _submitting = false;
   String? _error;
 
+  final _promoCtrl = TextEditingController();
+  PromoPreview? _promo;
+  bool _checkingPromo = false;
+
   String _method = 'cash';
   PaymentSettings? _settings;
 
@@ -44,7 +48,29 @@ class _CartScreenState extends State<CartScreen> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _promoCtrl.dispose();
     super.dispose();
+  }
+
+  /// Checks the typed code against the order as it stands.
+  ///
+  /// Priced by the database, never here. The app only ever sends the code, so a
+  /// tampered build cannot invent its own discount, and the amount shown is the
+  /// amount that will actually be charged.
+  Future<void> _applyPromo() async {
+    final code = _promoCtrl.text.trim();
+    if (code.isEmpty) {
+      setState(() => _promo = null);
+      return;
+    }
+    setState(() => _checkingPromo = true);
+    final subtotal = context.read<Cart>().estimatedTotal;
+    final preview = await Api.previewPromo(code, subtotal);
+    if (!mounted) return;
+    setState(() {
+      _promo = preview;
+      _checkingPromo = false;
+    });
   }
 
   Future<void> _checkout() async {
@@ -58,6 +84,7 @@ class _CartScreenState extends State<CartScreen> {
         quantitiesByDishId: cart.quantities,
         customerName: _nameCtrl.text,
         paymentMethod: _method,
+        promoCode: _promo?.valid == true ? _promoCtrl.text : null,
       );
       // Remember it on the device so a regular can reorder in one tap. Nothing
       // leaves the phone — no account, no extra database rows.
@@ -211,6 +238,72 @@ class _CartScreenState extends State<CartScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _promoCtrl,
+                          textCapitalization: TextCapitalization.characters,
+                          autocorrect: false,
+                          onSubmitted: (_) => _applyPromo(),
+                          decoration: InputDecoration(
+                            labelText: 'Discount code (optional)',
+                            filled: true,
+                            fillColor: Palette.card,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(
+                                color: Palette.ink.withValues(alpha: 0.15),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        height: 58,
+                        child: OutlinedButton(
+                          onPressed: _checkingPromo ? null : _applyPromo,
+                          child: _checkingPromo
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('Apply'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_promo != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          _promo!.valid ? Icons.check_circle : Icons.info_outline,
+                          size: 15,
+                          color: _promo!.valid ? Palette.green : Palette.red,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            // The reason on failure, so a diner is told to spend
+                            // 20 pesos more rather than just "invalid".
+                            _promo!.valid
+                                ? '${_promo!.label}. ₱${_promo!.discount.toStringAsFixed(2)} off.'
+                                : _promo!.reason,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _promo!.valid ? Palette.green : Palette.red,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+
                   const SizedBox(height: 22),
                   Text(
                     'HOW WILL YOU PAY?',
@@ -253,12 +346,29 @@ class _CartScreenState extends State<CartScreen> {
                           color: Palette.ink.withValues(alpha: 0.6),
                         ),
                       ),
-                      Text(
-                        '₱${cart.estimatedTotal.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      // Both figures while a discount applies, so the diner can
+                      // see the code did something rather than trusting that it
+                      // did. The final amount is still the server's to decide.
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (_promo?.valid == true)
+                            Text(
+                              '₱${cart.estimatedTotal.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                decoration: TextDecoration.lineThrough,
+                                color: Palette.ink.withValues(alpha: 0.45),
+                              ),
+                            ),
+                          Text(
+                            '₱${(cart.estimatedTotal - (_promo?.valid == true ? _promo!.discount : 0)).toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

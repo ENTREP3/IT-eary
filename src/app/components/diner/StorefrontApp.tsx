@@ -24,6 +24,7 @@ import {
   Tag,
   Flame,
   BellRing,
+  UserRound,
 } from 'lucide-react';
 import { useKarinderyaStore } from '../../store/karinderyaStore';
 import { usePaymentStore } from '../../store/paymentStore';
@@ -73,9 +74,13 @@ const PICKUP_CHOICES: { label: string; minutes: number | null }[] = [
  *
  * Deliberately mirrors the mobile flow rather than inventing a second one:
  * browse → cart → choose a method → ticket code → (GCash) upload the receipt.
- * No account anywhere; the ticket code carries identity.
+ *
+ * An account is optional and always will be: the ticket code carries identity,
+ * so ordering never requires signing up. Signing in only adds what needs memory
+ * across visits, such as history and live order tracking.
  */
 export function StorefrontApp() {
+  const user = useAuthStore((s) => s.user);
   const categories = useKarinderyaStore((s) => s.categories);
   const dishes = useKarinderyaStore((s) => s.dishes);
   const menuLoaded = useKarinderyaStore((s) => s.loaded);
@@ -195,6 +200,18 @@ export function StorefrontApp() {
               <TicketIcon size={14} />
               <span className="hidden sm:inline">Find my ticket</span>
             </button>
+
+            {/* The account was reachable only from the landing page, so a diner
+                already on the menu had to navigate backwards to sign in or to
+                check an order they were waiting on. The menu is where people
+                actually spend their time, so it needs the same door. */}
+            <Link
+              to="/account"
+              className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-full border border-diner-ink/20 hover:bg-diner-ink hover:text-diner-ground transition-colors"
+            >
+              <UserRound size={14} />
+              <span className="hidden sm:inline">{user ? 'My orders' : 'Sign in'}</span>
+            </Link>
             <button
               onClick={() => count && setStage('cart')}
               disabled={!count}
