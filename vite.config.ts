@@ -33,4 +33,37 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  server: {
+    watch: {
+      /**
+       * Watching costs real money on Windows.
+       *
+       * File change events do not cross from the Windows filesystem into the
+       * container, so hot reload needs polling: without it, edits are simply
+       * never noticed. Polling, though, means stat-ing every watched file on a
+       * timer, across a bind mount that is slow by nature.
+       *
+       * Left unbounded that watcher polled the Flutter build output, Laravel's
+       * vendor directory and node_modules as well as the app. The container sat
+       * at 45% CPU doing nothing, and the dev server took over twenty seconds
+       * to return the first byte of a page because it was too busy to answer.
+       *
+       * Only src/ and the config files actually need watching. Everything below
+       * either has its own build or never changes while the server runs.
+       */
+      usePolling: true,
+      interval: 1000,
+      ignored: [
+        '**/node_modules/**',
+        '**/.git/**',
+        '**/dist/**',
+        '**/mobile/**',
+        '**/api/**',
+        '**/supabase/**',
+        '**/docs/**',
+        '**/build/**',
+      ],
+    },
+  },
 })
