@@ -431,3 +431,16 @@ class DishRating {
     total: (m['total'] as num?)?.toInt() ?? 0,
   );
 }
+
+/// One rating this diner left, read back from the database.
+class DishReview {
+  final int rating;
+  final String comment;
+
+  const DishReview({required this.rating, required this.comment});
+
+  factory DishReview.fromMap(Map<String, dynamic> m) => DishReview(
+    rating: (m['rating'] as num?)?.toInt() ?? 0,
+    comment: m['comment'] as String? ?? '',
+  );
+}
