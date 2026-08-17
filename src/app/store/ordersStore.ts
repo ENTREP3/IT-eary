@@ -32,7 +32,7 @@ type OrdersState = {
    * `verified: false` cancels the order — the money never arrived.
    */
   resolveReview: (ticketCode: string, verified: boolean, note?: string) => Promise<Order>;
-  setStatus: (id: string, status: Order['status']) => Promise<void>;
+  setStatus: (ticketCode: string, status: Order['status']) => Promise<void>;
 };
 
 const PROOF_BUCKET = 'payment-proofs';
@@ -139,10 +139,33 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
     return data?.signedUrl ?? null;
   },
 
-  setStatus: async (id, status) => {
-    const { error } = await supabase.from('orders').update({ status }).eq('id', id);
-    if (error) throw error;
-    set((s) => ({ orders: s.orders.map((o) => (o.id === id ? { ...o, status } : o)) }));
+  /**
+   * Moves an order along the kitchen flow.
+   *
+   * Goes through advance_order_status() rather than updating the row directly.
+   * The direct write it replaced looked identical from the counter, because the
+   * staff update policy allows it, but it skipped every guard the function
+   * exists to apply: food could be started on a ticket nobody had paid for, any
+   * staff member could cancel rather than only the owner, and completed_at was
+   * never stamped. That last one is why every completed order in the database
+   * has a null completion time.
+   *
+   * Keyed by ticket code because that is what the function takes, and what the
+   * counter actually reads off the diner's phone.
+   */
+  setStatus: async (ticketCode, status) => {
+    const { error } = await supabase.rpc('advance_order_status', {
+      p_ticket_code: ticketCode,
+      p_status: status,
+    });
+    if (error) throw new Error(error.message);
+    set((s) => ({
+      orders: s.orders.map((o) =>
+        o.ticket_code === ticketCode
+          ? { ...o, status, completed_at: status === 'completed' ? new Date().toISOString() : o.completed_at }
+          : o,
+      ),
+    }));
   },
 }));
 

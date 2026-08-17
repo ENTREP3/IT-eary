@@ -68,6 +68,21 @@ export type Order = {
   paid_at: string | null;
   paid_by: string | null;
   created_at: string;
+
+  // Added by later migrations. The type had drifted behind the table, so code
+  // reading these columns type-checked as an error while working perfectly at
+  // runtime, and code misspelling one would not have been caught at all.
+
+  /** Menu price of the items before any discount. subtotal - discount = total. */
+  subtotal: number;
+  discount: number;
+  promo_code: string | null;
+  /** NULL for a guest order. Set when a signed-in customer checks out. */
+  customer_id: string | null;
+  /** When the diner said they would collect. NULL means as soon as it is ready. */
+  pickup_at: string | null;
+  /** Stamped when the order is completed. What the loyalty count is based on. */
+  completed_at: string | null;
 };
 
 export type Expense = {
