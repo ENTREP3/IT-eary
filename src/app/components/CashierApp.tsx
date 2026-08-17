@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ConfirmProvider } from './shared/useConfirm';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Search,
@@ -24,7 +25,17 @@ import { supabase } from '../lib/supabase';
 
 type Stage = 'lookup' | 'review' | 'receipt';
 
+// The counter carries the kitchen board, which can cancel an order, so the
+// confirmation provider has to reach it here too.
 export function CashierApp() {
+  return (
+    <ConfirmProvider>
+      <CashierCounter />
+    </ConfirmProvider>
+  );
+}
+
+function CashierCounter() {
   // In a karinderya this size the person on the till is also the person calling
   // to the kitchen, so the counter screen carries the order queue too.
   const [view, setView] = useState<'counter' | 'kitchen'>('counter');

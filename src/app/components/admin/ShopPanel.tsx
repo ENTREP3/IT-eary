@@ -3,6 +3,7 @@ import { Check, Loader2, Plus, Star, Trash2, UserMinus, Users } from 'lucide-rea
 import { supabase } from '../../lib/supabase';
 import { useBusinessStore, type Hours } from '../../store/businessStore';
 import { AppPosterSection } from './AppPosterSection';
+import { useConfirm } from '../shared/useConfirm';
 
 /**
  * Everything about the shop itself that only the owner may change.
@@ -171,6 +172,7 @@ function Field({
 type Staff = { id: string; email: string; full_name: string | null; role: string };
 
 function StaffSection() {
+  const confirm = useConfirm();
   const [rows, setRows] = useState<Staff[]>([]);
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'cashier' as 'cashier' | 'admin' });
   const [resetting, setResetting] = useState<string | null>(null);
@@ -338,7 +340,15 @@ function StaffSection() {
               Reset password
             </button>
             <button
-              onClick={() => revoke(s.email)}
+              onClick={() =>
+                confirm({
+                  title: 'Remove access for ' + s.email + '?',
+                  body: 'They keep their account and their history, but can no longer sign in to the counter or the dashboard.',
+                  action: 'Remove access',
+                  danger: true,
+                  onConfirm: () => revoke(s.email),
+                })
+              }
               className="opacity-45 hover:opacity-100 hover:text-[#e87a5c]"
               aria-label={`Remove access for ${s.email}`}
             >
@@ -386,6 +396,7 @@ type Review = {
 };
 
 function ReviewSection() {
+  const confirm = useConfirm();
   const [rows, setRows] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -433,7 +444,15 @@ function ReviewSection() {
                 {r.comment && <p className="text-sm opacity-70 mt-0.5">{r.comment}</p>}
               </div>
               <button
-                onClick={() => remove(r.id)}
+                onClick={() =>
+                  confirm({
+                    title: 'Delete this rating?',
+                    body: 'It disappears from the dish average for good. Use this for abuse, not for a bad review.',
+                    action: 'Delete rating',
+                    danger: true,
+                    onConfirm: () => remove(r.id),
+                  })
+                }
                 className="opacity-40 hover:opacity-100 hover:text-[#e87a5c]"
                 aria-label="Remove this rating"
               >
