@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ChefHat, Loader2, Plus, Trash2, TriangleAlert } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useConfirm } from '../shared/useConfirm';
 import { useKarinderyaStore } from '../../store/karinderyaStore';
 
 /**
@@ -16,6 +17,7 @@ import { useKarinderyaStore } from '../../store/karinderyaStore';
 type RecipeRow = { inventory_id: string; quantity: number };
 
 export function RecipePanel({ dishId, dishName }: { dishId: string; dishName: string }) {
+  const confirm = useConfirm();
   const inventory = useKarinderyaStore((s) => s.inventory);
   const loadAll = useKarinderyaStore((s) => s.loadAll);
 
@@ -152,7 +154,15 @@ export function RecipePanel({ dishId, dishName }: { dishId: string; dishName: st
                   {stockOf(r.inventory_id)} in stock
                 </span>
                 <button
-                  onClick={() => removeRow(r.inventory_id)}
+                  onClick={() =>
+                    confirm({
+                      title: 'Remove this ingredient from the recipe?',
+                      body: 'Cooking a batch will stop deducting it, and the dish cost changes.',
+                      action: 'Remove it',
+                      danger: true,
+                      onConfirm: () => removeRow(r.inventory_id),
+                    })
+                  }
                   className="opacity-40 hover:opacity-100 hover:text-[#e87a5c]"
                   aria-label={`Remove ${nameOf(r.inventory_id)}`}
                 >

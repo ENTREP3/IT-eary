@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, Plus, Tag, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useConfirm } from '../shared/useConfirm';
 
 /**
  * Where the owner runs a promotion without needing a developer.
@@ -35,6 +36,7 @@ const blank = {
 };
 
 export function PromotionsPanel() {
+  const confirm = useConfirm();
   const [rows, setRows] = useState<Promo[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(blank);
@@ -256,7 +258,15 @@ export function PromotionsPanel() {
                     </td>
                     <td className="py-2.5 text-right">
                       <button
-                        onClick={() => remove(p.code)}
+                        onClick={() =>
+                          confirm({
+                            title: 'Delete ' + p.code + '?',
+                            body: 'Diners who have not used it yet will be told the code does not exist.',
+                            action: 'Delete code',
+                            danger: true,
+                            onConfirm: () => remove(p.code),
+                          })
+                        }
                         className="opacity-45 hover:opacity-100 hover:text-[#e87a5c]"
                         aria-label={`Delete ${p.code}`}
                       >
