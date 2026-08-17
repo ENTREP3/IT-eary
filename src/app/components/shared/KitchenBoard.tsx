@@ -88,7 +88,7 @@ export function KitchenBoard({ orders }: { orders: Order[] }) {
                   </div>
                   <div className="mt-3 flex gap-2">
                     <button
-                      onClick={() => setStatus(o.id, lane.next)}
+                      onClick={() => setStatus(o.ticket_code, lane.next)}
                       className="flex-1 py-2 rounded-lg text-sm font-medium text-[#0a0d0a]"
                       style={{ background: lane.accent }}
                     >
@@ -96,7 +96,7 @@ export function KitchenBoard({ orders }: { orders: Order[] }) {
                     </button>
                     {lane.title === 'New' && (
                       <button
-                        onClick={() => setStatus(o.id, 'cancelled')}
+                        onClick={() => setStatus(o.ticket_code, 'cancelled')}
                         className="px-3 py-2 rounded-lg border border-[#e8dfc8]/15 text-[#e87a5c] hover:bg-[#c8442a]/20"
                         aria-label="Cancel order"
                       >
