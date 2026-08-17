@@ -483,6 +483,31 @@ class _OrderCard extends StatelessWidget {
                   ),
                 ],
               ),
+
+              // Asked once the food has actually been collected, which is the
+              // only moment the diner can honestly answer. Prompting earlier
+              // asks somebody to rate a meal they have not eaten, and prompting
+              // never is why a menu shows no ratings at all.
+              if (ticket.status == 'completed')
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.star_outline_rounded, size: 15, color: Palette.gold),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'How was it? Tap to rate.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Palette.ink.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, size: 16),
+                    ],
+                  ),
+                ),
             ],
           ],
         ),

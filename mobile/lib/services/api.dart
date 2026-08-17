@@ -176,6 +176,24 @@ class Api {
     }
   }
 
+  /// Ratings already left against a ticket, keyed by dish id.
+  ///
+  /// Read from the database rather than remembered in the screen, so reopening
+  /// a past order shows the stars you actually gave, on any device. Keeping it
+  /// only in memory is why a revisited order used to look unrated.
+  static Future<Map<String, DishReview>> reviewsForTicket(String ticketCode) async {
+    try {
+      final rows = await _db
+          .from('reviews')
+          .select('dish_id, rating, comment')
+          .eq('ticket_code', ticketCode.trim().toUpperCase());
+      return {
+        for (final r in rows) r['dish_id'] as String: DishReview.fromMap(r),
+      };
+    } catch (_) {
+      return const {};
+    }
+  }
   /// Rates a dish the diner actually bought.
   ///
   /// The ticket code is the proof of purchase. The database refuses a rating
