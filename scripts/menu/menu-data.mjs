@@ -62,13 +62,13 @@ export const ingredients = [
   ['langka',       'Langka (Unripe jackfruit)', 'cup',   20],
 
   ['asin',         'Asin (Salt)',               'kg',    40, { tbsp: 0.018 }],
-  ['asukal',       'Asukal (Sugar)',            'tbsp',  2.50],
-  ['paminta',      'Paminta (Pepper)',          'tsp',   2.50],
-  ['curry',        'Curry powder',              'tbsp',  10],
-  ['chili-flakes', 'Chili flakes',              'tsp',   5],
-  ['cornstarch',   'Cornstarch',                'tbsp',  3.33],
-  ['seasoning',    'Seasoning granules',        'tbsp',  5],
-  ['bagoong',      'Bagoong alamang',           'tbsp',  7.50],
+  ['asukal',       'Asukal (Sugar)',            'kg',    116, { tbsp: 0.0125 }],
+  ['paminta',      'Paminta (Pepper)',          'kg',    175, { tsp: 0.0023, tbsp: 0.0069 }],
+  ['curry',        'Curry powder',              'kg',    265, { tbsp: 0.0065 }],
+  ['chili-flakes', 'Chili flakes',              'kg',    215, { tsp: 0.002 }],
+  ['cornstarch',   'Cornstarch',                'kg',    119, { tbsp: 0.008 }],
+  ['seasoning',    'Seasoning granules',        'kg',    310, { tbsp: 0.009 }],
+  ['bagoong',      'Bagoong alamang',           'cup',   120, { tbsp: 0.0625 }],
   ['liver-spread', 'Liver spread (Reno, small can)', 'can', 40],
 ];
 
