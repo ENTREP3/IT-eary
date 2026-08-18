@@ -459,12 +459,12 @@
   },
   {
    "id": "paminta",
-   "name": "Paminta (Pepper)",
-   "unit": "kg",
-   "stock": 0.005,
-   "par_level": 0.005,
-   "reorder_at": 0.002,
-   "cost_per_unit": 175
+   "name": "Paminta (ground, 50g pouch)",
+   "unit": "pouch",
+   "stock": 0.092,
+   "par_level": 0.092,
+   "reorder_at": 0.046,
+   "cost_per_unit": 35
   },
   {
    "id": "curry",
@@ -911,7 +911,7 @@
   {
    "dish_id": "adobong-baboy",
    "inventory_id": "paminta",
-   "quantity": 0.0046
+   "quantity": 0.092
   },
   {
    "dish_id": "adobong-baboy",
@@ -1106,7 +1106,7 @@
   {
    "dish_id": "sisig",
    "inventory_id": "paminta",
-   "quantity": 0.0023
+   "quantity": 0.046
   },
   {
    "dish_id": "bopis",
@@ -1156,7 +1156,7 @@
   {
    "dish_id": "bopis",
    "inventory_id": "paminta",
-   "quantity": 0.0046
+   "quantity": 0.092
   },
   {
    "dish_id": "bopis",
@@ -1211,7 +1211,7 @@
   {
    "dish_id": "porksteak",
    "inventory_id": "paminta",
-   "quantity": 0.0023
+   "quantity": 0.046
   },
   {
    "dish_id": "porksteak",
@@ -1271,7 +1271,7 @@
   {
    "dish_id": "bicol-express",
    "inventory_id": "paminta",
-   "quantity": 0.0011
+   "quantity": 0.023
   },
   {
    "dish_id": "menudo",
@@ -1326,7 +1326,7 @@
   {
    "dish_id": "menudo",
    "inventory_id": "paminta",
-   "quantity": 0.0034
+   "quantity": 0.069
   },
   {
    "dish_id": "menudo",
@@ -1361,7 +1361,7 @@
   {
    "dish_id": "lechon-paksiw",
    "inventory_id": "paminta",
-   "quantity": 0.0046
+   "quantity": 0.092
   },
   {
    "dish_id": "lechon-paksiw",
@@ -1421,7 +1421,7 @@
   {
    "dish_id": "adobong-manok",
    "inventory_id": "paminta",
-   "quantity": 0.0046
+   "quantity": 0.092
   },
   {
    "dish_id": "adobong-manok",
@@ -1566,7 +1566,7 @@
   {
    "dish_id": "afritada",
    "inventory_id": "paminta",
-   "quantity": 0.0046
+   "quantity": 0.092
   },
   {
    "dish_id": "afritada",
@@ -1586,7 +1586,7 @@
   {
    "dish_id": "pritong-manok",
    "inventory_id": "paminta",
-   "quantity": 0.0046
+   "quantity": 0.092
   },
   {
    "dish_id": "pritong-manok",
@@ -1611,7 +1611,7 @@
   {
    "dish_id": "pritong-tilapia",
    "inventory_id": "paminta",
-   "quantity": 0.0046
+   "quantity": 0.092
   },
   {
    "dish_id": "pritong-tilapia",
@@ -1646,7 +1646,7 @@
   {
    "dish_id": "pritong-bangus",
    "inventory_id": "paminta",
-   "quantity": 0.0046
+   "quantity": 0.092
   },
   {
    "dish_id": "pritong-bangus",
@@ -1766,7 +1766,7 @@
   {
    "dish_id": "sweet-sour-tilapia",
    "inventory_id": "paminta",
-   "quantity": 0.0046
+   "quantity": 0.092
   },
   {
    "dish_id": "sweet-sour-tilapia",
@@ -1856,7 +1856,7 @@
   {
    "dish_id": "paksiw-bangus",
    "inventory_id": "paminta",
-   "quantity": 0.0046
+   "quantity": 0.092
   },
   {
    "dish_id": "paksiw-bangus",
@@ -1956,7 +1956,7 @@
   {
    "dish_id": "adobong-sitaw",
    "inventory_id": "paminta",
-   "quantity": 0.0046
+   "quantity": 0.092
   },
   {
    "dish_id": "adobong-sitaw",
