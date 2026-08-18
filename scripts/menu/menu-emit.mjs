@@ -22,8 +22,10 @@ for (const d of [...dishes, ...rice]) {
 
 const round = (n) => Number(n.toFixed(3));
 
-const inventoryRows = all.map(([id, name, unit, cost]) => {
-  const batch = need.get(id) ?? 0;
+const inventoryRows = all.map(([id, name, unit, cost, per, opening]) => {
+  // What one batch needs, or an explicit opening amount for anything the
+  // recipes do not call for yet.
+  const batch = need.get(id) ?? opening ?? 0;
   return {
     id,
     name,

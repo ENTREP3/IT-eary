@@ -467,6 +467,15 @@
    "cost_per_unit": 0.7
   },
   {
+   "id": "paminta-buo",
+   "name": "Paminta (Whole peppercorns)",
+   "unit": "g",
+   "stock": 50,
+   "par_level": 50,
+   "reorder_at": 25,
+   "cost_per_unit": 0.76
+  },
+  {
    "id": "curry",
    "name": "Curry powder",
    "unit": "g",

@@ -64,6 +64,10 @@ export const ingredients = [
   ['asin',         'Asin (Salt)',               'g',     0.04,   { tbsp: 18 }],
   ['asukal',       'Asukal (Sugar)',            'g',     0.115,  { tbsp: 12.5 }],
   ['paminta',      'Paminta (Ground pepper)',   'g',     0.70,   { tsp: 2.3, tbsp: 6.9 }],
+  // Bought and stocked separately from the ground, because they are two
+  // different things on a shopping list. No recipe calls for it yet — every
+  // dish uses the ground — so it opens with one pouch on the shelf.
+  ['paminta-buo',  'Paminta (Whole peppercorns)','g',     0.76,   { tsp: 2.3, tbsp: 6.9 }, 50],
   ['curry',        'Curry powder',              'g',     1.2019, { tbsp: 6.5 }],
   ['chili-flakes', 'Chili flakes',              'g',     1.00,   { tsp: 2 }],
   ['cornstarch',   'Cornstarch',                'g',     0.12,   { tbsp: 8 }],
