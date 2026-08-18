@@ -468,21 +468,21 @@
   },
   {
    "id": "curry",
-   "name": "Curry powder",
-   "unit": "kg",
-   "stock": 0.039,
-   "par_level": 0.039,
-   "reorder_at": 0.019,
-   "cost_per_unit": 265
+   "name": "Curry powder (4g sachet)",
+   "unit": "sachet",
+   "stock": 9.375,
+   "par_level": 9.375,
+   "reorder_at": 4.688,
+   "cost_per_unit": 5
   },
   {
    "id": "chili-flakes",
-   "name": "Chili flakes",
-   "unit": "kg",
-   "stock": 0.004,
-   "par_level": 0.004,
-   "reorder_at": 0.002,
-   "cost_per_unit": 215
+   "name": "Chili flakes (10g pack)",
+   "unit": "pack",
+   "stock": 0.4,
+   "par_level": 0.4,
+   "reorder_at": 0.2,
+   "cost_per_unit": 10
   },
   {
    "id": "cornstarch",
@@ -1031,7 +1031,7 @@
   {
    "dish_id": "caldereta",
    "inventory_id": "chili-flakes",
-   "quantity": 0.004
+   "quantity": 0.4
   },
   {
    "dish_id": "caldereta",
@@ -1446,7 +1446,7 @@
   {
    "dish_id": "chicken-curry",
    "inventory_id": "curry",
-   "quantity": 0.039
+   "quantity": 9.375
   },
   {
    "dish_id": "chicken-curry",
