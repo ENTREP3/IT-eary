@@ -2,23 +2,18 @@ import 'package:flutter/material.dart';
 
 import '../../models/models.dart';
 import '../../tokens.dart';
+import '../admin/tabs/kitchen_tab.dart';
 import '../staff_api.dart';
+
+enum _CounterView { counter, kitchen }
 
 /// The counter. Mirrors the React cashier screen exactly, because the rules it
 /// enforces live in Postgres — this is a second face on the same system, not a
 /// second system.
 class CashierScreen extends StatefulWidget {
-  const CashierScreen({super.key, this.onSignOut, this.chrome = true});
+  const CashierScreen({super.key, this.onSignOut});
 
   final VoidCallback? onSignOut;
-
-  /// Whether to draw the counter's own scaffold and bar.
-  ///
-  /// The dashboard shows this same till inside its Kitchen page, where there is
-  /// already a bar and a sign-out. Drawn with its full chrome there it would
-  /// stack two of each; rebuilt as a second copy it would leave two ticket
-  /// flows to keep in step. So it keeps one implementation and drops its frame.
-  final bool chrome;
 
   @override
   State<CashierScreen> createState() => _CashierScreenState();
@@ -31,6 +26,7 @@ class _CashierScreenState extends State<CashierScreen> {
   bool _busy = false;
   bool _proofLoading = false;
   String? _error;
+  _CounterView _view = _CounterView.counter;
 
   @override
   void dispose() {
@@ -131,15 +127,6 @@ class _CashierScreenState extends State<CashierScreen> {
   Widget build(BuildContext context) {
     final t = _ticket;
 
-    if (!widget.chrome) {
-      return Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: t == null ? _lookupView() : _ticketView(t),
-        ),
-      );
-    }
-
     return Scaffold(
       backgroundColor: Tokens.staffGround,
       appBar: AppBar(
@@ -155,14 +142,56 @@ class _CashierScreenState extends State<CashierScreen> {
               tooltip: 'Sign out',
             ),
         ],
-      ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: t == null ? _lookupView() : _ticketView(t),
+
+        // The queue, a tap from the till.
+        //
+        // In a karinderya this size the person taking the money is the person
+        // calling to the kitchen thirty seconds later. It matters most for a
+        // cashier: they never see the dashboard at all, so before this the
+        // order queue was somewhere they simply could not reach.
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(54),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<_CounterView>(
+                segments: const [
+                  ButtonSegment(
+                    value: _CounterView.counter,
+                    icon: Icon(Icons.point_of_sale_outlined, size: 16),
+                    label: Text('Counter'),
+                  ),
+                  ButtonSegment(
+                    value: _CounterView.kitchen,
+                    icon: Icon(Icons.restaurant_outlined, size: 16),
+                    label: Text('Kitchen'),
+                  ),
+                ],
+                selected: {_view},
+                showSelectedIcon: false,
+                style: SegmentedButton.styleFrom(
+                  backgroundColor: Tokens.staffGround,
+                  foregroundColor: Tokens.staffInk,
+                  selectedBackgroundColor: Tokens.staffAccent,
+                  selectedForegroundColor: Tokens.staffCard,
+                  textStyle: const TextStyle(fontSize: 12),
+                ),
+                onSelectionChanged: (s) => setState(() => _view = s.first),
+              ),
+            ),
           ),
         ),
+      ),
+      body: SafeArea(
+        child: _view == _CounterView.kitchen
+            ? const SelfLoadingKitchenQueue()
+            : Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: t == null ? _lookupView() : _ticketView(t),
+                ),
+              ),
       ),
     );
   }
