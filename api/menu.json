@@ -455,7 +455,7 @@
    "stock": 0.1,
    "par_level": 0.1,
    "reorder_at": 0.05,
-   "cost_per_unit": 116
+   "cost_per_unit": 115
   },
   {
    "id": "paminta",
@@ -491,16 +491,16 @@
    "stock": 0.024,
    "par_level": 0.024,
    "reorder_at": 0.012,
-   "cost_per_unit": 119
+   "cost_per_unit": 120
   },
   {
    "id": "seasoning",
-   "name": "Seasoning granules",
-   "unit": "kg",
-   "stock": 0.027,
-   "par_level": 0.027,
-   "reorder_at": 0.013,
-   "cost_per_unit": 310
+   "name": "Seasoning (Magic Sarap, 8g sachet)",
+   "unit": "sachet",
+   "stock": 3,
+   "par_level": 3,
+   "reorder_at": 1.5,
+   "cost_per_unit": 5
   },
   {
    "id": "bagoong",
@@ -1191,7 +1191,7 @@
   {
    "dish_id": "porksteak",
    "inventory_id": "seasoning",
-   "quantity": 0.027
+   "quantity": 3
   },
   {
    "dish_id": "porksteak",
