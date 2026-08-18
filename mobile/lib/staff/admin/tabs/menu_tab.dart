@@ -29,6 +29,22 @@ class _MenuTabState extends State<MenuTab> {
     }
   }
 
+  /// Marks a dish a bestseller, or takes the mark off.
+  ///
+  /// Deliberately the owner's own call rather than a calculation. The badge
+  /// used to be awarded to whichever dish led its category, so the shop made a
+  /// claim about its own food that nobody had approved, and a new dish could
+  /// never be promoted however good it was.
+  Future<void> _mark(Dish d) async {
+    setState(() => _busy = d.id);
+    try {
+      await AdminApi.updateDish(d.id, {'featured': !d.featured});
+      await widget.onChanged();
+    } finally {
+      if (mounted) setState(() => _busy = null);
+    }
+  }
+
   Future<void> _edit(Dish d) async {
     final saved = await showModalBottomSheet<bool>(
       context: context,
@@ -74,6 +90,10 @@ class _MenuTabState extends State<MenuTab> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // Above the list, because it is about these dishes and the button it
+        // asks you to press is on the card below.
+        _Suggestions(dishes: widget.dishes, onChanged: widget.onChanged),
+
         for (final d in widget.dishes)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -133,6 +153,18 @@ class _MenuTabState extends State<MenuTab> {
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                           ),
+                          const SizedBox(width: 14),
+
+                          // One mark, doing everything: the Bestseller badge on
+                          // the menu, the rotating photograph on the front page,
+                          // and the order of the Best sellers row. Without it
+                          // here the owner could only ever set it from a
+                          // laptop, which is not where they are during service.
+                          _MarkButton(
+                            marked: d.featured,
+                            busy: _busy == d.id,
+                            onTap: () => _mark(d),
+                          ),
                         ]),
                       ],
                     ),
@@ -147,6 +179,277 @@ class _MenuTabState extends State<MenuTab> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// What the sales say, offered as a question rather than acted on.
+///
+/// The badge used to appear by itself, so the shop made a claim about its own
+/// food on the strength of a sum. The figures stay, but they stop being the
+/// decision: they come here, and the owner accepts or declines.
+///
+/// There is no matching suggestion to unmark a dish. The obvious candidate
+/// would be a marked dish that is not selling, which is exactly the new dish
+/// the owner is deliberately pushing.
+class _Suggestions extends StatefulWidget {
+  const _Suggestions({required this.dishes, required this.onChanged});
+
+  final List<Dish> dishes;
+  final Future<void> Function() onChanged;
+
+  @override
+  State<_Suggestions> createState() => _SuggestionsState();
+}
+
+class _SuggestionsState extends State<_Suggestions> {
+  /// Sales must climb by half again before a declined dish is raised a second
+  /// time.
+  static const _askAgainAt = 1.5;
+
+  Map<String, dynamic> _dismissed = const {};
+  String? _busy;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDismissed();
+  }
+
+  Future<void> _loadDismissed() async {
+    try {
+      final row = await AdminApi.shopSettings();
+      final show = (row?['storefront'] as Map?) ?? const {};
+      if (!mounted) return;
+      setState(() {
+        _dismissed = Map<String, dynamic>.from(
+          (show['bestseller_dismissed'] as Map?) ?? const {},
+        );
+        _ready = true;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _ready = true);
+    }
+  }
+
+  /// The leader of each category, where that leader is not already marked.
+  ///
+  /// Ranked within the category, not across the menu: drinks outsell every main
+  /// dish, so a single top-of-the-shop suggestion would only ever be a drink
+  /// and the owner would never hear anything about their ulam.
+  List<({Dish dish, int runnerUp})> get _suggestions {
+    final top = <String, Dish>{};
+    final second = <String, int>{};
+
+    for (final d in widget.dishes) {
+      if (!d.available || d.soldToday <= 0) continue;
+      final held = top[d.category];
+      if (held == null) {
+        top[d.category] = d;
+      } else if (d.soldToday > held.soldToday) {
+        second[d.category] = held.soldToday;
+        top[d.category] = d;
+      } else if (d.soldToday > (second[d.category] ?? 0)) {
+        second[d.category] = d.soldToday;
+      }
+    }
+
+    final out = <({Dish dish, int runnerUp})>[];
+    for (final entry in top.entries) {
+      final d = entry.value;
+      if (d.featured) continue;
+      final refusedAt = (_dismissed[d.id] as num?)?.toInt();
+      if (refusedAt != null && d.soldToday < refusedAt * _askAgainAt) continue;
+      out.add((dish: d, runnerUp: second[entry.key] ?? 0));
+    }
+    out.sort((a, b) => b.dish.soldToday.compareTo(a.dish.soldToday));
+    return out;
+  }
+
+  Future<void> _accept(Dish d) async {
+    setState(() => _busy = d.id);
+    try {
+      await AdminApi.updateDish(d.id, {'featured': true});
+      await widget.onChanged();
+    } finally {
+      if (mounted) setState(() => _busy = null);
+    }
+  }
+
+  Future<void> _decline(Dish d) async {
+    setState(() => _busy = d.id);
+    try {
+      await AdminApi.dismissBestseller(d.id, d.soldToday);
+      if (mounted) {
+        setState(() => _dismissed = {..._dismissed, d.id: d.soldToday});
+      }
+    } finally {
+      if (mounted) setState(() => _busy = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) return const SizedBox.shrink();
+    final suggestions = _suggestions;
+    if (suggestions.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Tokens.staffAccent.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Tokens.staffAccent.withValues(alpha: 0.25)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.local_fire_department_rounded,
+                  size: 17,
+                  color: Tokens.staffAccent,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Selling well — mark them?',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Tokens.staffInk.withValues(alpha: 0.95),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Nothing is shown to diners until you say so.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Tokens.staffInk.withValues(alpha: 0.55),
+              ),
+            ),
+            const SizedBox(height: 12),
+            for (final s in suggestions)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.dish.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Tokens.staffInk,
+                      ),
+                    ),
+                    Text(
+                      '${s.dish.soldToday} sold — the most in '
+                      '${s.dish.category}'
+                      '${s.runnerUp > 0 ? ', ahead of the next by ${s.dish.soldToday - s.runnerUp}' : ''}.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Tokens.staffInk.withValues(alpha: 0.55),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        FilledButton.icon(
+                          onPressed: _busy == s.dish.id
+                              ? null
+                              : () => _accept(s.dish),
+                          icon: const Icon(Icons.star_rounded, size: 15),
+                          label: const Text('Mark as bestseller'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Tokens.staffAccent,
+                            foregroundColor: Tokens.staffCard,
+                            textStyle: const TextStyle(fontSize: 12),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: _busy == s.dish.id
+                              ? null
+                              : () => _decline(s.dish),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Tokens.staffInk.withValues(
+                              alpha: 0.6,
+                            ),
+                            textStyle: const TextStyle(fontSize: 12),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          child: const Text('Not now'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The bestseller mark, showing its state rather than hiding it behind a tap.
+class _MarkButton extends StatelessWidget {
+  const _MarkButton({
+    required this.marked,
+    required this.busy,
+    required this.onTap,
+  });
+
+  final bool marked;
+  final bool busy;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: busy ? null : onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          color: marked
+              ? Tokens.staffAccent.withValues(alpha: 0.15)
+              : Colors.transparent,
+          border: Border.all(
+            color: marked
+                ? Tokens.staffAccent.withValues(alpha: 0.5)
+                : Tokens.staffInk.withValues(alpha: 0.18),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              marked ? Icons.star_rounded : Icons.star_outline_rounded,
+              size: 15,
+              color: marked
+                  ? Tokens.staffAccent
+                  : Tokens.staffInk.withValues(alpha: 0.6),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              marked ? 'Bestseller' : 'Mark',
+              style: TextStyle(
+                fontSize: 11,
+                color: marked
+                    ? Tokens.staffAccent
+                    : Tokens.staffInk.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
