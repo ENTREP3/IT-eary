@@ -35,6 +35,7 @@ import { Receipt } from '../Receipt';
 import { ImageWithFallback } from '../sigma/ImageWithFallback';
 import { Wordmark, Tagline } from '../site/SiteChrome';
 import { useBusinessStore } from '../../store/businessStore';
+import { ReviewShowcase } from './ReviewShowcase';
 import {
   getFavourites,
   getHistory,
@@ -97,23 +98,6 @@ export function StorefrontApp() {
 
   const favourites = usePrefs(getFavourites);
   const history = usePrefs(getHistory);
-
-  /**
-   * The best seller *within each category*, taken from the live sales column.
-   *
-   * Ranking across the whole menu would be useless to someone browsing: drinks
-   * outsell every main dish, so the badge would only ever appear on Inumin and
-   * a diner looking at Ulam would never see one.
-   */
-  const bestsellerIds = useMemo(() => {
-    const top = new Map<string, { id: string; sold: number }>();
-    for (const d of dishes) {
-      if (!d.available || d.soldToday <= 0) continue;
-      const current = top.get(d.category);
-      if (!current || d.soldToday > current.sold) top.set(d.category, { id: d.id, sold: d.soldToday });
-    }
-    return new Set([...top.values()].map((v) => v.id));
-  }, [dishes]);
 
   // Open on a category that actually has food today. Landing on one where
   // everything is sold out reads as though the karinderya is closed.
@@ -185,7 +169,7 @@ export function StorefrontApp() {
   return (
     <div className="min-h-screen bg-diner-ground text-diner-ink">
       <header className="sticky top-0 z-20 bg-diner-ground/90 backdrop-blur border-b border-diner-ink/10">
-        <div className="max-w-5xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between gap-3">
+        <div className="shell py-3 flex items-center justify-between gap-3">
           <Wordmark />
 
           <div className="flex items-center gap-2">
@@ -236,27 +220,34 @@ export function StorefrontApp() {
 
       {stage === 'menu' && (
         <>
-          <section className="max-w-5xl mx-auto px-4 md:px-8 pt-8 pb-4">
-            <Tagline className="text-4xl md:text-6xl" />
-            <p className="mt-3 opacity-70 max-w-lg text-sm md:text-base">
-              Only what's cooking right now. If it isn't here, it's sold out, balik ka bukas.
-            </p>
+          <section className="shell pt-8 pb-4">
+            {/* On a laptop the search sits beside the heading rather than under
+                it: stacked, it left the whole right of the screen empty and
+                pushed the food further down. */}
+            <div className="lg:flex lg:items-end lg:justify-between lg:gap-10">
+              <div>
+                <Tagline className="text-4xl md:text-6xl" />
+                <p className="mt-3 opacity-70 max-w-lg text-sm md:text-base">
+                  Only what's cooking right now. If it isn't here, it's sold out, balik ka bukas.
+                </p>
+              </div>
 
-            <label className="mt-6 flex items-center gap-2.5 h-12 px-4 rounded-full bg-diner-card border border-diner-ink/15 focus-within:border-diner-ink/45 max-w-md">
-              <Search size={16} className="opacity-50 shrink-0" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search for an ulam, silog or drink"
-                className="flex-1 bg-transparent outline-none text-sm placeholder:opacity-50"
-                aria-label="Search the menu"
-              />
-              {searching && (
-                <button onClick={() => setQuery('')} aria-label="Clear search" className="opacity-50 hover:opacity-100">
-                  <X size={15} />
-                </button>
-              )}
-            </label>
+              <label className="mt-6 lg:mt-0 lg:w-96 lg:shrink-0 flex items-center gap-2.5 h-12 px-4 rounded-full bg-diner-card border border-diner-ink/15 focus-within:border-diner-ink/45 max-w-md">
+                <Search size={16} className="opacity-50 shrink-0" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search for an ulam, silog or drink"
+                  className="flex-1 bg-transparent outline-none text-sm placeholder:opacity-50"
+                  aria-label="Search the menu"
+                />
+                {searching && (
+                  <button onClick={() => setQuery('')} aria-label="Clear search" className="opacity-50 hover:opacity-100">
+                    <X size={15} />
+                  </button>
+                )}
+              </label>
+            </div>
 
             {!searching && (
               <nav className="mt-4 flex gap-2 flex-wrap">
@@ -285,12 +276,16 @@ export function StorefrontApp() {
             )}
           </section>
 
-          <section className="max-w-5xl mx-auto px-4 md:px-8 pb-24">
+          <section className="shell pb-24">
             {!menuLoaded ? (
               <div className="py-20 grid place-items-center opacity-50">
                 <Loader2 className="animate-spin" />
               </div>
             ) : (
+              // Three across, not four, even on a wide screen: a category holds
+              // a handful of dishes, and four columns left two of them stranded
+              // in a half-empty row. Wider cards fill the same space and give
+              // the description room.
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {visible.map((d) => (
                   <DishCard
@@ -299,7 +294,7 @@ export function StorefrontApp() {
                     qty={cart.find((l) => l.dish.id === d.id)?.qty ?? 0}
                     onAdd={() => add(d)}
                     onSub={() => sub(d.id)}
-                    bestseller={show.bestseller && bestsellerIds.has(d.id)}
+                    bestseller={show.bestseller && d.featured}
                     favourite={favourites.includes(d.id)}
                     showRating={show.ratings}
                     showLowStock={show.low_stock}
@@ -309,6 +304,11 @@ export function StorefrontApp() {
               </div>
             )}
           </section>
+
+          {/* Below the dishes rather than above them. Somebody who came to order
+              should reach the food first; the reasons to trust it are what they
+              scroll past on the way to deciding. */}
+          <ReviewShowcase />
         </>
       )}
 
@@ -369,6 +369,10 @@ function DishCard({
   qty: number;
   onAdd: () => void;
   onSub: () => void;
+  /* Whether the owner has marked this dish a bestseller. It used to be worked
+     out here from the sales column, which meant the shop made a claim about its
+     own food that nobody had approved. The figures now only produce a
+     suggestion on the admin screen; the badge appears when the owner accepts. */
   bestseller: boolean;
   favourite: boolean;
   /* What the owner has chosen to show. Passed in rather than read here so one
@@ -464,14 +468,18 @@ function DishCard({
 
         <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 min-h-[22px]">
           {showRating && rating ? (
+            // Comments can be switched off on their own; the stars stay. With
+            // them off there is nothing to open, so this stops being a button
+            // rather than staying one that quietly ignores the tap.
             <button
+              disabled={!showComments}
               onClick={() => {
-                // Comments can be switched off on their own; the stars stay.
-                if (!showComments) return;
                 if (!comments) loadFor(dish.id);
                 setReviewsOpen((v) => !v);
               }}
-              className="inline-flex items-center gap-1.5 hover:opacity-80"
+              className={`inline-flex items-center gap-1.5 ${
+                showComments ? 'hover:opacity-80' : 'cursor-default'
+              }`}
             >
               <Stars value={Math.round(rating.average)} />
               <span className="text-xs tabular-nums">{rating.average.toFixed(1)}</span>

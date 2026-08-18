@@ -87,7 +87,7 @@ export function OpenPill() {
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-20 bg-diner-ground/90 backdrop-blur border-b border-diner-ink/10">
-      <div className="max-w-5xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between gap-3">
+      <div className="shell py-3 flex items-center justify-between gap-3">
         <Wordmark />
         <nav className="flex items-center gap-1 sm:gap-3 text-sm">
           <Link to="/about" className="hidden sm:block px-2 py-1 opacity-70 hover:opacity-100">
@@ -127,7 +127,7 @@ export function SiteFooter() {
   const p = useBusinessStore((s) => s.profile);
   return (
     <footer className="border-t border-diner-ink/10 mt-16">
-      <div className="max-w-5xl mx-auto px-4 md:px-8 py-10 grid gap-8 sm:grid-cols-3 text-sm">
+      <div className="shell py-10 grid gap-8 sm:grid-cols-3 text-sm">
         <div>
           <Wordmark />
           <p className="mt-3 opacity-65 leading-relaxed max-w-xs">{p.tagline}</p>
@@ -159,7 +159,7 @@ export function SiteFooter() {
       </div>
 
       <div className="border-t border-diner-ink/10">
-        <div className="max-w-5xl mx-auto px-4 md:px-8 py-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs opacity-60">
+        <div className="shell py-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs opacity-60">
           <Link to="/about" className="hover:opacity-100">About</Link>
           <Link to="/faq" className="hover:opacity-100">FAQ</Link>
           <Link to="/contact" className="hover:opacity-100">Contact</Link>
