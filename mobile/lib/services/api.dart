@@ -155,13 +155,25 @@ class Api {
 
   /// Discount codes the owner is running now, so a diner with an account learns
   /// about them without the shop paying to advertise anywhere.
+  /// The codes still worth something to this diner.
+  ///
+  /// A code is good once per account, so listing one they have already claimed
+  /// would be an advert for a dead end — they would type it in and be told no.
+  /// The redemptions they can read are their own; access rules see to that, so
+  /// filtering here shows nobody anything new.
   static Future<List<Promo>> activePromos() async {
     try {
-      final rows = await _db
+      final running = await _db
           .from('promo_codes')
           .select('code, label')
           .eq('active', true);
-      return rows.map<Promo>((r) => Promo.fromMap(r)).toList();
+      final claimed = await _db.from('promo_redemptions').select('code');
+      final used = claimed.map<String>((r) => r['code'] as String).toSet();
+
+      return running
+          .where((r) => !used.contains(r['code'] as String))
+          .map<Promo>((r) => Promo.fromMap(r))
+          .toList();
     } catch (_) {
       return const [];
     }
