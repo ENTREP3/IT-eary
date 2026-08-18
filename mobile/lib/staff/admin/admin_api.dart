@@ -140,6 +140,22 @@ class AdminApi {
     await updateShop({'storefront': show});
   }
 
+  /// Forgets both answers the owner has given about one dish, so unmarking it
+  /// starts either question fresh rather than inheriting a stale threshold.
+  static Future<void> forgetBestsellerAnswers(String dishId) async {
+    final row = await shopSettings();
+    final show = Map<String, dynamic>.from(
+      (row?['storefront'] as Map?) ?? const {},
+    );
+    final dismissed = Map<String, dynamic>.from(
+      (show['bestseller_dismissed'] as Map?) ?? const {},
+    );
+    dismissed.remove(dishId);
+    dismissed.remove('unmark:$dishId');
+    show['bestseller_dismissed'] = dismissed;
+    await updateShop({'storefront': show});
+  }
+
   // ---- promotions ----------------------------------------------------------
   //
   // The discount is never decided here. This only writes the rule; the database

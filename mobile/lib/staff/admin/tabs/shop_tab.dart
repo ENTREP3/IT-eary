@@ -1,4 +1,9 @@
+import 'dart:ui' as ui;
+
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../models/models.dart';
 import '../../../tokens.dart';
@@ -399,6 +404,14 @@ class _ShopTabState extends State<ShopTab> {
         // is a control that changes nothing and reads as broken.
         if (_show.ratings && _show.reviewsSource == 'picked')
           const _ReviewPicker(),
+
+        const SizedBox(height: 12),
+        _AppPoster(
+          shop: _fields['name']?.text.trim().isNotEmpty == true
+              ? _fields['name']!.text.trim()
+              : 'Bencris',
+          district: _fields['district']?.text.trim() ?? '',
+        ),
 
         const SizedBox(height: 12),
         const _StaffLogins(),
@@ -1148,6 +1161,293 @@ class _StaffField extends StatelessWidget {
           fillColor: Tokens.staffGround,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
+      ),
+    );
+  }
+}
+
+/// The poster that gets the app onto a diner's phone.
+///
+/// A karinderya has no app store listing and no advertising budget, but it does
+/// have a wall and a menu, and every customer is already standing in front of
+/// both while they wait.
+///
+/// The website prints this. A phone has no printer, so here it downloads: the
+/// poster is drawn as a widget, captured as an image and saved to the device,
+/// which the owner can then send to a print shop, post in a group chat, or set
+/// as the picture on their page. That is more use than a print dialog on a
+/// device that cannot print.
+///
+/// The QR is generated on the device from the address the owner saved, so no
+/// third-party QR service sits between a customer and the download: nothing to
+/// pay for and nothing to expire.
+class _AppPoster extends StatefulWidget {
+  const _AppPoster({required this.shop, required this.district});
+
+  final String shop;
+  final String district;
+
+  @override
+  State<_AppPoster> createState() => _AppPosterState();
+}
+
+class _AppPosterState extends State<_AppPoster> {
+  final _url = TextEditingController();
+  final _shot = GlobalKey();
+  bool _loading = true;
+  bool _busy = false;
+  String? _note;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    AdminApi.shopSettings().then((row) {
+      if (!mounted) return;
+      setState(() {
+        _url.text = (row?['app_download_url'] as String?) ?? '';
+        _loading = false;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _url.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveUrl() async {
+    setState(() {
+      _busy = true;
+      _note = null;
+      _failed = false;
+    });
+    try {
+      await AdminApi.updateShop({'app_download_url': _url.text.trim()});
+      if (mounted) setState(() => _note = 'Address saved.');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _note = '$e';
+          _failed = true;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Captures the poster at three times its on-screen size.
+  ///
+  /// A screen-resolution capture is fine on a screen and useless on paper. At
+  /// 3x the sheet is around 1100 pixels across, which prints cleanly at A5 and
+  /// still scans from a wall.
+  Future<void> _download() async {
+    setState(() {
+      _busy = true;
+      _note = null;
+      _failed = false;
+    });
+    try {
+      final boundary =
+          _shot.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+      final image = await boundary.toImage(pixelRatio: 3);
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (data == null) throw Exception('The poster could not be captured.');
+
+      await FileSaver.instance.saveFile(
+        name: 'bencris-poster',
+        bytes: data.buffer.asUint8List(),
+        ext: 'png',
+        mimeType: MimeType.png,
+      );
+      if (mounted) setState(() => _note = 'Poster saved to your downloads.');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _note = '$e';
+          _failed = true;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final target = _url.text.trim();
+
+    return AdminCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(
+            icon: Icons.qr_code_2,
+            title: 'Poster for the wall',
+            subtitle:
+                'A code your customers can scan while they wait. Save it, then '
+                'print it or send it wherever you like.',
+          ),
+          const SizedBox(height: 14),
+
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else ...[
+            TextField(
+              controller: _url,
+              style: const TextStyle(color: Tokens.staffInk),
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Where the code sends people',
+                hintText: 'https://…',
+                labelStyle: TextStyle(
+                  color: Tokens.staffInk.withValues(alpha: 0.6),
+                ),
+                filled: true,
+                fillColor: Tokens.staffGround,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            if (target.isEmpty)
+              Text(
+                'Put the address of the app here first. Until then there is '
+                'nothing for the code to point at.',
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.45,
+                  color: Tokens.staffInk.withValues(alpha: 0.5),
+                ),
+              )
+            else ...[
+              Center(
+                child: RepaintBoundary(
+                  key: _shot,
+                  child: Container(
+                    width: 300,
+                    padding: const EdgeInsets.all(24),
+                    color: Colors.white,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.shop,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1A1410),
+                          ),
+                        ),
+                        if (widget.district.isNotEmpty)
+                          Text(
+                            widget.district.toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 9,
+                              letterSpacing: 3,
+                              color: Color(0x8A1A1410),
+                            ),
+                          ),
+                        const SizedBox(height: 20),
+                        QrImageView(
+                          data: target,
+                          size: 180,
+                          // A code on a wall gets scanned in bad light, at an
+                          // angle, on paper that may pick up a smudge. The
+                          // highest correction level still reads with roughly a
+                          // third of it obscured.
+                          errorCorrectionLevel: QrErrorCorrectLevel.H,
+                          backgroundColor: Colors.white,
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Order from your phone',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1A1410),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Scan to get the app. See what is cooking today, '
+                          'order ahead, and show your ticket at the counter.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 11,
+                            height: 1.5,
+                            color: Color(0xA61A1410),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        const Text(
+                          'Walang account na kailangan.',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Color(0x661A1410),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
+
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _busy ? null : _saveUrl,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Tokens.staffInk,
+                      side: BorderSide(
+                        color: Tokens.staffInk.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: const Text(
+                      'Save address',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _busy || target.isEmpty ? null : _download,
+                    icon: const Icon(Icons.download_outlined, size: 16),
+                    label: const Text(
+                      'Download poster',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Tokens.staffAccent,
+                      foregroundColor: Tokens.staffCard,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            if (_note != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: _Note(
+                  text: _note!,
+                  tone: _failed ? Tokens.semanticAlert : Tokens.semanticGood,
+                ),
+              ),
+          ],
+        ],
       ),
     );
   }

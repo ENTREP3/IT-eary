@@ -1,8 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../tokens.dart';
 import '../admin_api.dart';
@@ -297,11 +298,17 @@ class _ReceiptRetentionState extends State<ReceiptRetention> {
   }
 
   /// Pulls every receipt down through a short-lived signed link, writes them
-  /// beside a CSV naming which ticket each file belongs to, and hands the lot
-  /// to the phone's own share sheet.
+  /// beside a CSV naming which ticket each file belongs to, and saves the lot
+  /// to the device's own Downloads folder.
   ///
-  /// Without that list the images are a folder of meaningless filenames the
-  /// moment they leave the system.
+  /// A share sheet was the first attempt and it was the wrong tool: it asks the
+  /// owner to choose a destination for every batch, and on a browser it hands
+  /// the files to whatever the platform decides to do with them. A download
+  /// lands somewhere the owner can find again, which is the whole point of
+  /// taking them off the system before deleting them.
+  ///
+  /// Without the CSV the images are a folder of meaningless filenames the
+  /// moment they leave.
   Future<void> _download() async {
     final rows = _rows;
     if (rows == null || rows.isEmpty) return;
@@ -313,13 +320,9 @@ class _ReceiptRetentionState extends State<ReceiptRetention> {
     });
 
     try {
-      final dir = await getTemporaryDirectory();
       final stamp = DateTime.now().toIso8601String().substring(0, 10);
-      final folder = Directory('${dir.path}/receipts-$stamp')
-        ..createSync(recursive: true);
-
-      final files = <XFile>[];
       final manifest = <String>['ticket_code,date,amount,file'];
+      var saved = 0;
 
       for (final r in rows) {
         final url = await AdminApi.proofUrl(r['proof_path'] as String);
@@ -329,24 +332,29 @@ class _ReceiptRetentionState extends State<ReceiptRetention> {
         if (bytes == null) continue;
 
         final date = (r['created_at'] as String).substring(0, 10);
-        final name = '${r['ticket_code']}-$date.jpg';
-        final file = File('${folder.path}/$name')..writeAsBytesSync(bytes);
-        files.add(XFile(file.path));
-        manifest.add('${r['ticket_code']},$date,${r['total']},$name');
+        final name = '${r['ticket_code']}-$date';
 
-        if (mounted) setState(() => _done = files.length);
+        await FileSaver.instance.saveFile(
+          name: name,
+          bytes: Uint8List.fromList(bytes),
+          ext: 'jpg',
+          mimeType: MimeType.jpeg,
+        );
+
+        manifest.add('${r['ticket_code']},$date,${r['total']},$name.jpg');
+        saved++;
+        if (mounted) setState(() => _done = saved);
       }
 
-      if (files.isEmpty) {
+      if (saved == 0) {
         throw Exception('None of the images could be fetched.');
       }
 
-      final csv = File('${folder.path}/receipts-$stamp.csv')
-        ..writeAsStringSync(manifest.join('\n'));
-      files.add(XFile(csv.path));
-
-      await SharePlus.instance.share(
-        ShareParams(files: files, text: 'Bencris receipts up to $stamp'),
+      await FileSaver.instance.saveFile(
+        name: 'receipts-$stamp',
+        bytes: Uint8List.fromList(utf8.encode(manifest.join('\n'))),
+        ext: 'csv',
+        mimeType: MimeType.csv,
       );
 
       if (mounted) setState(() => _saved = _days);
