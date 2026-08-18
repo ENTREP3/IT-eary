@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../models/models.dart';
@@ -222,9 +224,12 @@ class _MenuTabState extends State<MenuTab> {
 /// food on the strength of a sum. The figures stay, but they stop being the
 /// decision: they come here, and the owner accepts or declines.
 ///
-/// There is no matching suggestion to unmark a dish. The obvious candidate
-/// would be a marked dish that is not selling, which is exactly the new dish
-/// the owner is deliberately pushing.
+/// The second question has to be careful. Flagging a marked dish simply
+/// because it is quiet would flag the new dish the owner is deliberately
+/// pushing, so it asks only where there is a concrete alternative: something
+/// unmarked outselling their pick in the same category by a wide margin. That
+/// is a fact rather than an opinion about the food, and it names the rival so
+/// the owner can judge it themselves.
 class _Suggestions extends StatefulWidget {
   const _Suggestions({required this.dishes, required this.onChanged});
 
@@ -239,6 +244,19 @@ class _SuggestionsState extends State<_Suggestions> {
   /// Sales must climb by half again before a declined dish is raised a second
   /// time.
   static const _askAgainAt = 1.5;
+
+  /// How far an unmarked dish has to be ahead before the marked one is
+  /// questioned.
+  ///
+  /// Twice is deliberately a wide gap. A marked dish merely being second is
+  /// nothing — the owner may be pushing it precisely because it needs the help.
+  /// Being outsold two to one by something they passed over is a different
+  /// claim.
+  static const _clearlyAhead = 2;
+
+  /// Refused un-mark suggestions share the one settings object with the marks,
+  /// under this prefix.
+  static const _unmarkKey = 'unmark:';
 
   Map<String, dynamic> _dismissed = const {};
   String? _busy;
@@ -300,6 +318,36 @@ class _SuggestionsState extends State<_Suggestions> {
     return out;
   }
 
+  /// Marked dishes that something unmarked is clearly outselling.
+  ///
+  /// The rival has to be unmarked on purpose. Two marked dishes in one category
+  /// is the owner promoting a range, not a mistake to correct.
+  List<({Dish dish, Dish rival})> get _demotions {
+    final out = <({Dish dish, Dish rival})>[];
+
+    for (final d in widget.dishes) {
+      if (!d.featured || !d.available) continue;
+
+      Dish? rival;
+      for (final other in widget.dishes) {
+        if (other.featured || !other.available) continue;
+        if (other.category != d.category) continue;
+        if (other.soldToday < d.soldToday * _clearlyAhead) continue;
+        if (rival == null || other.soldToday > rival.soldToday) rival = other;
+      }
+      if (rival == null) continue;
+
+      final refusedAt = (_dismissed['$_unmarkKey${d.id}'] as num?)?.toInt();
+      if (refusedAt != null && rival.soldToday < refusedAt * _askAgainAt) {
+        continue;
+      }
+      out.add((dish: d, rival: rival));
+    }
+
+    out.sort((a, b) => b.rival.soldToday.compareTo(a.rival.soldToday));
+    return out;
+  }
+
   Future<void> _accept(Dish d) async {
     setState(() => _busy = d.id);
     try {
@@ -322,11 +370,53 @@ class _SuggestionsState extends State<_Suggestions> {
     }
   }
 
+  Future<void> _unmark(Dish d) async {
+    setState(() => _busy = d.id);
+    try {
+      await AdminApi.updateDish(d.id, {'featured': false});
+      await AdminApi.forgetBestsellerAnswers(d.id);
+      if (mounted) {
+        // Both refusals go, so the dish starts either question fresh rather
+        // than inheriting a threshold from the last time round.
+        final rest = {..._dismissed}
+          ..remove(d.id)
+          ..remove('$_unmarkKey${d.id}');
+        setState(() => _dismissed = rest);
+      }
+      await widget.onChanged();
+    } finally {
+      if (mounted) setState(() => _busy = null);
+    }
+  }
+
+  Future<void> _keep(({Dish dish, Dish rival}) s) async {
+    setState(() => _busy = s.dish.id);
+    try {
+      await AdminApi.dismissBestseller(
+        '$_unmarkKey${s.dish.id}',
+        s.rival.soldToday,
+      );
+      if (mounted) {
+        setState(
+          () => _dismissed = {
+            ..._dismissed,
+            '$_unmarkKey${s.dish.id}': s.rival.soldToday,
+          },
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_ready) return const SizedBox.shrink();
     final suggestions = _suggestions;
-    if (suggestions.isEmpty) return const SizedBox.shrink();
+    final demotions = _demotions;
+    if (suggestions.isEmpty && demotions.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -349,7 +439,7 @@ class _SuggestionsState extends State<_Suggestions> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Selling well — mark them?',
+                  'What the sales say',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: Tokens.staffInk.withValues(alpha: 0.95),
@@ -366,6 +456,8 @@ class _SuggestionsState extends State<_Suggestions> {
               ),
             ),
             const SizedBox(height: 12),
+
+            if (suggestions.isNotEmpty) _Heading('Selling well — mark them?'),
             for (final s in suggestions)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -423,7 +515,93 @@ class _SuggestionsState extends State<_Suggestions> {
                   ],
                 ),
               ),
+
+            if (demotions.isNotEmpty)
+              _Heading('Being outsold — still a bestseller?'),
+            for (final s in demotions)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.dish.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Tokens.staffInk,
+                      ),
+                    ),
+                    Text(
+                      '${s.dish.soldToday} sold, while ${s.rival.name} has sold '
+                      '${s.rival.soldToday} and is not marked. Keep it if you '
+                      'are pushing it on purpose.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.4,
+                        color: Tokens.staffInk.withValues(alpha: 0.55),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _busy == s.dish.id
+                              ? null
+                              : () => _unmark(s.dish),
+                          icon: const Icon(Icons.star_outline_rounded, size: 15),
+                          label: const Text('Unmark it'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Tokens.staffInk,
+                            side: BorderSide(
+                              color: Tokens.staffInk.withValues(alpha: 0.25),
+                            ),
+                            textStyle: const TextStyle(fontSize: 12),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: _busy == s.dish.id
+                              ? null
+                              : () => _keep(s),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Tokens.staffInk.withValues(
+                              alpha: 0.6,
+                            ),
+                            textStyle: const TextStyle(fontSize: 12),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          child: const Text('Keep it'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A small label separating the two questions the panel asks.
+class _Heading extends StatelessWidget {
+  const _Heading(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: 10,
+          letterSpacing: 1.8,
+          fontWeight: FontWeight.w600,
+          color: Tokens.staffInk.withValues(alpha: 0.45),
         ),
       ),
     );
@@ -634,17 +812,66 @@ class _RecipeSheetState extends State<_RecipeSheet> {
   final _newQty = TextEditingController(text: '1');
   final _batches = TextEditingController(text: '1');
 
+  /// How many servings one batch makes.
+  ///
+  /// This used to save only when the keyboard's submit key was pressed, which
+  /// on a phone number pad is a key many people never look for — so the figure
+  /// looked changed and was not. It now saves shortly after typing stops, and
+  /// at once when the field loses focus, so what is on screen is what is in the
+  /// database. The pause is what stops "20" writing a 2 on its way past.
+  final _yieldCtrl = TextEditingController();
+  final _yieldFocus = FocusNode();
+  Timer? _yieldDebounce;
+
   @override
   void initState() {
     super.initState();
+    // Leaving the field is as clear a signal as pressing submit, and rather
+    // more likely to actually happen.
+    _yieldFocus.addListener(() {
+      if (!_yieldFocus.hasFocus) _saveYield();
+    });
     _load();
   }
 
   @override
   void dispose() {
+    _yieldDebounce?.cancel();
+    _yieldCtrl.dispose();
+    _yieldFocus.dispose();
     _newQty.dispose();
     _batches.dispose();
     super.dispose();
+  }
+
+  void _yieldTyped(String _) {
+    _yieldDebounce?.cancel();
+    _yieldDebounce = Timer(const Duration(milliseconds: 700), _saveYield);
+  }
+
+  Future<void> _saveYield() async {
+    _yieldDebounce?.cancel();
+    final n = int.tryParse(_yieldCtrl.text.trim());
+
+    // An empty or nonsense box is somebody mid-edit, not an instruction to set
+    // the yield to nothing. Put back what is saved and say nothing.
+    if (n == null || n <= 0) {
+      _yieldCtrl.text = '$_yield';
+      return;
+    }
+    if (n == _yield) return;
+
+    setState(() => _yield = n);
+    try {
+      await AdminApi.setBatchYield(widget.dish.id, n);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _message = '$e';
+          _failed = true;
+        });
+      }
+    }
   }
 
   Future<void> _load() async {
@@ -658,6 +885,7 @@ class _RecipeSheetState extends State<_RecipeSheet> {
       setState(() {
         _rows = results[0] as List<Map<String, dynamic>>;
         _yield = results[1] as int;
+        _yieldCtrl.text = '$_yield';
         final c = results[2] as int;
         _canCook = c < 0 ? null : c;
       });
@@ -888,16 +1116,13 @@ class _RecipeSheetState extends State<_RecipeSheet> {
                   SizedBox(
                     width: 90,
                     child: TextField(
-                      controller: TextEditingController(text: '$_yield'),
+                      controller: _yieldCtrl,
+                      focusNode: _yieldFocus,
                       keyboardType: TextInputType.number,
                       style: const TextStyle(color: Tokens.staffInk),
                       decoration: _dec('servings'),
-                      onSubmitted: (v) async {
-                        final n = int.tryParse(v.trim());
-                        if (n == null || n <= 0) return;
-                        setState(() => _yield = n);
-                        await AdminApi.setBatchYield(widget.dish.id, n);
-                      },
+                      onChanged: _yieldTyped,
+                      onSubmitted: (_) => _saveYield(),
                     ),
                   ),
                 ],
