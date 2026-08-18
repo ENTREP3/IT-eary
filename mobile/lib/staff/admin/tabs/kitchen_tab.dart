@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../models/models.dart';
 import '../../../tokens.dart';
 import '../admin_api.dart';
-import '../../cashier/cashier_screen.dart';
 import 'widgets.dart';
-
-enum _View { queue, ticket }
 
 /// Live order queue. Oldest first, so nothing gets stranded behind a rush.
 class KitchenTab extends StatefulWidget {
@@ -21,7 +18,6 @@ class KitchenTab extends StatefulWidget {
 
 class _KitchenTabState extends State<KitchenTab> {
   String? _busy;
-  _View _view = _View.queue;
 
   static const _lanes = [
     (
@@ -50,33 +46,6 @@ class _KitchenTabState extends State<KitchenTab> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // The queue and the till on one page.
-        //
-        // The counter used to be a separate app to switch to. In a karinderya
-        // this size the person reading the queue is usually the person taking
-        // the money thirty seconds later, so it is a toggle rather than a
-        // journey — and it is the same till, not a second copy of it.
-        SegmentedButton<_View>(
-          segments: const [
-            ButtonSegment(value: _View.queue, label: Text('Order queue')),
-            ButtonSegment(value: _View.ticket, label: Text('Look up a ticket')),
-          ],
-          selected: {_view},
-          showSelectedIcon: false,
-          style: SegmentedButton.styleFrom(
-            backgroundColor: Tokens.staffCard,
-            foregroundColor: Tokens.staffInk,
-            selectedBackgroundColor: Tokens.staffAccent,
-            selectedForegroundColor: Tokens.staffCard,
-            textStyle: const TextStyle(fontSize: 12),
-          ),
-          onSelectionChanged: (s) => setState(() => _view = s.first),
-        ),
-        const SizedBox(height: 16),
-
-        if (_view == _View.ticket)
-          const CashierScreen(chrome: false)
-        else
         for (final (title, statuses, next, nextLabel, accent) in _lanes) ...[
           Builder(builder: (_) {
             final lane = widget.orders
@@ -188,6 +157,71 @@ class _KitchenTabState extends State<KitchenTab> {
           }),
         ],
       ],
+    );
+  }
+}
+
+/// The order queue, fetching its own orders.
+///
+/// The dashboard already holds every dataset and hands them down, so its
+/// Kitchen tab takes them as a parameter. The counter holds nothing — it is a
+/// till, and a cashier signing in there never loads the dashboard at all. This
+/// wrapper is what lets the same queue appear on both without the counter
+/// paying for an orders feed it may never open.
+class SelfLoadingKitchenQueue extends StatefulWidget {
+  const SelfLoadingKitchenQueue({super.key});
+
+  @override
+  State<SelfLoadingKitchenQueue> createState() =>
+      _SelfLoadingKitchenQueueState();
+}
+
+class _SelfLoadingKitchenQueueState extends State<SelfLoadingKitchenQueue> {
+  List<Ticket>? _orders;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final orders = await AdminApi.recentOrders(days: 2);
+      if (mounted) setState(() => _orders = orders);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = '$e';
+          _orders = const [];
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final orders = _orders;
+    if (orders == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            "Couldn't load the queue. $_error",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Tokens.staffInk.withValues(alpha: 0.6)),
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: KitchenTab(orders: orders, onChanged: _load),
     );
   }
 }
