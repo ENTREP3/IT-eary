@@ -42,6 +42,7 @@ import {
   getMyRating,
   hasOrdered,
   rememberOrder,
+  forgetOrder,
   saveRating,
   subscribePrefs,
   toggleFavourite,
@@ -1372,7 +1373,93 @@ function TicketView({
         </div>
       )}
 
+      {/* Calling it off.
+          Only while it is unpaid and the kitchen has not started — the database
+          enforces both, and past either point this is a conversation with a
+          person rather than a button. Before that, a diner who ordered by
+          mistake had no way to say so, and the ticket sat in the queue until
+          somebody at the shop noticed. */}
+      {!paid && order.status === 'pending' && (
+        <CancelOrder order={order} onCancelled={onDone} />
+      )}
+
       <Receipt order={order} />
+    </div>
+  );
+}
+
+/**
+ * Lets the diner call off an order they have not paid for.
+ *
+ * Behind a confirmation, because there is no undo: the ticket code dies with
+ * it, and re-ordering means going through the menu again. The confirmation
+ * says that plainly instead of asking "are you sure?", which tells nobody
+ * anything.
+ */
+function CancelOrder({ order, onCancelled }: { order: Order; onCancelled: () => void }) {
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+
+  const cancel = async () => {
+    setBusy(true);
+    setError(null);
+    const { error: err } = await supabase.rpc('cancel_my_order', {
+      p_ticket_code: order.ticket_code,
+    });
+    setBusy(false);
+
+    if (err) {
+      // Most likely the counter settled it, or the kitchen started, in the
+      // seconds since this screen last heard about it.
+      setError(err.message);
+      return;
+    }
+    // Out of this device's own list too, so "Order again" cannot offer back
+    // something that no longer exists.
+    forgetOrder(order.ticket_code);
+    onCancelled();
+  };
+
+  if (!asking) {
+    return (
+      <button
+        onClick={() => setAsking(true)}
+        className="mt-4 w-full py-3 rounded-full border border-diner-ink/20 text-sm opacity-70 hover:opacity-100 hover:border-diner-accent/50 transition-colors"
+      >
+        Cancel this order
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-4 rounded-2xl border border-diner-accent/40 bg-diner-accent/5 p-4">
+      <p className="text-sm font-medium">Cancel order {order.ticket_code}?</p>
+      <p className="mt-1 text-xs opacity-70 leading-relaxed">
+        The kitchen stops seeing it and the code stops working. If you still
+        want the food you will have to order again.
+      </p>
+
+      {error && <p className="mt-2 text-xs text-diner-accent">{error}</p>}
+
+      <div className="mt-3 flex gap-2">
+        <button
+          onClick={cancel}
+          disabled={busy}
+          className="flex-1 py-2.5 rounded-full bg-diner-accent text-white text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {busy && <Loader2 size={14} className="animate-spin" />}
+          Yes, cancel it
+        </button>
+        <button
+          onClick={() => setAsking(false)}
+          disabled={busy}
+          className="flex-1 py-2.5 rounded-full border border-diner-ink/20 text-sm disabled:opacity-50"
+        >
+          Keep my order
+        </button>
+      </div>
     </div>
   );
 }

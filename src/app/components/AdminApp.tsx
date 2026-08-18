@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ArrowLeft,
   LayoutDashboard,
   Package,
   LineChart as LineIcon,
@@ -65,6 +64,7 @@ import type { Order } from '../lib/types';
 import { supabase } from '../lib/supabase';
 import { PromotionsPanel } from './admin/PromotionsPanel';
 import { KitchenBoard } from './shared/KitchenBoard';
+import { CashierApp } from './CashierApp';
 import { RecipePanel } from './admin/RecipePanel';
 import { ShopPanel } from './admin/ShopPanel';
 import { PriceSuggestions } from './admin/PriceSuggestions';
@@ -178,13 +178,11 @@ function AdminDashboard() {
   // slide-in drawer on phones.
   const sidebar = (
     <>
+      {/* The "← Counter" link that used to sit here is gone. The till is on the
+          Kitchen page now, a toggle away from the queue, which is where it was
+          always wanted — leaving the dashboard to look up one ticket and
+          pressing back was a journey for a thirty-second job. */}
       <div className="p-6 border-b border-[#e8dfc8]/10">
-        <a
-          href="/cashier"
-          className="text-xs opacity-50 hover:opacity-100 flex items-center gap-1.5 mb-4"
-        >
-          <ArrowLeft size={13} /> Counter
-        </a>
         <div
           style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.02em' }}
           className="text-2xl leading-none"
@@ -362,7 +360,7 @@ function AdminDashboard() {
 
         <div className="p-4 md:p-8">
           {tab === 'dashboard' && <Dashboard orders={orders} />}
-          {tab === 'kitchen' && <KitchenBoard orders={orders} />}
+          {tab === 'kitchen' && <KitchenPage orders={orders} />}
           {tab === 'inventory' && <InventoryPanel />}
           {tab === 'analytics' && <AnalyticsPanel orders={orders} />}
           {tab === 'menu' && <MenuControl />}
@@ -670,6 +668,44 @@ function ReconciliationPanel({ orders }: { orders: Order[] }) {
         </div>
       )}
     </Card>
+  );
+}
+
+/**
+ * The order queue, and the till, on one screen.
+ *
+ * The counter used to be a link out of the dashboard — press it, lose the
+ * sidebar, look up a ticket, press back. In a karinderya this size the person
+ * reading the queue is usually the person taking the money thirty seconds
+ * later, so it is a toggle rather than a journey. Same till as the counter
+ * screen, not a second copy of it.
+ */
+function KitchenPage({ orders }: { orders: Order[] }) {
+  const [view, setView] = useState<'queue' | 'ticket'>('queue');
+
+  return (
+    <div className="space-y-5">
+      <div className="inline-flex rounded-lg border border-[#e8dfc8]/15 overflow-hidden text-xs">
+        {(
+          [
+            ['queue', 'Order queue'],
+            ['ticket', 'Look up a ticket'],
+          ] as const
+        ).map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => setView(k)}
+            className={`px-4 py-2 transition-colors ${
+              view === k ? 'bg-[#e8a84a] text-[#0a0d0a]' : 'hover:bg-[#e8dfc8]/5'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'queue' ? <KitchenBoard orders={orders} /> : <CashierApp chrome={false} />}
+    </div>
   );
 }
 

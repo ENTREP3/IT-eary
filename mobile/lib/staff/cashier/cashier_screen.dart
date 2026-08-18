@@ -8,9 +8,17 @@ import '../staff_api.dart';
 /// enforces live in Postgres — this is a second face on the same system, not a
 /// second system.
 class CashierScreen extends StatefulWidget {
-  const CashierScreen({super.key, this.onSignOut});
+  const CashierScreen({super.key, this.onSignOut, this.chrome = true});
 
   final VoidCallback? onSignOut;
+
+  /// Whether to draw the counter's own scaffold and bar.
+  ///
+  /// The dashboard shows this same till inside its Kitchen page, where there is
+  /// already a bar and a sign-out. Drawn with its full chrome there it would
+  /// stack two of each; rebuilt as a second copy it would leave two ticket
+  /// flows to keep in step. So it keeps one implementation and drops its frame.
+  final bool chrome;
 
   @override
   State<CashierScreen> createState() => _CashierScreenState();
@@ -122,6 +130,16 @@ class _CashierScreenState extends State<CashierScreen> {
   @override
   Widget build(BuildContext context) {
     final t = _ticket;
+
+    if (!widget.chrome) {
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: t == null ? _lookupView() : _ticketView(t),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Tokens.staffGround,
       appBar: AppBar(

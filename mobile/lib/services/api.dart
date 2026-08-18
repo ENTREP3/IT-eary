@@ -318,6 +318,19 @@ class Api {
     return Ticket.fromMap(Map<String, dynamic>.from(row as Map));
   }
 
+  /// Calls off an order the diner has not paid for.
+  ///
+  /// The database decides whether it may go: unpaid, and the kitchen not yet
+  /// started. Past either point this is a conversation with a person rather
+  /// than a button, and the function says so in the error it raises.
+  static Future<Ticket> cancelMyOrder(String ticketCode) async {
+    final row = await _db.rpc(
+      'cancel_my_order',
+      params: {'p_ticket_code': ticketCode.trim().toUpperCase()},
+    );
+    return Ticket.fromMap(Map<String, dynamic>.from(row as Map));
+  }
+
   static Future<Ticket?> findTicket(String code) async {
     final row = await _db
         .from('orders')
