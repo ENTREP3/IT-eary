@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../models/models.dart';
 import '../../services/api.dart';
 import '../../theme.dart';
+import '../../tokens.dart';
 import 'ticket_screen.dart';
 
 /// An optional account, and everything it makes possible.
@@ -91,6 +94,14 @@ class _SignedOutState extends State<_SignedOut> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
       children: [
+        // Above the sign-in, not below it.
+        //
+        // A guest opening this screen is usually not here to make an account —
+        // they are here because they ordered, closed the app, and want to know
+        // whether the food is ready. Making them scroll past a signup form to
+        // find that out would be answering a question nobody asked.
+        const _GuestOrders(),
+
         Text(
           _creating ? 'Make an account' : 'Sign in',
           style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
@@ -513,5 +524,164 @@ class _OrderCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// The tickets this device raised, for somebody who never made an account.
+///
+/// Before this, a guest who closed the app without copying the code had nothing
+/// at all. The counter could look the ticket up, but had no way to tell whether
+/// the person asking was the person who ordered it — the code was the only
+/// proof, and it was gone. The device holds a token now, so it can ask the
+/// database for its own tickets and get an answer nobody else could get.
+///
+/// Refreshed on a timer rather than pushed: Realtime authorises with the token
+/// in the connection and a guest has none, so there is nothing for it to check
+/// the row against. One request every ten seconds while this screen is open is
+/// a fair price for tickets that are nobody else's business.
+class _GuestOrders extends StatefulWidget {
+  const _GuestOrders();
+
+  @override
+  State<_GuestOrders> createState() => _GuestOrdersState();
+}
+
+class _GuestOrdersState extends State<_GuestOrders> {
+  List<Ticket> _orders = const [];
+  Timer? _poll;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _poll = Timer.periodic(const Duration(seconds: 10), (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final orders = await Api.myOrders();
+      if (mounted) setState(() => _orders = orders);
+    } catch (_) {
+      // A list that cannot be fetched is not worth an error on a sign-in
+      // screen; the sign-in below still works.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Nothing yet, or nothing ever: either way there is no reason to take up
+    // the top of the screen with an empty box.
+    if (_orders.isEmpty) return const SizedBox.shrink();
+
+    final live = _orders
+        .where((o) => o.status != 'completed' && o.status != 'cancelled')
+        .toList();
+    final past = _orders
+        .where((o) => o.status == 'completed' || o.status == 'cancelled')
+        .toList();
+    final shown = live.isNotEmpty ? live : past.take(5).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          live.isNotEmpty ? 'Your order' : 'What you ordered here',
+          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Kept on this device, so you did not have to write the code down. '
+          'Only this phone can see them.',
+          style: TextStyle(height: 1.5, color: Palette.ink.withValues(alpha: 0.65)),
+        ),
+        const SizedBox(height: 16),
+
+        for (final o in shown)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => TicketScreen(ticket: o)),
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Palette.card,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Palette.ink.withValues(alpha: 0.1)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          o.ticketCode,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            letterSpacing: 2,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          _stageOf(o),
+                          style: TextStyle(fontSize: 12, color: _toneOf(o)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      o.items.map((i) => '${i.qty} × ${i.name}').join(', '),
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.4,
+                        color: Palette.ink.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '₱${o.total.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Palette.ink.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+        const SizedBox(height: 24),
+        Divider(color: Palette.ink.withValues(alpha: 0.12)),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  /// Where the ticket has got to, in the words a diner would use.
+  static String _stageOf(Ticket o) {
+    if (o.status == 'cancelled') return 'Cancelled';
+    if (o.status == 'completed') return 'Collected';
+    if (o.status == 'ready') return 'Ready to collect';
+    if (o.status == 'preparing') return 'Being cooked';
+    if (o.isPaid) return 'Paid, waiting for the kitchen';
+    return 'Pay at the counter';
+  }
+
+  static Color _toneOf(Ticket o) {
+    if (o.status == 'cancelled' || o.status == 'completed') {
+      return Palette.ink.withValues(alpha: 0.45);
+    }
+    if (o.status == 'ready' || o.isPaid) return Tokens.semanticGood;
+    return Palette.red;
   }
 }

@@ -43,6 +43,7 @@ import {
   hasOrdered,
   rememberOrder,
   forgetOrder,
+  deviceToken,
   saveRating,
   subscribePrefs,
   toggleFavourite,
@@ -911,6 +912,9 @@ function CartSheet({
         p_payment_method: method,
         p_promo_code: applied?.code ?? null,
         p_pickup_at: pickup === null ? null : new Date(Date.now() + pickup * 60_000).toISOString(),
+        // How this device proves the ticket is its own, later, without an
+        // account and without having written the code down.
+        p_device_token: deviceToken(),
       });
       if (rpcErr) throw rpcErr;
       onPlaced(data as Order);
@@ -1208,8 +1212,19 @@ function TicketView({
   const paid = !!order.paid_at;
   const isGcash = order.payment_method === 'gcash';
 
-  // Live: flips to Paid while the diner is standing at the counter.
+  /**
+   * Live: flips to Paid while the diner is standing at the counter.
+   *
+   * A signed-in diner gets it pushed, because Realtime can check the row
+   * against their account. A guest cannot: Realtime authorises with the token
+   * in the JWT and a guest has none, so it asks instead — one row every few
+   * seconds, and only while this screen is actually open. That is a fair price
+   * for no longer letting anybody read anybody's ticket.
+   */
+  const signedIn = useAuthStore((s) => !!s.user);
+
   useEffect(() => {
+    if (!signedIn) return;
     const channel = supabase
       .channel(`diner-ticket-${order.id}`)
       .on(
@@ -1221,7 +1236,23 @@ function TicketView({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [order.id, onUpdate]);
+  }, [order.id, onUpdate, signedIn]);
+
+  useEffect(() => {
+    if (signedIn) return;
+    // Nothing more is coming once it is done with; stop asking.
+    if (order.status === 'completed' || order.status === 'cancelled') return;
+
+    const id = setInterval(async () => {
+      const { data } = await supabase.rpc('find_my_ticket', {
+        p_ticket_code: order.ticket_code,
+        p_device_token: deviceToken(),
+      });
+      const fresh = Array.isArray(data) ? data[0] : data;
+      if (fresh) onUpdate(fresh as Order);
+    }, 6000);
+    return () => clearInterval(id);
+  }, [order.ticket_code, order.status, onUpdate, signedIn]);
 
   const upload = async (file: File) => {
     setUploading(true);
@@ -1407,6 +1438,7 @@ function CancelOrder({ order, onCancelled }: { order: Order; onCancelled: () => 
     setError(null);
     const { error: err } = await supabase.rpc('cancel_my_order', {
       p_ticket_code: order.ticket_code,
+      p_device_token: deviceToken(),
     });
     setBusy(false);
 
@@ -1491,14 +1523,23 @@ function LookupSheet({
     if (!trimmed) return;
     setBusy(true);
     setError(null);
-    const { data } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('ticket_code', trimmed)
-      .maybeSingle();
+    // Through the function, not the table. A plain select used to work for
+    // anybody because the read policy allowed any recent order; it no longer
+    // does, and this is where the device says which tickets are its own.
+    const { data } = await supabase.rpc('find_my_ticket', {
+      p_ticket_code: trimmed,
+      p_device_token: deviceToken(),
+    });
     setBusy(false);
-    if (!data) setError(`No ticket "${trimmed}".`);
-    else onFound(data as Order);
+
+    const found = Array.isArray(data) ? data[0] : data;
+    if (!found) {
+      setError(
+        `No ticket "${trimmed}" on this device. If you ordered on another phone, ask at the counter.`,
+      );
+    } else {
+      onFound(found as Order);
+    }
   };
 
   return (

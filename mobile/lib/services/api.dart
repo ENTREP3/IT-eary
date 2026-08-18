@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../diner/state/device_token.dart';
 import '../models/models.dart';
 
 /// Every call the diner app makes.
@@ -79,17 +80,19 @@ class Api {
   /// guest ticket can follow itself, and the screen would quietly list other
   /// people's orders. Access rules decide what you MAY read, not what a screen
   /// means. The web app had exactly this bug.
+  ///
+  /// That window is now closed, and this goes through my_orders() instead: it
+  /// returns the orders raised by THIS device, plus the ones on the account if
+  /// there is one, and nothing else. A guest gets their own list without ever
+  /// making an account, which is the point.
   static Future<List<Ticket>> myOrders() async {
-    final uid = currentUser?.id;
-    if (uid == null) return const [];
-
-    final rows = await _db
-        .from('orders')
-        .select()
-        .eq('customer_id', uid)
-        .order('created_at', ascending: false)
-        .limit(30);
-    return rows.map<Ticket>((r) => Ticket.fromMap(r)).toList();
+    final rows = await _db.rpc(
+      'my_orders',
+      params: {'p_device_token': await DeviceToken.get()},
+    );
+    return (rows as List)
+        .map<Ticket>((r) => Ticket.fromMap(Map<String, dynamic>.from(r as Map)))
+        .toList();
   }
 
   /// Every change to this diner's orders, so the card moves through Preparing
@@ -313,6 +316,9 @@ class Api {
         // The code only, never a discount amount. What it is worth is decided
         // by the database, so a tampered app cannot invent its own reduction.
         'p_promo_code': (promoCode ?? '').trim().isEmpty ? null : promoCode!.trim(),
+        // How this device proves the ticket is its own, later, without an
+        // account and without having written the code down.
+        'p_device_token': await DeviceToken.get(),
       },
     );
     return Ticket.fromMap(Map<String, dynamic>.from(row as Map));
@@ -326,18 +332,31 @@ class Api {
   static Future<Ticket> cancelMyOrder(String ticketCode) async {
     final row = await _db.rpc(
       'cancel_my_order',
-      params: {'p_ticket_code': ticketCode.trim().toUpperCase()},
+      params: {
+        'p_ticket_code': ticketCode.trim().toUpperCase(),
+        'p_device_token': await DeviceToken.get(),
+      },
     );
     return Ticket.fromMap(Map<String, dynamic>.from(row as Map));
   }
 
+  /// Pulls a ticket back up, if it belongs to this device.
+  ///
+  /// Through the function rather than the table: a plain select used to work
+  /// for anybody, because the read policy allowed any recent order, and it no
+  /// longer does. This is where the device says which tickets are its own.
   static Future<Ticket?> findTicket(String code) async {
-    final row = await _db
-        .from('orders')
-        .select()
-        .eq('ticket_code', code.trim().toUpperCase())
-        .maybeSingle();
-    return row == null ? null : Ticket.fromMap(row);
+    final rows = await _db.rpc(
+      'find_my_ticket',
+      params: {
+        'p_ticket_code': code.trim().toUpperCase(),
+        'p_device_token': await DeviceToken.get(),
+      },
+    );
+    final list = rows as List;
+    return list.isEmpty
+        ? null
+        : Ticket.fromMap(Map<String, dynamic>.from(list.first as Map));
   }
 
   /// Picks a GCash receipt from the gallery and uploads it against [ticketCode].
