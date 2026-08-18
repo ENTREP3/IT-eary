@@ -28,15 +28,24 @@ type Stage = 'lookup' | 'review' | 'receipt';
 
 // The counter carries the kitchen board, which can cancel an order, so the
 // confirmation provider has to reach it here too.
-export function CashierApp() {
+export function CashierApp({ chrome = true }: { chrome?: boolean }) {
   return (
     <ConfirmProvider>
-      <CashierCounter />
+      <CashierCounter chrome={chrome} />
     </ConfirmProvider>
   );
 }
 
-function CashierCounter() {
+/**
+ * @param chrome  Whether to draw the counter's own header and screen.
+ *
+ * The dashboard shows this same till inside its Kitchen page, where it already
+ * has a sidebar, a heading and a sign-out of its own. Rendering it there with
+ * its full chrome would stack two headers and two log-out buttons; rebuilding
+ * the ticket flow a second time would leave two of them to keep in step. So the
+ * component keeps one implementation and simply drops its frame.
+ */
+function CashierCounter({ chrome }: { chrome: boolean }) {
   // In a karinderya this size the person on the till is also the person calling
   // to the kitchen, so the counter screen carries the order queue too.
   const [view, setView] = useState<'counter' | 'kitchen'>('counter');
@@ -154,7 +163,14 @@ function CashierCounter() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f1410] text-[#e8dfc8] flex flex-col">
+    <div
+      className={
+        chrome
+          ? 'min-h-screen bg-[#0f1410] text-[#e8dfc8] flex flex-col'
+          : 'flex flex-col text-[#e8dfc8]'
+      }
+    >
+      {chrome && (
       <header className="border-b border-[#e8dfc8]/10 px-6 py-4 flex items-center justify-between print:hidden">
         <div>
           <div
@@ -209,14 +225,15 @@ function CashierCounter() {
           </button>
         </div>
       </header>
+      )}
 
-      {view === 'kitchen' ? (
+      {chrome && view === 'kitchen' ? (
         <main className="flex-1 p-6 overflow-auto">
           <h2 className="text-[11px] tracking-[0.25em] uppercase opacity-45 mb-4">Order queue</h2>
           <KitchenOrders />
         </main>
       ) : (
-      <main className="flex-1 grid place-items-center p-6">
+      <main className={chrome ? "flex-1 grid place-items-center p-6" : "grid place-items-center py-6"}>
         <AnimatePresence mode="wait">
           {stage === 'lookup' && (
             <motion.form

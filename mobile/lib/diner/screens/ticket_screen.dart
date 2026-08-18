@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../models/models.dart';
 import '../../services/api.dart';
 import '../../theme.dart';
+import '../state/order_history.dart';
 import 'rate_order.dart';
 import '../../tokens.dart';
 
@@ -72,6 +73,61 @@ class _TicketScreenState extends State<TicketScreen> {
         _uploadError = 'Could not upload that image. $e';
         _uploading = false;
       });
+    }
+  }
+
+  bool _cancelling = false;
+
+  /// Calls the order off, behind a confirmation.
+  ///
+  /// There is no undo: the ticket code dies with it, and re-ordering means
+  /// going through the menu again. The dialog says that plainly instead of
+  /// asking "are you sure?", which tells nobody anything.
+  Future<void> _cancel() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Palette.cream,
+        title: Text(
+          'Cancel order ${_ticket.ticketCode}?',
+          style: const TextStyle(fontSize: 18),
+        ),
+        content: const Text(
+          'The kitchen stops seeing it and the code stops working. If you '
+          'still want the food you will have to order again.',
+          style: TextStyle(height: 1.45),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep my order'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Palette.red),
+            child: const Text('Yes, cancel it'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    setState(() => _cancelling = true);
+    try {
+      await Api.cancelMyOrder(_ticket.ticketCode);
+      // Out of this device's own list too, so "Order again" cannot offer back
+      // something that no longer exists.
+      await OrderHistory.forget(_ticket.ticketCode);
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      // Most likely the counter settled it, or the kitchen started, in the
+      // seconds since this screen last heard about it.
+      if (mounted) {
+        setState(() => _cancelling = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not cancel that. $e')),
+        );
+      }
     }
   }
 
@@ -393,6 +449,27 @@ class _TicketScreenState extends State<TicketScreen> {
                 shape: const StadiumBorder(),
               ),
             ),
+
+            // Calling it off. Only while it is unpaid and the kitchen has not
+            // started — the database enforces both, and past either point this
+            // is a conversation with a person rather than a button.
+            if (!paid && _ticket.status == 'pending') ...[
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: _cancelling ? null : _cancel,
+                style: TextButton.styleFrom(
+                  minimumSize: const Size.fromHeight(46),
+                  foregroundColor: Palette.ink.withValues(alpha: 0.65),
+                ),
+                child: _cancelling
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Cancel this order'),
+              ),
+            ],
           ],
         ),
       ),

@@ -118,6 +118,21 @@ export function rememberOrder(order: Order) {
   announce();
 }
 
+/**
+ * Drops one ticket from this device's list.
+ *
+ * Used when a diner cancels: leaving it in history would let "Order again"
+ * offer back a ticket that no longer exists, and would show a cancelled order
+ * among the ones they actually ate.
+ */
+export function forgetOrder(ticketCode: string) {
+  write(
+    KEY.history,
+    getHistory().filter((o) => o.ticket_code !== ticketCode),
+  );
+  announce();
+}
+
 export function clearHistory() {
   write(KEY.history, []);
   announce();

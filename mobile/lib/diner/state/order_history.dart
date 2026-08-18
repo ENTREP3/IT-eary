@@ -72,6 +72,21 @@ class OrderHistory {
     );
   }
 
+  /// Drops one ticket from this device's list.
+  ///
+  /// Used when a diner cancels: leaving it in history would let "Order again"
+  /// offer back a ticket that no longer exists, and would show a cancelled
+  /// order among the ones they actually ate.
+  static Future<void> forget(String ticketCode) async {
+    final prefs = await SharedPreferences.getInstance();
+    final rest = (await load())
+      ..removeWhere((o) => o.ticketCode == ticketCode);
+    await prefs.setStringList(
+      _key,
+      rest.map((o) => jsonEncode(o.toJson())).toList(),
+    );
+  }
+
   static Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
