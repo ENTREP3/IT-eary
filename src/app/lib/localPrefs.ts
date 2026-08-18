@@ -15,6 +15,7 @@ const KEY = {
   favourites: 'bencris.favourites',
   history: 'bencris.history',
   ratings: 'bencris.ratings',
+  device: 'bencris.device',
 } as const;
 
 /**
@@ -85,6 +86,30 @@ export function toggleFavourite(dishId: string): boolean {
   write(KEY.favourites, [...next]);
   announce();
   return nowFavourite;
+}
+
+// -------------------------------------------------------------- device token
+/**
+ * This browser's own identity, for ordering without an account.
+ *
+ * The database used to let anybody read any order from the last 24 hours,
+ * because that was the only way a guest ticket could follow itself. This is
+ * what replaces it: a random value minted on the first order and kept, which
+ * the database matches against the tickets raised with it. A diner sees their
+ * own orders and nobody else's, and — because the browser remembers it — they
+ * can close the page without writing the code down and still find their way
+ * back to a ticket that is still cooking.
+ *
+ * It is not a secret worth much on its own: it identifies a device, not a
+ * person, and it can only ever fetch orders that device itself placed.
+ */
+export function deviceToken(): string {
+  let token = read<string>(KEY.device, '');
+  if (!token) {
+    token = crypto.randomUUID();
+    write(KEY.device, token);
+  }
+  return token;
 }
 
 // ------------------------------------------------------------------- history

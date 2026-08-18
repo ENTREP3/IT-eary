@@ -15,6 +15,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { SiteHeader, SiteFooter } from './SiteChrome';
+import { deviceToken } from '../../lib/localPrefs';
 import type { Order } from '../../lib/types';
 
 /**
@@ -56,7 +57,16 @@ export function AccountPage() {
         ) : user ? (
           <SignedIn email={user.email ?? ''} onSignOut={signOut} />
         ) : (
-          <AuthPanel />
+          <>
+            {/* Above the sign-in, not below it.
+                A guest arriving here is usually not here to make an account —
+                they are here because they ordered, closed the page, and want to
+                know whether the food is ready. Making them scroll past a signup
+                form to find that out would be answering a question nobody
+                asked. */}
+            <GuestOrders />
+            <AuthPanel />
+          </>
         )}
       </main>
       <SiteFooter />
@@ -64,6 +74,117 @@ export function AccountPage() {
   );
 }
 
+
+/**
+ * The tickets this device raised, for somebody who never made an account.
+ *
+ * Before this, a guest who closed the page and had not copied the code had
+ * nothing at all. The counter could look the ticket up, but had no way to tell
+ * whether the person asking was the person who ordered it — the code was the
+ * only proof, and it was gone. The device holds a token now, so it can ask the
+ * database for its own tickets and get an answer nobody else could get.
+ *
+ * Refreshed on a timer rather than pushed: Realtime authorises with the JWT in
+ * the connection and a guest has none, so there is nothing for it to check the
+ * row against. One request every ten seconds while this page is open is a fair
+ * price for tickets that are nobody else's business.
+ */
+function GuestOrders() {
+  const [orders, setOrders] = useState<Order[] | null>(null);
+
+  useEffect(() => {
+    let stop = false;
+
+    const load = async () => {
+      const { data } = await supabase.rpc('my_orders', {
+        p_device_token: deviceToken(),
+      });
+      if (!stop) setOrders((data ?? []) as Order[]);
+    };
+
+    load();
+    const id = setInterval(load, 10_000);
+    return () => {
+      stop = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  // Nothing yet, or nothing ever: either way there is no reason to take up the
+  // top of the page with an empty box.
+  if (!orders?.length) return null;
+
+  const live = orders.filter(
+    (o) => o.status !== 'completed' && o.status !== 'cancelled',
+  );
+  const past = orders.filter(
+    (o) => o.status === 'completed' || o.status === 'cancelled',
+  );
+
+  return (
+    <section className="mb-10">
+      <h1
+        style={{ fontFamily: 'var(--font-display)', fontWeight: 500, letterSpacing: '-0.02em' }}
+        className="text-3xl"
+      >
+        {live.length ? 'Your order' : 'What you ordered here'}
+      </h1>
+      <p className="mt-1.5 text-sm opacity-65 leading-relaxed">
+        Kept on this device, so you did not have to write the code down. Only
+        this phone can see them.
+      </p>
+
+      <div className="mt-5 space-y-2.5">
+        {(live.length ? live : past.slice(0, 5)).map((o) => (
+          <article
+            key={o.id}
+            className="rounded-2xl bg-diner-card border border-diner-ink/10 p-4"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-mono tracking-[0.2em] text-sm">{o.ticket_code}</span>
+              <GuestStatus order={o} />
+            </div>
+
+            <p className="mt-2 text-sm opacity-70 leading-relaxed">
+              {(o.items ?? []).map((i) => `${i.qty} × ${i.name}`).join(', ')}
+            </p>
+
+            <div className="mt-2 flex items-center justify-between gap-3 text-xs opacity-55">
+              <span>{new Date(o.created_at).toLocaleString()}</span>
+              <span className="tabular-nums">₱{Number(o.total).toFixed(2)}</span>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {live.length > 0 && past.length > 0 && (
+        <p className="mt-3 text-xs opacity-45">
+          {past.length} older {past.length === 1 ? 'order' : 'orders'} on this device.
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** Where the ticket has got to, in the words a diner would use. */
+function GuestStatus({ order }: { order: Order }) {
+  const paid = !!order.paid_at;
+  const [label, tone] =
+    order.status === 'cancelled'
+      ? ['Cancelled', 'opacity-50']
+      : order.status === 'completed'
+        ? ['Collected', 'opacity-60']
+        : order.status === 'ready'
+          ? ['Ready to collect', 'text-semantic-cash']
+          : order.status === 'preparing'
+            ? ['Being cooked', 'text-diner-accent']
+            : paid
+              ? ['Paid, waiting for the kitchen', 'text-semantic-cash']
+              : ['Pay at the counter', 'text-diner-accent'];
+
+  return <span className={`text-xs ${tone}`}>{label}</span>;
+
+}
 /* -------------------------------------------------------------- sign in/up */
 
 function AuthPanel() {

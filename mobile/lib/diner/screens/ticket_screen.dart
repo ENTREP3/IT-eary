@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -29,18 +30,45 @@ class _TicketScreenState extends State<TicketScreen> {
   bool _uploading = false;
   String? _uploadError;
 
+  Timer? _poll;
+
   @override
   void initState() {
     super.initState();
-    Api.watchTicket(widget.ticket.id).listen(
-      (t) {
-        if (mounted) setState(() => _ticket = t);
-      },
-      onError: (_) {
-        /* Realtime unavailable — the shown data is still valid. */
-      },
-    );
+
+    // A signed-in diner gets the change pushed, because Realtime can check the
+    // row against their account. A guest cannot: Realtime authorises with the
+    // token in the connection and a guest has none, so it asks instead — one
+    // row every few seconds, and only while this screen is open. That is a fair
+    // price for no longer letting anybody read anybody's ticket.
+    if (Api.signedIn) {
+      Api.watchTicket(widget.ticket.id).listen(
+        (t) {
+          if (mounted) setState(() => _ticket = t);
+        },
+        onError: (_) {
+          /* Realtime unavailable — the shown data is still valid. */
+        },
+      );
+    } else {
+      _poll = Timer.periodic(const Duration(seconds: 6), (_) async {
+        // Nothing more is coming once it is done with; stop asking.
+        if (_ticket.status == 'completed' || _ticket.status == 'cancelled') {
+          _poll?.cancel();
+          return;
+        }
+        final fresh = await Api.findTicket(_ticket.ticketCode);
+        if (fresh != null && mounted) setState(() => _ticket = fresh);
+      });
+    }
+
     if (widget.ticket.isGcash) _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadSettings() async {
