@@ -98,6 +98,35 @@ export function StorefrontApp() {
   const [query, setQuery] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
 
+  /** The dish whose full details are open, if any. */
+  const [openDish, setOpenDish] = useState<Dish | null>(null);
+
+  const ratings = useReviewStore((s) => s.ratings);
+  const reviews = useReviewStore((s) => s.reviews);
+  const loadReviewsFor = useReviewStore((s) => s.loadFor);
+
+  // Fetched when a dish is opened, not with the menu: most diners never open
+  // one, and it is a request per dish.
+  useEffect(() => {
+    if (openDish && !reviews[openDish.id]) loadReviewsFor(openDish.id);
+  }, [openDish, reviews, loadReviewsFor]);
+
+  /**
+   * The rice on the menu, cheapest first.
+   *
+   * Read from the menu rather than hardcoded, because rice is a dish like any
+   * other: the owner sets its price, can take it off when the pot runs out,
+   * and the ticket shows it at the counter. Sold-out rice simply stops being
+   * offered.
+   */
+  const riceServings = useMemo(
+    () =>
+      dishes
+        .filter((d) => d.category === 'Kanin' && d.available)
+        .sort((a, b) => a.price - b.price),
+    [dishes],
+  );
+
   const favourites = usePrefs(getFavourites);
   const history = usePrefs(getHistory);
 
@@ -296,6 +325,8 @@ export function StorefrontApp() {
                     qty={cart.find((l) => l.dish.id === d.id)?.qty ?? 0}
                     onAdd={() => add(d)}
                     onSub={() => sub(d.id)}
+                    onOpen={() => setOpenDish(d)}
+                    rice={riceServings.length}
                     bestseller={show.bestseller && d.featured}
                     favourite={favourites.includes(d.id)}
                     showRating={show.ratings}
@@ -313,6 +344,25 @@ export function StorefrontApp() {
           <ReviewShowcase />
         </>
       )}
+
+      <AnimatePresence>
+        {openDish && (
+          <DishSheet
+            dish={openDish}
+            // Rice is not offered with rice.
+            rice={openDish.category === 'Kanin' ? [] : riceServings}
+            rating={ratings[openDish.id]}
+            comments={reviews[openDish.id]}
+            showRating={show.ratings}
+            showComments={show.comments}
+            onAdd={() => add(openDish)}
+            onAddRice={(r, servings) => {
+              for (let i = 0; i < servings; i++) add(r);
+            }}
+            onClose={() => setOpenDish(null)}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {stage === 'cart' && (
@@ -361,6 +411,8 @@ function DishCard({
   qty,
   onAdd,
   onSub,
+  onOpen,
+  rice,
   bestseller,
   favourite,
   showRating,
@@ -371,6 +423,12 @@ function DishCard({
   qty: number;
   onAdd: () => void;
   onSub: () => void;
+
+  /** Opens the full dish, where rice is chosen. */
+  onOpen: () => void;
+
+  /** How many rice servings are on the menu, so the link can say so. */
+  rice: number;
   /* Whether the owner has marked this dish a bestseller. It used to be worked
      out here from the sales column, which meant the shop made a claim about its
      own food that nobody had approved. The figures now only produce a
@@ -536,10 +594,21 @@ function DishCard({
           )}
         </AnimatePresence>
 
+        {/* The whole dish, and the rice question, one tap away. Kept as a
+            separate control rather than making the card itself tappable: the
+            card already has a favourite, a rating and an add button on it, and
+            a diner reaching for one of those should not open a sheet. */}
+        <button
+          onClick={onOpen}
+          className="mt-3 w-full text-xs text-diner-accent hover:underline text-left"
+        >
+          View details{rice > 0 ? ' and add rice' : ''}
+        </button>
+
         {!dish.available ? null : qty === 0 ? (
           <button
             onClick={onAdd}
-            className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-full border border-diner-ink/25 hover:bg-diner-ink hover:text-diner-ground transition-colors"
+            className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-full border border-diner-ink/25 hover:bg-diner-ink hover:text-diner-ground transition-colors"
           >
             <Plus size={15} /> <span className="text-sm">Add to order</span>
           </button>
@@ -574,6 +643,204 @@ function DishCard({
  * the owner puts the dish back on the menu, a database trigger flags every
  * waiting request and the diner sees it on their orders page.
  */
+
+/**
+ * The whole dish on one screen, and the rice that goes with it.
+ *
+ * A card has room for a name, a price and two lines. Everything else a diner
+ * might want to know — the full description, what other people said, and
+ * whether to add rice — was either cut short or not there at all.
+ *
+ * Rice is the reason this exists. The ulam price has never included it, so
+ * every order needed the diner to remember to add rice separately from another
+ * part of the menu. Asking here, at the moment they choose the dish, is asking
+ * at the only point they are actually thinking about the meal.
+ */
+function DishSheet({
+  dish,
+  rice,
+  rating,
+  comments,
+  showRating,
+  showComments,
+  onAdd,
+  onAddRice,
+  onClose,
+}: {
+  dish: Dish;
+  /** The rice servings on the menu, cheapest first. Empty if none are cooking. */
+  rice: Dish[];
+  rating?: { average: number; total: number };
+  comments?: { id: string; rating: number; comment: string; author_name: string | null }[];
+  showRating: boolean;
+  showComments: boolean;
+  onAdd: () => void;
+  onAddRice: (rice: Dish, servings: number) => void;
+  onClose: () => void;
+}) {
+  // Which rice, and how many. Null is the honest default: most diners take one
+  // ulam and one rice, but plenty share, and nobody should be charged for a
+  // cup they did not ask for.
+  const [chosen, setChosen] = useState<Dish | null>(null);
+  const [servings, setServings] = useState(1);
+
+  const total = dish.price + (chosen ? chosen.price * servings : 0);
+
+  const add = () => {
+    onAdd();
+    if (chosen) onAddRice(chosen, servings);
+    onClose();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-diner-ink/60 backdrop-blur-sm grid place-items-end sm:place-items-center p-0 sm:p-4"
+    >
+      <motion.div
+        initial={{ y: 40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 40, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full sm:max-w-lg max-h-[92vh] overflow-auto bg-diner-ground rounded-t-3xl sm:rounded-3xl"
+      >
+        {dish.image && (
+          <div className="aspect-[16/9] overflow-hidden">
+            <ImageWithFallback src={dish.image} alt={dish.name} className="w-full h-full object-cover" />
+          </div>
+        )}
+
+        <div className="p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }} className="text-2xl">
+                {dish.name}
+              </h2>
+              {dish.tagalog && <p className="text-sm opacity-55 italic">{dish.tagalog}</p>}
+            </div>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="w-9 h-9 rounded-full border border-diner-ink/20 grid place-items-center shrink-0"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {showRating && rating && rating.total > 0 && (
+            <div className="mt-2 flex items-center gap-2">
+              <Stars value={Math.round(rating.average)} />
+              <span className="text-sm tabular-nums">{rating.average.toFixed(1)}</span>
+              <span className="text-xs opacity-55">
+                ({rating.total} {rating.total === 1 ? 'rating' : 'ratings'})
+              </span>
+            </div>
+          )}
+
+          {dish.description && (
+            <p className="mt-3 text-sm opacity-75 leading-relaxed">{dish.description}</p>
+          )}
+
+          {/* ------------------------------------------------------------ rice */}
+          {rice.length > 0 && dish.available && (
+            <div className="mt-5 rounded-2xl border border-diner-ink/12 bg-diner-card p-4">
+              <div className="text-[11px] tracking-[0.2em] uppercase opacity-55">Add rice?</div>
+              <p className="mt-1 text-xs opacity-60 leading-relaxed">
+                The price above is for the ulam on its own.
+              </p>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <RiceChoice label="No rice" on={chosen === null} onClick={() => setChosen(null)} />
+                {rice.map((r) => (
+                  <RiceChoice
+                    key={r.id}
+                    label={`${r.tagalog || r.name} · ₱${r.price}`}
+                    on={chosen?.id === r.id}
+                    onClick={() => setChosen(r)}
+                  />
+                ))}
+              </div>
+
+              {chosen && (
+                <div className="mt-3 flex items-center gap-4">
+                  <span className="text-sm opacity-70">How many?</span>
+                  <button
+                    onClick={() => setServings((n) => Math.max(1, n - 1))}
+                    className="w-8 h-8 rounded-full border border-diner-ink/25 grid place-items-center"
+                    aria-label="One less serving of rice"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="w-5 text-center tabular-nums">{servings}</span>
+                  <button
+                    onClick={() => setServings((n) => Math.min(10, n + 1))}
+                    className="w-8 h-8 rounded-full border border-diner-ink/25 grid place-items-center"
+                    aria-label="One more serving of rice"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* -------------------------------------------------------- comments */}
+          {showRating && showComments && comments && comments.length > 0 && (
+            <div className="mt-5">
+              <div className="text-[11px] tracking-[0.2em] uppercase opacity-55 mb-2">
+                What diners said
+              </div>
+              <ul className="space-y-2.5">
+                {comments.slice(0, 6).map((r) => (
+                  <li key={r.id} className="rounded-xl bg-diner-card border border-diner-ink/10 p-3">
+                    <Stars value={r.rating} />
+                    {r.comment && <p className="text-sm mt-1 leading-relaxed">{r.comment}</p>}
+                    {r.author_name && (
+                      <p className="text-xs opacity-50 mt-1">{r.author_name}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {dish.available ? (
+            <button
+              onClick={add}
+              className="mt-5 w-full py-3.5 rounded-full bg-diner-ink text-diner-ground flex items-center justify-center gap-2"
+            >
+              <Plus size={16} />
+              Add to order
+              <span className="tabular-nums opacity-80">· ₱{total.toFixed(2)}</span>
+            </button>
+          ) : (
+            <p className="mt-5 text-center text-sm opacity-55">
+              Sold out for today.
+            </p>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function RiceChoice({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3.5 py-2 rounded-full text-sm border transition-colors ${
+        on
+          ? 'bg-diner-ink text-diner-ground border-diner-ink'
+          : 'border-diner-ink/20 hover:border-diner-ink/45'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
 function RestockAlert({ dish }: { dish: Dish }) {
   const user = useAuthStore((s) => s.user);
   const [asked, setAsked] = useState(false);
