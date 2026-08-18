@@ -102,6 +102,44 @@ class AdminApi {
   static Future<void> updatePaymentSettings(Map<String, dynamic> patch) =>
       _db.from('payment_settings').update(patch).eq('id', 1);
 
+  // ---- the shop's own settings ---------------------------------------------
+
+  /// The whole settings row, including what the storefront is told to show.
+  ///
+  /// Read as a map rather than through [Shop] because this screen edits the
+  /// individual columns and needs the raw values back to fill the form.
+  static Future<Map<String, dynamic>?> shopSettings() async {
+    final row =
+        await _db.from('business_settings').select().eq('id', 1).maybeSingle();
+    return row == null ? null : Map<String, dynamic>.from(row);
+  }
+
+  static Future<void> updateShop(Map<String, dynamic> patch) => _db
+      .from('business_settings')
+      .update({...patch, 'updated_at': DateTime.now().toIso8601String()})
+      .eq('id', 1);
+
+  /// Records that the owner turned down a bestseller suggestion, against the
+  /// sales figure at the time.
+  ///
+  /// Reads the settings object and writes it back whole, because the column is
+  /// one jsonb value: patching a single key would replace the object and take
+  /// every other setting with it. Keeping the number rather than a plain list
+  /// is what stops the panel becoming nagware — a dish declined at 30 sold
+  /// stays quiet, but at 45 the question is a genuinely new one.
+  static Future<void> dismissBestseller(String dishId, int sold) async {
+    final row = await shopSettings();
+    final show = Map<String, dynamic>.from(
+      (row?['storefront'] as Map?) ?? const {},
+    );
+    final dismissed = Map<String, dynamic>.from(
+      (show['bestseller_dismissed'] as Map?) ?? const {},
+    );
+    dismissed[dishId] = sold;
+    show['bestseller_dismissed'] = dismissed;
+    await updateShop({'storefront': show});
+  }
+
   static Future<List<Map<String, dynamic>>> storageUsage() async {
     final rows = await _db.rpc('storage_usage');
     return (rows as List).map((r) => Map<String, dynamic>.from(r as Map)).toList();

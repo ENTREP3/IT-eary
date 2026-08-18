@@ -11,6 +11,20 @@ class Dish {
   final String image;
   final bool available;
 
+  /// Marked a bestseller by the owner.
+  ///
+  /// Not calculated from sales. The shop used to award the badge to whichever
+  /// dish led its category, which meant it made a claim about its own food that
+  /// nobody had approved, and a new dish could never be promoted however good
+  /// it was. The figures now only suggest it on the admin screen.
+  final bool featured;
+
+  /// How many portions are left, where the kitchen tracks it. Null means the
+  /// dish is cooked to order and there is no count to show.
+  final int? stockCount;
+
+  final int soldToday;
+
   const Dish({
     required this.id,
     required this.name,
@@ -20,6 +34,9 @@ class Dish {
     required this.description,
     required this.image,
     required this.available,
+    this.featured = false,
+    this.stockCount,
+    this.soldToday = 0,
   });
 
   factory Dish.fromMap(Map<String, dynamic> m) => Dish(
@@ -31,7 +48,14 @@ class Dish {
     description: m['description'] as String? ?? '',
     image: m['image'] as String? ?? '',
     available: m['available'] as bool? ?? true,
+    featured: m['featured'] as bool? ?? false,
+    stockCount: (m['stock_count'] as num?)?.toInt(),
+    soldToday: (m['sold_today'] as num?)?.toInt() ?? 0,
   );
+
+  /// Running low, and worth telling a diner about.
+  bool get fewLeft =>
+      available && stockCount != null && stockCount! > 0 && stockCount! <= 3;
 }
 
 class TicketItem {
@@ -272,6 +296,89 @@ class Ticket {
 /// Kept here rather than hardcoded so the address, hours and tagline can be
 /// corrected on the dashboard without anyone rebuilding an app. The website
 /// reads the same row, which is what stops the two disagreeing.
+/// What the storefront shows, decided by the owner on the dashboard.
+///
+/// The app used to ignore this row entirely, so every switch on the Shop screen
+/// changed the website and left the phone showing whatever it liked. An owner
+/// who turns ratings off has turned them off, not turned them off in one place.
+///
+/// A missing key means on, so a shop that has never opened that screen looks
+/// exactly as it always did and nothing vanishes because a key was added.
+class Storefront {
+  final bool ratings;
+  final bool comments;
+  final bool bestseller;
+  final bool lowStock;
+  final bool soldOut;
+  final bool recommended;
+
+  /// Quote every review above the star threshold, or only the ones picked.
+  final String reviewsSource;
+  final int reviewsMinStars;
+  final int reviewsPerBatch;
+
+  /// Seconds a batch of quotes stays before the next. 0 means do not cycle.
+  final int reviewsSeconds;
+
+  /// Seconds a dish stays behind the headline. 0 means hold on the first.
+  final int heroSeconds;
+
+  const Storefront({
+    this.ratings = true,
+    this.comments = true,
+    this.bestseller = true,
+    this.lowStock = true,
+    this.soldOut = true,
+    this.recommended = true,
+    this.reviewsSource = 'all',
+    this.reviewsMinStars = 4,
+    this.reviewsPerBatch = 2,
+    this.reviewsSeconds = 8,
+    this.heroSeconds = 7,
+  });
+
+  static const defaults = Storefront();
+
+  factory Storefront.fromMap(Map<String, dynamic> m) => Storefront(
+    ratings: m['ratings'] as bool? ?? true,
+    comments: m['comments'] as bool? ?? true,
+    bestseller: m['bestseller'] as bool? ?? true,
+    lowStock: m['low_stock'] as bool? ?? true,
+    soldOut: m['sold_out'] as bool? ?? true,
+    recommended: m['recommended'] as bool? ?? true,
+    reviewsSource: m['reviews_source'] as String? ?? 'all',
+    reviewsMinStars: (m['reviews_min_stars'] as num?)?.toInt() ?? 4,
+    reviewsPerBatch: (m['reviews_per_batch'] as num?)?.toInt() ?? 2,
+    reviewsSeconds: (m['reviews_seconds'] as num?)?.toInt() ?? 8,
+    heroSeconds: (m['hero_seconds'] as num?)?.toInt() ?? 7,
+  );
+}
+
+/// One review, with the words, for the showcase and the per-dish sheet.
+class Review {
+  final String id;
+  final String dishId;
+  final int rating;
+  final String comment;
+  final String? authorName;
+
+  const Review({
+    required this.id,
+    required this.dishId,
+    required this.rating,
+    required this.comment,
+    required this.authorName,
+  });
+
+  factory Review.fromMap(Map<String, dynamic> m) => Review(
+    id: m['id'] as String? ?? '',
+    dishId: m['dish_id'] as String? ?? '',
+    rating: (m['rating'] as num?)?.toInt() ?? 0,
+    comment: m['comment'] as String? ?? '',
+    authorName: m['author_name'] as String?,
+  );
+}
+
 class Shop {
   final String name;
   final String tagline;
@@ -282,6 +389,7 @@ class Shop {
   final String province;
   final String phone;
   final List<ShopHours> hours;
+  final Storefront storefront;
 
   const Shop({
     required this.name,
@@ -293,6 +401,7 @@ class Shop {
     required this.province,
     required this.phone,
     required this.hours,
+    this.storefront = Storefront.defaults,
   });
 
   factory Shop.fromMap(Map<String, dynamic> m) => Shop(
@@ -308,6 +417,9 @@ class Shop {
         .whereType<Map<String, dynamic>>()
         .map(ShopHours.fromMap)
         .toList(),
+    storefront: m['storefront'] == null
+        ? Storefront.defaults
+        : Storefront.fromMap(Map<String, dynamic>.from(m['storefront'] as Map)),
   );
 
   /// "Stall 12, Dasmariñas Bayan, Dasmariñas, Cavite"

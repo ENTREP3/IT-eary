@@ -5,6 +5,7 @@ import '../../models/models.dart';
 import '../../services/api.dart';
 import '../state/cart.dart';
 import '../state/favourites.dart';
+import '../widgets/review_band.dart' show Stars;
 import '../../theme.dart';
 import 'about_screen.dart';
 import 'account_screen.dart';
@@ -28,6 +29,10 @@ class _MenuScreenState extends State<MenuScreen> {
   /// Null until the shop's settings arrive. The hero line stays blank rather
   /// than showing a bundled guess that the database then contradicts.
   String? _tagline;
+
+  /// What the owner chose to show. Defaults until the row arrives, so the menu
+  /// looks normal on a slow connection rather than briefly stripped bare.
+  Storefront _show = Storefront.defaults;
 
   /// Star ratings by dish id, from diners who actually bought the dish.
   Map<String, DishRating> _ratings = const {};
@@ -63,6 +68,7 @@ class _MenuScreenState extends State<MenuScreen> {
         _dishes = dishes;
         _categories = cats;
         _tagline = shop?.tagline;
+        _show = shop?.storefront ?? Storefront.defaults;
         _ratings = ratings;
         // Open on a category that actually has food today — landing on one
         // where everything is sold out reads as though the shop is closed.
@@ -91,7 +97,7 @@ class _MenuScreenState extends State<MenuScreen> {
     // while Merienda happens to be selected finds nothing, and concludes the
     // shop does not serve it.
     final q = _query.trim().toLowerCase();
-    final visible = q.isEmpty
+    var visible = q.isEmpty
         ? _dishes.where((d) => d.category == _category).toList()
         : _dishes
             .where(
@@ -101,6 +107,12 @@ class _MenuScreenState extends State<MenuScreen> {
                   d.description.toLowerCase().contains(q),
             )
             .toList();
+
+    // Hiding sold-out dishes is the owner's call. Left on, a diner sees what to
+    // come back for; switched off, a thin day simply looks shorter.
+    if (!_show.soldOut) {
+      visible = visible.where((d) => d.available).toList();
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -363,7 +375,11 @@ class _MenuScreenState extends State<MenuScreen> {
             sliver: SliverList.separated(
               itemCount: visible.length,
               separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (_, i) => _DishCard(dish: visible[i], rating: _ratings[visible[i].id]),
+              itemBuilder: (_, i) => _DishCard(
+                dish: visible[i],
+                rating: _ratings[visible[i].id],
+                show: _show,
+              ),
             ),
           ),
       ],
@@ -372,17 +388,17 @@ class _MenuScreenState extends State<MenuScreen> {
 }
 
 class _DishCard extends StatelessWidget {
-  const _DishCard({required this.dish, this.rating});
+  const _DishCard({required this.dish, this.rating, required this.show});
 
   final Dish dish;
   final DishRating? rating;
 
+  /// What the owner has chosen to show. Passed in rather than read here so one
+  /// card cannot disagree with the next about what the shop is displaying.
+  final Storefront show;
+
   @override
   Widget build(BuildContext context) {
-    final cart = context.watch<Cart>();
-    final qty = cart.qtyOf(dish.id);
-    final fav = context.watch<Favourites>().contains(dish.id);
-
     return Opacity(
       opacity: dish.available ? 1 : 0.5,
       child: Container(
@@ -396,208 +412,41 @@ class _DishCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (dish.image.isNotEmpty)
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: ColorFiltered(
-                  colorFilter: dish.available
-                      ? const ColorFilter.mode(
-                          Colors.transparent,
-                          BlendMode.multiply,
-                        )
-                      : const ColorFilter.matrix(<double>[
-                          0.2126,
-                          0.7152,
-                          0.0722,
-                          0,
-                          0,
-                          0.2126,
-                          0.7152,
-                          0.0722,
-                          0,
-                          0,
-                          0.2126,
-                          0.7152,
-                          0.0722,
-                          0,
-                          0,
-                          0,
-                          0,
-                          0,
-                          1,
-                          0,
-                        ]),
-                  child: Image.network(
-                    dish.image,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
-                      color: Palette.ink.withValues(alpha: 0.06),
-                      child: const Center(
-                        child: Icon(Icons.restaurant, color: Palette.ink),
-                      ),
+              Stack(
+                children: [
+                  _DishImage(dish: dish),
+                  // The badges the owner switched on, over the top-left of the
+                  // photograph, exactly where the website puts them.
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (show.bestseller && dish.featured && dish.available)
+                          const _Badge(
+                            label: 'BESTSELLER',
+                            icon: Icons.local_fire_department_rounded,
+                            background: Palette.red,
+                            foreground: Colors.white,
+                          ),
+                        if (show.lowStock && dish.fewLeft)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: _Badge(
+                              label: 'ONLY ${dish.stockCount} LEFT',
+                              background: Palette.cream,
+                              foreground: Palette.ink,
+                            ),
+                          ),
+                      ],
                     ),
-                    loadingBuilder: (c, child, progress) => progress == null
-                        ? child
-                        : Container(color: Palette.ink.withValues(alpha: 0.05)),
                   ),
-                ),
+                ],
               ),
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              dish.name,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            if (dish.tagalog.isNotEmpty)
-                              Text(
-                                dish.tagalog,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontStyle: FontStyle.italic,
-                                  color: Palette.ink.withValues(alpha: 0.55),
-                                ),
-                              ),
-                            // Shown only once somebody has actually rated it.
-                            // "No ratings yet" on every card would make a new
-                            // menu look unloved rather than simply new.
-                            if (rating != null && rating!.total > 0)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.star_rounded, size: 15, color: Palette.gold),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      rating!.average.toStringAsFixed(1),
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '(${rating!.total})',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Palette.ink.withValues(alpha: 0.45),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      // Kept on the device, not in the database. A favourite
-                      // helps one person find their usual faster; it is not
-                      // something the shop needs to know, and it works without
-                      // an account.
-                      IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-                        iconSize: 20,
-                        tooltip: fav ? 'Remove from favourites' : 'Save to favourites',
-                        icon: Icon(
-                          fav ? Icons.favorite : Icons.favorite_border,
-                          color: fav ? Palette.red : Palette.ink.withValues(alpha: 0.3),
-                        ),
-                        onPressed: () => context.read<Favourites>().toggle(dish.id),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '₱${dish.price.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (dish.description.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      dish.description,
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.4,
-                        color: Palette.ink.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 14),
-                  if (!dish.available)
-                    Column(
-                      children: [
-                        const Center(
-                          child: Text(
-                            'SOLD OUT',
-                            style: TextStyle(
-                              letterSpacing: 3,
-                              fontSize: 12,
-                              color: Palette.red,
-                            ),
-                          ),
-                        ),
-                        // A diner who came for this and found it gone is a sale
-                        // already lost. Asking to be told when it returns is the
-                        // cheapest way to win it back, and costs the shop
-                        // nothing.
-                        const SizedBox(height: 8),
-                        _RestockAlert(dish: dish),
-                      ],
-                    )
-                  else if (qty == 0)
-                    OutlinedButton.icon(
-                      onPressed: () => context.read<Cart>().add(dish),
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Add to order'),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(44),
-                        foregroundColor: Palette.ink,
-                        side: BorderSide(
-                          color: Palette.ink.withValues(alpha: 0.25),
-                        ),
-                        shape: const StadiumBorder(),
-                      ),
-                    )
-                  else
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton.filledTonal(
-                          onPressed: () => context.read<Cart>().remove(dish.id),
-                          icon: const Icon(Icons.remove),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Text(
-                            '$qty',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        IconButton.filledTonal(
-                          onPressed: () => context.read<Cart>().add(dish),
-                          icon: const Icon(Icons.add),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
+              child: _DishBody(dish: dish, rating: rating, show: show),
             ),
           ],
         ),
@@ -605,6 +454,428 @@ class _DishCard extends StatelessWidget {
     );
   }
 }
+
+/// The photograph, greyed out once the dish has run out.
+/// The photograph, greyed out once the dish has run out.
+class _DishImage extends StatelessWidget {
+  const _DishImage({required this.dish});
+
+  final Dish dish;
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: ColorFiltered(
+        colorFilter: dish.available
+            ? const ColorFilter.mode(Colors.transparent, BlendMode.multiply)
+            : const ColorFilter.matrix(<double>[
+                0.2126, 0.7152, 0.0722, 0, 0, //
+                0.2126, 0.7152, 0.0722, 0, 0, //
+                0.2126, 0.7152, 0.0722, 0, 0, //
+                0, 0, 0, 1, 0, //
+              ]),
+        child: Image.network(
+          dish.image,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => Container(
+            color: Palette.ink.withValues(alpha: 0.06),
+            child: const Center(
+              child: Icon(Icons.restaurant, color: Palette.ink),
+            ),
+          ),
+          loadingBuilder: (c, child, progress) => progress == null
+              ? child
+              : Container(color: Palette.ink.withValues(alpha: 0.05)),
+        ),
+      ),
+    );
+  }
+}
+
+/// A small label over the photograph: bestseller, or how few are left.
+class _Badge extends StatelessWidget {
+  const _Badge({
+    required this.label,
+    required this.background,
+    required this.foreground,
+    this.icon,
+  });
+
+  final String label;
+  final Color background;
+  final Color foreground;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: foreground),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              letterSpacing: 1.2,
+              fontWeight: FontWeight.w700,
+              color: foreground,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Everything under the photograph: the name, the rating, the price and the
+/// button that puts it in the order.
+class _DishBody extends StatelessWidget {
+  const _DishBody({
+    required this.dish,
+    required this.rating,
+    required this.show,
+  });
+
+  final Dish dish;
+  final DishRating? rating;
+  final Storefront show;
+
+  /// What diners wrote about this dish, in a sheet.
+  ///
+  /// The website opens the comments under the card; on a phone a sheet is the
+  /// same idea in the shape the platform expects, and it can be dismissed with
+  /// a swipe rather than a second tap.
+  void _openComments(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Palette.cream,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        builder: (_, controller) => _CommentsSheet(
+          dish: dish,
+          rating: rating,
+          controller: controller,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cart = context.watch<Cart>();
+    final qty = cart.qtyOf(dish.id);
+    final fav = context.watch<Favourites>().contains(dish.id);
+    final rated = show.ratings && rating != null && rating!.total > 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    dish.name,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (dish.tagalog.isNotEmpty)
+                    Text(
+                      dish.tagalog,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        color: Palette.ink.withValues(alpha: 0.55),
+                      ),
+                    ),
+
+                  // Shown only once somebody has actually rated it. "No ratings
+                  // yet" on every card would make a new menu look unloved
+                  // rather than simply new. Comments can be switched off on
+                  // their own, and then there is nothing to open, so the row
+                  // stops being a button rather than staying one that quietly
+                  // ignores the tap.
+                  if (rated)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: InkWell(
+                        onTap: show.comments
+                            ? () => _openComments(context)
+                            : null,
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 15,
+                              color: Palette.gold,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              rating!.average.toStringAsFixed(1),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '(${rating!.total})',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Palette.ink.withValues(alpha: 0.45),
+                              ),
+                            ),
+                            if (show.comments) ...[
+                              const SizedBox(width: 6),
+                              Text(
+                                'Read reviews',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Palette.red.withValues(alpha: 0.9),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // Kept on the device, not in the database. A favourite helps one
+            // person find their usual faster; it is not something the shop
+            // needs to know, and it works without an account.
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+              iconSize: 20,
+              tooltip: fav ? 'Remove from favourites' : 'Save to favourites',
+              icon: Icon(
+                fav ? Icons.favorite : Icons.favorite_border,
+                color: fav ? Palette.red : Palette.ink.withValues(alpha: 0.3),
+              ),
+              onPressed: () => context.read<Favourites>().toggle(dish.id),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '₱${dish.price.toStringAsFixed(0)}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+
+        if (dish.description.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            dish.description,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.4,
+              color: Palette.ink.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 14),
+        if (!dish.available)
+          Column(
+            children: [
+              const Center(
+                child: Text(
+                  'SOLD OUT',
+                  style: TextStyle(
+                    letterSpacing: 3,
+                    fontSize: 12,
+                    color: Palette.red,
+                  ),
+                ),
+              ),
+              // A diner who came for this and found it gone is a sale already
+              // lost. Asking to be told when it returns is the cheapest way to
+              // win it back, and costs the shop nothing.
+              const SizedBox(height: 8),
+              _RestockAlert(dish: dish),
+            ],
+          )
+        else if (qty == 0)
+          OutlinedButton.icon(
+            onPressed: () => context.read<Cart>().add(dish),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Add to order'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(44),
+              foregroundColor: Palette.ink,
+              side: BorderSide(color: Palette.ink.withValues(alpha: 0.25)),
+              shape: const StadiumBorder(),
+            ),
+          )
+        else
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton.filledTonal(
+                onPressed: () => context.read<Cart>().remove(dish.id),
+                icon: const Icon(Icons.remove),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  '$qty',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              IconButton.filledTonal(
+                onPressed: () => context.read<Cart>().add(dish),
+                icon: const Icon(Icons.add),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+/// The reviews for one dish, read when somebody asks for them rather than with
+/// the menu: most diners never open this, and it would be a request per dish.
+class _CommentsSheet extends StatefulWidget {
+  const _CommentsSheet({
+    required this.dish,
+    required this.rating,
+    required this.controller,
+  });
+
+  final Dish dish;
+  final DishRating? rating;
+  final ScrollController controller;
+
+  @override
+  State<_CommentsSheet> createState() => _CommentsSheetState();
+}
+
+class _CommentsSheetState extends State<_CommentsSheet> {
+  List<Review>? _reviews;
+
+  @override
+  void initState() {
+    super.initState();
+    Api.dishReviews(widget.dish.id).then((r) {
+      if (mounted) setState(() => _reviews = r);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reviews = _reviews;
+
+    return ListView(
+      controller: widget.controller,
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+      children: [
+        Text(
+          widget.dish.name,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        ),
+        if (widget.rating != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(
+              children: [
+                Stars(value: widget.rating!.average.round()),
+                const SizedBox(width: 8),
+                Text(
+                  '${widget.rating!.average.toStringAsFixed(1)} from '
+                  '${widget.rating!.total} '
+                  '${widget.rating!.total == 1 ? 'diner' : 'diners'}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Palette.ink.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 18),
+
+        if (reviews == null)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else if (reviews.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Text(
+              'Nobody has written about this one yet. Order it and you can be '
+              'the first.',
+              style: TextStyle(
+                height: 1.5,
+                color: Palette.ink.withValues(alpha: 0.65),
+              ),
+            ),
+          )
+        else
+          ...reviews.map(
+            (r) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Palette.card,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Palette.ink.withValues(alpha: 0.1)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Stars(value: r.rating),
+                    const SizedBox(height: 8),
+                    Text(r.comment, style: const TextStyle(height: 1.45)),
+                    if ((r.authorName ?? '').isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        r.authorName!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Palette.ink.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 
 class _Wordmark extends StatelessWidget {
   const _Wordmark();

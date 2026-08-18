@@ -176,6 +176,45 @@ class Api {
     }
   }
 
+  /// The quotes for the showcase band, chosen by the owner's own rules.
+  ///
+  /// The same query the website runs, so the two cannot end up quoting
+  /// different diners. With comments switched off the wordless ratings are kept
+  /// rather than filtered out: the band becomes nothing but scores, and those
+  /// scores are exactly what it has to show.
+  static Future<List<Review>> showcaseReviews(Storefront show) async {
+    try {
+      var q = _db
+          .from('reviews')
+          .select('id, dish_id, rating, comment, author_name, featured')
+          .gte('rating', show.reviewsMinStars);
+
+      if (show.comments) q = q.neq('comment', '');
+      if (show.reviewsSource == 'picked') q = q.eq('featured', true);
+
+      final rows = await q.order('created_at', ascending: false).limit(40);
+      return rows.map<Review>((r) => Review.fromMap(r)).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// What diners wrote about one dish, read when somebody opens it.
+  static Future<List<Review>> dishReviews(String dishId) async {
+    try {
+      final rows = await _db
+          .from('reviews')
+          .select('id, dish_id, rating, comment, author_name')
+          .eq('dish_id', dishId)
+          .neq('comment', '')
+          .order('created_at', ascending: false)
+          .limit(20);
+      return rows.map<Review>((r) => Review.fromMap(r)).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
   /// Ratings already left against a ticket, keyed by dish id.
   ///
   /// Read from the database rather than remembered in the screen, so reopening

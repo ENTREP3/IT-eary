@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../services/api.dart';
 import '../../theme.dart';
+import '../widgets/hero_header.dart';
+import '../widgets/review_band.dart';
 import 'account_screen.dart';
 import 'menu_screen.dart';
 
@@ -60,125 +62,85 @@ class _StorefrontScreenState extends State<StorefrontScreen> {
   @override
   Widget build(BuildContext context) {
     final shop = _shop;
+    final show = shop?.storefront ?? Storefront.defaults;
     final cooking = _dishes.where((d) => d.available).toList();
 
+    /// Under "Best sellers", only the dishes the owner marked as such.
+    ///
+    /// They used to lead a list the rest of the menu then filled out, which
+    /// made the heading a lie: five picks and eight tiles meant three dishes
+    /// were being called best sellers by nobody. It stays honest in the other
+    /// direction too, because a marked dish still has to be available.
+    final picks = cooking.where((d) => d.featured).toList();
+    final hasPicks = show.recommended && picks.isNotEmpty;
+    final preview = (hasPicks ? picks : cooking).take(8).toList();
+
     return Scaffold(
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _load,
-          child: PageBody(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-              children: [
-                Row(
-                  children: [
-                    Expanded(child: _Wordmark(district: shop?.district ?? '')),
-                    TextButton.icon(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const AccountScreen()),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: PageBody(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              // The photograph runs to the very top of the screen, under the
+              // status bar, so it reads as the page rather than as a picture
+              // pasted onto one. The header floats on it.
+              Stack(
+                children: [
+                  HeroHeader(
+                    shop: shop,
+                    cooking: cooking,
+                    onSeeMenu: _openMenu,
+                    loaded: !_loading,
+                  ),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: SafeArea(
+                      bottom: false,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 8, 0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _Wordmark(
+                                district: shop?.district ?? '',
+                                onDark: true,
+                              ),
+                            ),
+                            TextButton.icon(
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const AccountScreen(),
+                                ),
+                              ),
+                              icon: const Icon(Icons.person_outline, size: 18),
+                              label: Text(Api.signedIn ? 'My orders' : 'Sign in'),
+                            ),
+                          ],
+                        ),
                       ),
-                      icon: const Icon(Icons.person_outline, size: 18),
-                      label: Text(Api.signedIn ? 'My orders' : 'Sign in'),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                if (shop != null) _OpenPill(open: shop.isOpenNow),
-                const SizedBox(height: 14),
-
-                // Blank until the settings arrive rather than showing a bundled
-                // guess the database then contradicts, which reads as a flicker.
-                Text(
-                  shop?.tagline ?? '',
-                  style: const TextStyle(
-                    fontSize: 38,
-                    fontWeight: FontWeight.w600,
-                    height: 1.02,
-                    letterSpacing: -0.5,
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  shop?.blurb ?? '',
-                  style: TextStyle(
-                    height: 1.5,
-                    color: Palette.ink.withValues(alpha: 0.7),
-                  ),
-                ),
+                ],
+              ),
 
-                const SizedBox(height: 24),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Palette.ink,
-                    foregroundColor: Palette.cream,
-                    minimumSize: const Size.fromHeight(54),
-                    shape: const StadiumBorder(),
-                  ),
-                  onPressed: _openMenu,
+              if (preview.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'See what is cooking today',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward, size: 18),
-                    ],
-                  ),
-                ),
-                if (!_loading) ...[
-                  const SizedBox(height: 8),
-                  Center(
-                    child: Text(
-                      cooking.isEmpty
-                          ? 'Nothing is cooking right now'
-                          : '${cooking.length} dishes available right now',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Palette.ink.withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 26),
-                if (shop != null) ...[
-                  _InfoCard(
-                    icon: Icons.schedule,
-                    label: 'OPENING HOURS',
-                    lines: shop.hours.isEmpty
-                        ? const ['Ask at the counter']
-                        : shop.hours
-                            .map((h) => '${h.days}: ${h.opens} to ${h.closes}')
-                            .toList(),
-                  ),
-                  const SizedBox(height: 10),
-                  _InfoCard(
-                    icon: Icons.place_outlined,
-                    label: 'WHERE TO FIND US',
-                    lines: [shop.address],
-                  ),
-                  const SizedBox(height: 10),
-                  _InfoCard(
-                    icon: Icons.call_outlined,
-                    label: 'CONTACT',
-                    lines: [
-                      if (shop.phone.isNotEmpty) shop.phone,
-                      'Cash and GCash accepted',
-                    ],
-                  ),
-                ],
-
-                if (cooking.isNotEmpty) ...[
-                  const SizedBox(height: 28),
-                  Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Cooking today',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+                      Text(
+                        hasPicks ? 'Best sellers' : 'Cooking today',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       TextButton(
                         onPressed: _openMenu,
@@ -186,11 +148,40 @@ class _StorefrontScreenState extends State<StorefrontScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  ...cooking.take(3).map((d) => _DishPreview(dish: d, onTap: _openMenu)),
-                ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: preview
+                        .map((d) => _DishPreview(dish: d, onTap: _openMenu))
+                        .toList(),
+                  ),
+                ),
               ],
-            ),
+
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 26, 20, 0),
+                child: ReviewBand(
+                  show: show,
+                  dishNames: {for (final d in _dishes) d.id: d.name},
+                ),
+              ),
+
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 26, 20, 0),
+                child: _HowItWorks(),
+              ),
+
+              // The address, hours and phone number live at the foot of the
+              // page, exactly as they do on the website. They used to sit
+              // above the food, which put the least appetising thing on the
+              // screen in the most valuable place.
+              if (shop != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 26, 20, 36),
+                  child: _Footer(shop: shop),
+                ),
+            ],
           ),
         ),
       ),
@@ -198,24 +189,173 @@ class _StorefrontScreenState extends State<StorefrontScreen> {
   }
 }
 
-class _Wordmark extends StatelessWidget {
-  const _Wordmark({required this.district});
+/// The three steps, so a first-time diner knows what happens after they tap.
+class _HowItWorks extends StatelessWidget {
+  const _HowItWorks();
 
-  final String district;
+  static const _steps = [
+    ('Build your order', 'Browse what is actually cooking. Anything that has run out is already hidden.'),
+    ('Get a ticket code', 'No account and no app needed. A short code lands on your phone.'),
+    ('Show it at the counter', 'Pay cash or GCash. Your screen updates to Paid on its own.'),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Text(
+          'How ordering works',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 12),
+        for (var i = 0; i < _steps.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Palette.card,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Palette.ink.withValues(alpha: 0.1)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '0${i + 1}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      letterSpacing: 3,
+                      color: Palette.red,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _steps[i].$1,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _steps[i].$2,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.45,
+                      color: Palette.ink.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _Footer extends StatelessWidget {
+  const _Footer({required this.shop});
+
+  final Shop shop;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Divider(color: Palette.ink.withValues(alpha: 0.12), height: 30),
+        _Wordmark(district: shop.district),
+        const SizedBox(height: 10),
+        Text(
+          shop.tagline,
+          style: TextStyle(color: Palette.ink.withValues(alpha: 0.65)),
+        ),
+        const SizedBox(height: 8),
+        _OpenPill(open: shop.isOpenNow),
+        const SizedBox(height: 20),
+        _FooterBlock(
+          label: 'WHERE TO FIND US',
+          lines: [shop.address, if (shop.phone.isNotEmpty) shop.phone],
+        ),
+        const SizedBox(height: 16),
+        _FooterBlock(
+          label: 'OPENING HOURS',
+          lines: shop.hours.isEmpty
+              ? const ['Ask at the counter']
+              : shop.hours
+                  .map((h) => '${h.days}: ${h.opens} to ${h.closes}')
+                  .toList(),
+        ),
+      ],
+    );
+  }
+}
+
+class _FooterBlock extends StatelessWidget {
+  const _FooterBlock({required this.label, required this.lines});
+
+  final String label;
+  final List<String> lines;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            letterSpacing: 3,
+            fontWeight: FontWeight.w600,
+            color: Palette.ink.withValues(alpha: 0.5),
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...lines.map(
+          (l) => Padding(
+            padding: const EdgeInsets.only(bottom: 3),
+            child: Text(
+              l,
+              style: TextStyle(
+                height: 1.45,
+                color: Palette.ink.withValues(alpha: 0.75),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Wordmark extends StatelessWidget {
+  const _Wordmark({required this.district, this.onDark = false});
+
+  final String district;
+
+  /// Over the hero photograph the wordmark has to be white, and "cris" keeps
+  /// the accent red because that half of the name is the brand.
+  final bool onDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final base = onDark ? Colors.white : Palette.ink;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         RichText(
-          text: const TextSpan(
+          text: TextSpan(
             style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w800,
-              color: Palette.ink,
+              color: base,
             ),
-            children: [
+            children: const [
               TextSpan(text: 'Ben'),
               TextSpan(
                 text: 'cris',
@@ -232,7 +372,7 @@ class _Wordmark extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 letterSpacing: 3,
-                color: Palette.ink.withValues(alpha: 0.55),
+                color: base.withValues(alpha: onDark ? 0.75 : 0.55),
               ),
             ),
           ),
@@ -272,54 +412,6 @@ class _OpenPill extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.icon, required this.label, required this.lines});
-
-  final IconData icon;
-  final String label;
-  final List<String> lines;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Palette.card,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Palette.ink.withValues(alpha: 0.1)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 15, color: Palette.red),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10,
-                  letterSpacing: 2,
-                  fontWeight: FontWeight.w600,
-                  color: Palette.red.withValues(alpha: 0.9),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ...lines.map(
-            (l) => Padding(
-              padding: const EdgeInsets.only(bottom: 3),
-              child: Text(l, style: const TextStyle(height: 1.45)),
-            ),
-          ),
-        ],
       ),
     );
   }
