@@ -315,30 +315,30 @@
   },
   {
    "id": "toyo",
-   "name": "Toyo (Soy sauce)",
+   "name": "Toyo (Silver Swan, bulk)",
    "unit": "L",
    "stock": 0.24,
    "par_level": 0.24,
    "reorder_at": 0.12,
-   "cost_per_unit": 60
+   "cost_per_unit": 28
   },
   {
    "id": "suka",
-   "name": "Suka (Vinegar)",
+   "name": "Suka (Datu Puti, gallon)",
    "unit": "L",
    "stock": 0.48,
    "par_level": 0.48,
    "reorder_at": 0.24,
-   "cost_per_unit": 83.33
+   "cost_per_unit": 35
   },
   {
    "id": "mantika",
-   "name": "Mantika (Cooking oil)",
+   "name": "Mantika (Golden Fiesta)",
    "unit": "L",
    "stock": 1,
    "par_level": 1,
    "reorder_at": 0.5,
-   "cost_per_unit": 80
+   "cost_per_unit": 105
   },
   {
    "id": "patis",
@@ -351,48 +351,48 @@
   },
   {
    "id": "gata",
-   "name": "Gata (Coconut milk)",
+   "name": "Gata (Coconut milk, bulk)",
    "unit": "L",
    "stock": 1.2,
    "par_level": 1.2,
    "reorder_at": 0.6,
-   "cost_per_unit": 104.17
+   "cost_per_unit": 95
   },
   {
    "id": "oyster",
-   "name": "Oyster sauce",
+   "name": "Oyster sauce (bulk gallon)",
    "unit": "L",
    "stock": 0.12,
    "par_level": 0.12,
    "reorder_at": 0.06,
-   "cost_per_unit": 666.67
+   "cost_per_unit": 60
   },
   {
    "id": "lechon-sauce",
-   "name": "Lechon sauce",
-   "unit": "L",
-   "stock": 0.48,
-   "par_level": 0.48,
-   "reorder_at": 0.24,
-   "cost_per_unit": 208.33
+   "name": "Lechon sauce (Mang Tomas 1kg)",
+   "unit": "kg",
+   "stock": 0.52,
+   "par_level": 0.52,
+   "reorder_at": 0.26,
+   "cost_per_unit": 87.5
   },
   {
    "id": "pinya-juice",
-   "name": "Pineapple juice",
+   "name": "Pineapple juice (Del Monte)",
    "unit": "L",
    "stock": 0.24,
    "par_level": 0.24,
    "reorder_at": 0.12,
-   "cost_per_unit": 208.33
+   "cost_per_unit": 100
   },
   {
    "id": "mayonnaise",
-   "name": "Mayonnaise",
+   "name": "Mayonnaise (Lady's Choice)",
    "unit": "L",
    "stock": 0.24,
    "par_level": 0.24,
    "reorder_at": 0.12,
-   "cost_per_unit": 500
+   "cost_per_unit": 310.55
   },
   {
    "id": "tomato-sauce",
@@ -405,39 +405,39 @@
   },
   {
    "id": "tomato-paste",
-   "name": "Tomato paste",
-   "unit": "L",
-   "stock": 0.12,
-   "par_level": 0.12,
-   "reorder_at": 0.06,
-   "cost_per_unit": 333.33
+   "name": "Tomato paste (1kg pack)",
+   "unit": "kg",
+   "stock": 0.135,
+   "par_level": 0.135,
+   "reorder_at": 0.068,
+   "cost_per_unit": 198.55
   },
   {
    "id": "green-peas",
    "name": "Green peas",
-   "unit": "cup",
-   "stock": 0.5,
-   "par_level": 0.5,
-   "reorder_at": 0.25,
-   "cost_per_unit": 80
+   "unit": "kg",
+   "stock": 0.075,
+   "par_level": 0.075,
+   "reorder_at": 0.037,
+   "cost_per_unit": 140
   },
   {
    "id": "pinya-chunks",
    "name": "Pineapple chunks",
-   "unit": "cup",
-   "stock": 2,
-   "par_level": 2,
-   "reorder_at": 1,
-   "cost_per_unit": 50
+   "unit": "kg",
+   "stock": 0.33,
+   "par_level": 0.33,
+   "reorder_at": 0.165,
+   "cost_per_unit": 160
   },
   {
    "id": "langka",
    "name": "Langka (Unripe jackfruit)",
-   "unit": "cup",
-   "stock": 4,
-   "par_level": 4,
-   "reorder_at": 2,
-   "cost_per_unit": 20
+   "unit": "kg",
+   "stock": 0.64,
+   "par_level": 0.64,
+   "reorder_at": 0.32,
+   "cost_per_unit": 180
   },
   {
    "id": "asin",
@@ -1331,12 +1331,12 @@
   {
    "dish_id": "menudo",
    "inventory_id": "green-peas",
-   "quantity": 0.5
+   "quantity": 0.075
   },
   {
    "dish_id": "menudo",
    "inventory_id": "tomato-paste",
-   "quantity": 0.12
+   "quantity": 0.135
   },
   {
    "dish_id": "lechon-paksiw",
@@ -1381,7 +1381,7 @@
   {
    "dish_id": "lechon-paksiw",
    "inventory_id": "lechon-sauce",
-   "quantity": 0.48
+   "quantity": 0.52
   },
   {
    "dish_id": "lechon-paksiw",
@@ -1801,7 +1801,7 @@
   {
    "dish_id": "sweet-sour-tilapia",
    "inventory_id": "pinya-chunks",
-   "quantity": 2
+   "quantity": 0.33
   },
   {
    "dish_id": "sweet-sour-tilapia",
@@ -2026,7 +2026,7 @@
   {
    "dish_id": "ginataang-langka",
    "inventory_id": "langka",
-   "quantity": 4
+   "quantity": 0.64
   },
   {
    "dish_id": "ginataang-langka",
