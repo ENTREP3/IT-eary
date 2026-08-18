@@ -345,11 +345,25 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
       if (row) setLoyalty({ completed: row.completed, until_next: row.until_next });
     });
 
-    supabase
-      .from('promo_codes')
-      .select('code, label')
-      .eq('active', true)
-      .then(({ data }) => setPromos((data ?? []) as { code: string; label: string }[]));
+    /**
+     * The codes still worth something to this diner.
+     *
+     * A code is good once per account, so listing one they have already
+     * claimed is an advert for a dead end — they would type it in and be told
+     * no. The redemptions they can read are their own; access rules see to
+     * that, so filtering here shows nobody anything new.
+     */
+    Promise.all([
+      supabase.from('promo_codes').select('code, label').eq('active', true),
+      supabase.from('promo_redemptions').select('code'),
+    ]).then(([running, claimed]) => {
+      const used = new Set((claimed.data ?? []).map((r) => r.code as string));
+      setPromos(
+        ((running.data ?? []) as { code: string; label: string }[]).filter(
+          (p) => !used.has(p.code),
+        ),
+      );
+    });
 
     supabase
       .from('stock_alerts')
