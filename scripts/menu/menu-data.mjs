@@ -63,7 +63,7 @@ export const ingredients = [
 
   ['asin',         'Asin (Salt)',               'kg',    40, { tbsp: 0.018 }],
   ['asukal',       'Asukal (Sugar)',            'kg',    115, { tbsp: 0.0125 }],
-  ['paminta',      'Paminta (Pepper)',          'kg',    175, { tsp: 0.0023, tbsp: 0.0069 }],
+  ['paminta',      'Paminta (ground, 50g pouch)', 'pouch', 35, { tsp: 0.046, tbsp: 0.138 }],
   ['curry',        'Curry powder (4g sachet)',  'sachet', 5, { tbsp: 1.5625 }],
   ['chili-flakes', 'Chili flakes (10g pack)',   'pack',  10, { tsp: 0.2 }],
   ['cornstarch',   'Cornstarch',                'kg',    120, { tbsp: 0.008 }],
