@@ -5,7 +5,7 @@ import { writeFileSync } from 'node:fs';
 import { ingredients, dishes, rice, riceIngredient, convert } from './menu-data.mjs';
 
 const all = [...ingredients, riceIngredient];
-const byId = new Map(all.map(([id, name, unit, cost]) => [id, { id, name, unit, cost }]));
+const byId = new Map(all.map(([id, name, unit, cost, per]) => [id, { id, name, unit, cost, per }]));
 
 // What one batch of every dish needs, so opening stock can be set to it.
 const need = new Map();
@@ -14,7 +14,7 @@ const recipeRows = [];
 for (const d of [...dishes, ...rice]) {
   for (const [ing, qty, unit] of d.items) {
     const it = byId.get(ing);
-    const amount = Number(convert(qty, unit, it.unit).toFixed(4));
+    const amount = Number(convert(qty, unit, it).toFixed(4));
     recipeRows.push({ dish_id: d.id, inventory_id: ing, quantity: amount });
     need.set(ing, Math.max(need.get(ing) ?? 0, amount));
   }

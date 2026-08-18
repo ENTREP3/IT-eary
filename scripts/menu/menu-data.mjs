@@ -45,7 +45,7 @@ export const ingredients = [
   ['dahon-sili',   'Dahon ng Sili',             'tali',  10],
   ['sampalok',     'Sinigang (Sampalok) mix',   'pack',  30],
 
-  ['toyo',         'Toyo (Soy sauce)',          'L',     125],
+  ['toyo',         'Toyo (Soy sauce)',          'L',     60],
   ['suka',         'Suka (Vinegar)',            'L',     83.33],
   ['mantika',      'Mantika (Cooking oil)',     'L',     80],
   ['patis',        'Patis (Fish sauce)',        'L',     208.33],
@@ -54,14 +54,14 @@ export const ingredients = [
   ['lechon-sauce', 'Lechon sauce',              'L',     208.33],
   ['pinya-juice',  'Pineapple juice',           'L',     208.33],
   ['mayonnaise',   'Mayonnaise',                'L',     500],
-  ['tomato-sauce', 'Tomato sauce',              'L',     166.67],
+  ['tomato-sauce', 'Tomato sauce (250g pouch)', 'pouch', 35, { cup: 1 }],
   ['tomato-paste', 'Tomato paste',              'L',     333.33],
 
   ['green-peas',   'Green peas',                'cup',   80],
   ['pinya-chunks', 'Pineapple chunks',          'cup',   50],
   ['langka',       'Langka (Unripe jackfruit)', 'cup',   20],
 
-  ['asin',         'Asin (Salt)',               'tbsp',  1.25],
+  ['asin',         'Asin (Salt)',               'kg',    40, { tbsp: 0.018 }],
   ['asukal',       'Asukal (Sugar)',            'tbsp',  2.50],
   ['paminta',      'Paminta (Pepper)',          'tsp',   2.50],
   ['curry',        'Curry powder',              'tbsp',  10],
@@ -69,7 +69,7 @@ export const ingredients = [
   ['cornstarch',   'Cornstarch',                'tbsp',  3.33],
   ['seasoning',    'Seasoning granules',        'tbsp',  5],
   ['bagoong',      'Bagoong alamang',           'tbsp',  7.50],
-  ['liver-spread', 'Liver spread',              'L',     500],
+  ['liver-spread', 'Liver spread (Reno, small can)', 'can', 40],
 ];
 
 /**
@@ -100,7 +100,7 @@ export const dishes = [
     category: 'Stews & Braised', price: 160,
     description: 'Rich pork stew with liver spread and tomato sauce.',
     items: [['baboy',2,'kg'],['atay-baboy',1,'kg'],['tomato-sauce',2,'cup'],
-            ['liver-spread',1,'cup'],
+            ['liver-spread',3,'can'],
             ['bawang',8,'clove'],['sibuyas',4,'piece'],['bell-pepper',4,'piece'],
             ['karot',4,'piece'],['patatas',6,'piece'],['hotdog',10,'piece'],
             ['chili-flakes',2,'tsp'],['asukal',4,'tbsp'],['toyo',0.5,'cup'],
@@ -298,15 +298,27 @@ export const dishes = [
   },
 ];
 
-/** Converts a recipe amount into the unit the ingredient is stocked in. */
-export function convert(qty, from, to) {
+/**
+ * Converts a recipe amount into the unit the ingredient is stocked in.
+ *
+ * Volume to volume is arithmetic. Anything else -- a cup of sauce into a pouch,
+ * a spoon of salt into a kilo -- depends on the ingredient itself, so those
+ * live beside it in the table above rather than being guessed here.
+ */
+export function convert(qty, from, ingredient) {
+  const to = ingredient.unit;
   if (from === to) return qty;
+
+  const own = ingredient.per?.[from];
+  if (own !== undefined) return qty * own;
+
   if (to === 'L' && TO_LITRE[from] !== undefined) return qty * TO_LITRE[from];
   if (to === 'tbsp' && from === 'cup') return qty * 16;
   if (to === 'tbsp' && from === 'tsp') return qty / 3;
   if (to === 'tsp' && from === 'tbsp') return qty * 3;
   if (to === 'tsp' && from === 'cup') return qty * 48;
-  throw new Error(`no conversion from ${from} to ${to}`);
+
+  throw new Error(`: no conversion from  to `);
 }
 
 // --------------------------------------------------------------------- rice

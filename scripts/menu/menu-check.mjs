@@ -3,7 +3,7 @@
 import { ingredients, dishes, rice, riceIngredient, convert } from './menu-data.mjs';
 
 const all = [...ingredients, riceIngredient];
-const byId = new Map(all.map(([id, name, unit, cost]) => [id, { id, name, unit, cost }]));
+const byId = new Map(all.map(([id, name, unit, cost, per]) => [id, { id, name, unit, cost, per }]));
 
 const peso = (n) => '₱' + n.toFixed(2).padStart(8);
 
@@ -19,7 +19,7 @@ for (const d of [...dishes, ...rice]) {
     const it = byId.get(ing);
     if (!it) { console.log(`  !! unknown ingredient ${ing} in ${d.id}`); bad++; continue; }
     let inUnit;
-    try { inUnit = convert(qty, unit, it.unit); }
+    try { inUnit = convert(qty, unit, it); }
     catch (e) { console.log(`  !! ${d.id}: ${e.message}`); bad++; continue; }
     cost += inUnit * it.cost;
     need.set(ing, Math.max(need.get(ing) ?? 0, inUnit));
