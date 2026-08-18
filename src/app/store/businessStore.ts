@@ -12,6 +12,27 @@ import { BUSINESS } from '../lib/business';
 
 export type Hours = { days: string; opens: string; closes: string };
 
+/**
+ * What the storefront shows, chosen by the owner.
+ *
+ * A missing key means on. That way a shop that has never opened this screen
+ * looks exactly as it always did, and nothing disappears because a column was
+ * added.
+ */
+export type Storefront = {
+  ratings: boolean;
+  comments: boolean;
+  bestseller: boolean;
+  low_stock: boolean;
+  sold_out: boolean;
+  recommended: boolean;
+};
+
+export const STOREFRONT_DEFAULTS: Storefront = {
+  ratings: true, comments: true, bestseller: true,
+  low_stock: true, sold_out: true, recommended: true,
+};
+
 export type BusinessProfile = {
   name: string;
   tagline: string;
@@ -25,6 +46,7 @@ export type BusinessProfile = {
   hours: Hours[];
   /** Address the printed QR code points at. Empty until the owner sets it. */
   app_download_url: string;
+  storefront: Storefront;
 };
 
 const FALLBACK: BusinessProfile = {
@@ -39,6 +61,7 @@ const FALLBACK: BusinessProfile = {
   email: '',
   hours: BUSINESS.hours as unknown as Hours[],
   app_download_url: '',
+  storefront: STOREFRONT_DEFAULTS,
 };
 
 /**
@@ -97,6 +120,7 @@ export const useBusinessStore = create<State>((set, get) => ({
       ...FALLBACK,
       ...data,
       hours: Array.isArray(data.hours) && data.hours.length ? (data.hours as Hours[]) : FALLBACK.hours,
+      storefront: { ...STOREFRONT_DEFAULTS, ...((data.storefront ?? {}) as Partial<Storefront>) },
     };
     remember(profile);
     set({ loaded: true, profile });

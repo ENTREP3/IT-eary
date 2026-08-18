@@ -30,12 +30,16 @@ export function Landing() {
    * especially well, or that the kambing needs to move. This is where they say
    * so, and it stays honest because a featured dish still has to be available.
    */
-  const preview = [
-    ...cookingNow.filter((d) => d.featured),
-    ...cookingNow.filter((d) => !d.featured),
-  ].slice(0, 3);
+  const show = biz.storefront;
 
-  const hasPicks = cookingNow.some((d) => d.featured);
+  // With recommendations switched off the front page simply shows what is
+  // cooking, in its usual order, and the heading says so.
+  const preview = (show.recommended
+    ? [...cookingNow.filter((d) => d.featured), ...cookingNow.filter((d) => !d.featured)]
+    : cookingNow
+  ).slice(0, 3);
+
+  const hasPicks = show.recommended && cookingNow.some((d) => d.featured);
 
   return (
     <div className="min-h-screen bg-diner-ground text-diner-ink">

@@ -69,6 +69,7 @@ import { RecipePanel } from './admin/RecipePanel';
 import { ShopPanel } from './admin/ShopPanel';
 import { PriceSuggestions } from './admin/PriceSuggestions';
 import { CogsPanel } from './admin/CogsPanel';
+import { ReceiptRetention, StorageWarning } from './admin/ReceiptRetention';
 import { ConfirmProvider, useConfirm } from './shared/useConfirm';
 import {
   Dialog,
@@ -1608,6 +1609,9 @@ function StorageUsage() {
         {pct < 1 ? 'Well under' : `${pct.toFixed(1)}% of`} the 1 GB free allowance.
         Images are shrunk on the phone before upload, so roughly 10,000 receipts fit.
       </div>
+
+      <StorageWarning pct={pct} />
+      <ReceiptRetention />
     </Card>
   );
 }
