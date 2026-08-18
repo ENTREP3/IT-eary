@@ -66,7 +66,14 @@ export type Order = {
   review_note: string | null;
   status: OrderStatus;
   paid_at: string | null;
-  paid_by: string | null;
+  /**
+   * The staff member who settled this ticket, not the person who paid.
+   *
+   * Who ordered is customer_id, or customer_name for a guest. This answers
+   * "which cashier took the money", which is what matters when the day does
+   * not add up.
+   */
+  processed_by: string | null;
   created_at: string;
 
   // Added by later migrations. The type had drifted behind the table, so code
