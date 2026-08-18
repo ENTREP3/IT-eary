@@ -320,7 +320,7 @@
    "stock": 0.24,
    "par_level": 0.24,
    "reorder_at": 0.12,
-   "cost_per_unit": 125
+   "cost_per_unit": 60
   },
   {
    "id": "suka",
@@ -396,12 +396,12 @@
   },
   {
    "id": "tomato-sauce",
-   "name": "Tomato sauce",
-   "unit": "L",
-   "stock": 0.48,
-   "par_level": 0.48,
-   "reorder_at": 0.24,
-   "cost_per_unit": 166.67
+   "name": "Tomato sauce (250g pouch)",
+   "unit": "pouch",
+   "stock": 2,
+   "par_level": 2,
+   "reorder_at": 1,
+   "cost_per_unit": 35
   },
   {
    "id": "tomato-paste",
@@ -442,11 +442,11 @@
   {
    "id": "asin",
    "name": "Asin (Salt)",
-   "unit": "tbsp",
-   "stock": 4,
-   "par_level": 4,
-   "reorder_at": 2,
-   "cost_per_unit": 1.25
+   "unit": "kg",
+   "stock": 0.072,
+   "par_level": 0.072,
+   "reorder_at": 0.036,
+   "cost_per_unit": 40
   },
   {
    "id": "asukal",
@@ -513,12 +513,12 @@
   },
   {
    "id": "liver-spread",
-   "name": "Liver spread",
-   "unit": "L",
-   "stock": 0.24,
-   "par_level": 0.24,
-   "reorder_at": 0.12,
-   "cost_per_unit": 500
+   "name": "Liver spread (Reno, small can)",
+   "unit": "can",
+   "stock": 3,
+   "par_level": 3,
+   "reorder_at": 1.5,
+   "cost_per_unit": 40
   },
   {
    "id": "bigas",
@@ -991,12 +991,12 @@
   {
    "dish_id": "caldereta",
    "inventory_id": "tomato-sauce",
-   "quantity": 0.48
+   "quantity": 2
   },
   {
    "dish_id": "caldereta",
    "inventory_id": "liver-spread",
-   "quantity": 0.24
+   "quantity": 3
   },
   {
    "dish_id": "caldereta",
@@ -1101,7 +1101,7 @@
   {
    "dish_id": "sisig",
    "inventory_id": "asin",
-   "quantity": 2
+   "quantity": 0.036
   },
   {
    "dish_id": "sisig",
@@ -1281,7 +1281,7 @@
   {
    "dish_id": "menudo",
    "inventory_id": "tomato-sauce",
-   "quantity": 0.48
+   "quantity": 2
   },
   {
    "dish_id": "menudo",
@@ -1386,7 +1386,7 @@
   {
    "dish_id": "lechon-paksiw",
    "inventory_id": "asin",
-   "quantity": 2
+   "quantity": 0.036
   },
   {
    "dish_id": "lechon-paksiw",
@@ -1511,7 +1511,7 @@
   {
    "dish_id": "afritada",
    "inventory_id": "tomato-sauce",
-   "quantity": 0.48
+   "quantity": 2
   },
   {
    "dish_id": "afritada",
@@ -1581,7 +1581,7 @@
   {
    "dish_id": "pritong-manok",
    "inventory_id": "asin",
-   "quantity": 4
+   "quantity": 0.072
   },
   {
    "dish_id": "pritong-manok",
@@ -1606,7 +1606,7 @@
   {
    "dish_id": "pritong-tilapia",
    "inventory_id": "asin",
-   "quantity": 4
+   "quantity": 0.072
   },
   {
    "dish_id": "pritong-tilapia",
@@ -1641,7 +1641,7 @@
   {
    "dish_id": "pritong-bangus",
    "inventory_id": "asin",
-   "quantity": 4
+   "quantity": 0.072
   },
   {
    "dish_id": "pritong-bangus",
@@ -1761,7 +1761,7 @@
   {
    "dish_id": "sweet-sour-tilapia",
    "inventory_id": "asin",
-   "quantity": 4
+   "quantity": 0.072
   },
   {
    "dish_id": "sweet-sour-tilapia",
@@ -1806,7 +1806,7 @@
   {
    "dish_id": "sweet-sour-tilapia",
    "inventory_id": "tomato-sauce",
-   "quantity": 0.48
+   "quantity": 2
   },
   {
    "dish_id": "sweet-sour-tilapia",
@@ -1866,7 +1866,7 @@
   {
    "dish_id": "paksiw-bangus",
    "inventory_id": "asin",
-   "quantity": 2
+   "quantity": 0.036
   },
   {
    "dish_id": "paksiw-bangus",
