@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../tokens.dart';
 import '../admin_api.dart';
@@ -209,6 +213,9 @@ class _PaymentsTabState extends State<PaymentsTab> {
                     fontSize: 11,
                     color: Tokens.staffInk.withValues(alpha: 0.45)),
               ),
+              const SizedBox(height: 4),
+              StorageWarning(pct: pct),
+              ReceiptRetention(onChanged: _load),
             ],
           ),
         ),
@@ -227,4 +234,404 @@ class _PaymentsTabState extends State<PaymentsTab> {
               BorderSide(color: Tokens.staffInk.withValues(alpha: 0.15)),
         ),
       );
+}
+
+/// Keeping GCash receipts for as long as they are useful, and no longer.
+///
+/// Receipts were kept forever. That is fine for a while and then it is not: the
+/// free tier is 1 GB, and a receipt carries the sender's real name and mobile
+/// number, so holding thousands of them indefinitely is a liability as much as
+/// a storage problem.
+///
+/// The rule enforced here is that nothing can be deleted until it has been
+/// saved off the system IN THIS SESSION. A dialog that merely suggests saving
+/// first is something people learn to tap through; a delete button that stays
+/// disabled until the files are actually out cannot be tapped through.
+class ReceiptRetention extends StatefulWidget {
+  const ReceiptRetention({super.key, required this.onChanged});
+
+  final Future<void> Function() onChanged;
+
+  @override
+  State<ReceiptRetention> createState() => _ReceiptRetentionState();
+}
+
+class _ReceiptRetentionState extends State<ReceiptRetention> {
+  static const _ages = [
+    ('Older than 30 days', 30),
+    ('Older than 60 days', 60),
+    ('Older than 90 days', 90),
+    ('Everything', 0),
+  ];
+
+  int _days = 90;
+  List<Map<String, dynamic>>? _rows;
+  String? _busy;
+  String? _error;
+  int _done = 0;
+
+  /// Which batch has been safely saved. Keyed by the age selected, so changing
+  /// the selection correctly re-arms the guard: having saved the 90 day batch
+  /// says nothing about the 30 day one.
+  int? _saved;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _error = null);
+    try {
+      final rows = await AdminApi.receipts(olderThanDays: _days);
+      if (mounted) setState(() => _rows = rows);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = '$e';
+          _rows = const [];
+        });
+      }
+    }
+  }
+
+  /// Pulls every receipt down through a short-lived signed link, writes them
+  /// beside a CSV naming which ticket each file belongs to, and hands the lot
+  /// to the phone's own share sheet.
+  ///
+  /// Without that list the images are a folder of meaningless filenames the
+  /// moment they leave the system.
+  Future<void> _download() async {
+    final rows = _rows;
+    if (rows == null || rows.isEmpty) return;
+
+    setState(() {
+      _busy = 'download';
+      _error = null;
+      _done = 0;
+    });
+
+    try {
+      final dir = await getTemporaryDirectory();
+      final stamp = DateTime.now().toIso8601String().substring(0, 10);
+      final folder = Directory('${dir.path}/receipts-$stamp')
+        ..createSync(recursive: true);
+
+      final files = <XFile>[];
+      final manifest = <String>['ticket_code,date,amount,file'];
+
+      for (final r in rows) {
+        final url = await AdminApi.proofUrl(r['proof_path'] as String);
+        if (url == null) continue;
+
+        final bytes = await _fetch(url);
+        if (bytes == null) continue;
+
+        final date = (r['created_at'] as String).substring(0, 10);
+        final name = '${r['ticket_code']}-$date.jpg';
+        final file = File('${folder.path}/$name')..writeAsBytesSync(bytes);
+        files.add(XFile(file.path));
+        manifest.add('${r['ticket_code']},$date,${r['total']},$name');
+
+        if (mounted) setState(() => _done = files.length);
+      }
+
+      if (files.isEmpty) {
+        throw Exception('None of the images could be fetched.');
+      }
+
+      final csv = File('${folder.path}/receipts-$stamp.csv')
+        ..writeAsStringSync(manifest.join('\n'));
+      files.add(XFile(csv.path));
+
+      await SharePlus.instance.share(
+        ShareParams(files: files, text: 'Bencris receipts up to $stamp'),
+      );
+
+      if (mounted) setState(() => _saved = _days);
+    } catch (e) {
+      if (mounted) {
+        setState(
+          () => _error = 'Could not save them all. Nothing has been deleted. '
+              '$e',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = null);
+    }
+  }
+
+  static Future<List<int>?> _fetch(String url) async {
+    try {
+      final client = HttpClient();
+      final request = await client.getUrl(Uri.parse(url));
+      final response = await request.close();
+      if (response.statusCode != 200) return null;
+      final bytes = <int>[];
+      await for (final chunk in response) {
+        bytes.addAll(chunk);
+      }
+      client.close();
+      return bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _delete() async {
+    final rows = _rows;
+    if (rows == null || rows.isEmpty) return;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Tokens.staffCard,
+        title: Text(
+          'Delete ${rows.length} receipt${rows.length == 1 ? '' : 's'}?',
+          style: const TextStyle(color: Tokens.staffInk, fontSize: 18),
+        ),
+        content: Text(
+          'The images go for good. Each sale keeps its payment status and the '
+          'note that it was verified — only the picture of the receipt is '
+          'removed.',
+          style: TextStyle(color: Tokens.staffInk.withValues(alpha: 0.7)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep them'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Tokens.semanticCritical,
+            ),
+            child: const Text('Delete them'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    setState(() {
+      _busy = 'delete';
+      _error = null;
+    });
+    try {
+      await AdminApi.deleteReceipts(rows);
+      if (mounted) setState(() => _saved = null);
+      await _load();
+      await widget.onChanged();
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Could not delete them. $e');
+    } finally {
+      if (mounted) setState(() => _busy = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final count = _rows?.length ?? 0;
+    final ready = _saved == _days && count > 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Divider(color: Tokens.staffInk.withValues(alpha: 0.12), height: 28),
+        const Text(
+          'Clearing old receipts',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Tokens.staffInk,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          "A receipt carries the sender's name and mobile number, so keeping "
+          'them forever is a liability as well as a storage cost. Save them '
+          'first, then they can go. The sale itself and the fact it was '
+          'verified are kept either way.',
+          style: TextStyle(
+            fontSize: 12,
+            height: 1.45,
+            color: Tokens.staffInk.withValues(alpha: 0.55),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final (label, days) in _ages)
+              ChoiceChip(
+                label: Text(label, style: const TextStyle(fontSize: 12)),
+                selected: _days == days,
+                showCheckmark: false,
+                backgroundColor: Tokens.staffGround,
+                selectedColor: Tokens.staffAccent.withValues(alpha: 0.2),
+                labelStyle: TextStyle(
+                  color: _days == days
+                      ? Tokens.staffAccent
+                      : Tokens.staffInk.withValues(alpha: 0.7),
+                ),
+                shape: StadiumBorder(
+                  side: BorderSide(
+                    color: _days == days
+                        ? Tokens.staffAccent.withValues(alpha: 0.5)
+                        : Tokens.staffInk.withValues(alpha: 0.15),
+                  ),
+                ),
+                onSelected: _busy != null
+                    ? null
+                    : (_) {
+                        setState(() {
+                          _days = days;
+                          _saved = null;
+                          _rows = null;
+                        });
+                        _load();
+                      },
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        Text(
+          _rows == null
+              ? 'Counting…'
+              : count == 0
+              ? 'Nothing that old is being kept.'
+              : '$count receipt${count == 1 ? '' : 's'} match.',
+          style: TextStyle(
+            fontSize: 12,
+            color: Tokens.staffInk.withValues(alpha: 0.6),
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _busy != null || count == 0 ? null : _download,
+                icon: _busy == 'download'
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.download_outlined, size: 16),
+                label: Text(
+                  _busy == 'download' ? 'Saving $_done of $count' : 'Save them',
+                  style: const TextStyle(fontSize: 13),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Tokens.staffInk,
+                  side: BorderSide(
+                    color: Tokens.staffInk.withValues(alpha: 0.25),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: FilledButton.icon(
+                // Deliberately dead until the files are out. This is the guard,
+                // not a suggestion.
+                onPressed: _busy != null || !ready ? null : _delete,
+                icon: _busy == 'delete'
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.delete_outline, size: 16),
+                label: const Text('Delete', style: TextStyle(fontSize: 13)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Tokens.semanticCritical,
+                  disabledBackgroundColor: Tokens.staffInk.withValues(
+                    alpha: 0.12,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        if (!ready && count > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Save them before they can be deleted.',
+              style: TextStyle(
+                fontSize: 11,
+                color: Tokens.staffInk.withValues(alpha: 0.45),
+              ),
+            ),
+          ),
+
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text(
+              _error!,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Tokens.semanticAlert,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Says something only when there is something to say.
+///
+/// A bar that is 12% full needs no commentary. What matters is the point where
+/// the shop is about to lose the ability to take a GCash receipt at all, and
+/// that deserves a sentence saying what actually breaks rather than a red bar
+/// the owner has to interpret.
+class StorageWarning extends StatelessWidget {
+  const StorageWarning({super.key, required this.pct});
+
+  final double pct;
+
+  @override
+  Widget build(BuildContext context) {
+    if (pct < 75) return const SizedBox.shrink();
+
+    final critical = pct >= 90;
+    final tone = critical ? Tokens.semanticCritical : Tokens.staffAccent;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded, size: 15, color: tone),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              critical
+                  ? 'Storage is nearly full. Once it fills, diners can no '
+                        'longer upload a GCash receipt and the counter loses '
+                        'its record of payment. Save the old receipts and '
+                        'clear them below.'
+                  : 'Storage is filling up. Worth saving the older receipts '
+                        'and clearing them before it becomes urgent.',
+              style: TextStyle(fontSize: 12, height: 1.45, color: tone),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
