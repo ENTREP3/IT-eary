@@ -855,6 +855,9 @@ function CartSheet({
   const [applied, setApplied] = useState<{ code: string; discount: number; label: string } | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
 
+  // A real account, not merely a session. Every diner has one of those now.
+  const hasAccount = useAuthStore((s) => !!s.user);
+
   /**
    * The discount is quoted by the same database function that will charge it,
    * so the number shown here is the number the diner actually pays. The client
@@ -1055,6 +1058,25 @@ function CartSheet({
             <div className="text-[11px] tracking-[0.2em] uppercase opacity-55 mb-2">
               Have a promo code?
             </div>
+
+            {/* A field that will refuse whatever is typed into it is worse than
+                no field. The database turns codes down without an account, so
+                this says so first, and offers the way through instead of a
+                dead end. */}
+            {!hasAccount ? (
+              <div className="rounded-xl border border-diner-ink/15 bg-diner-card p-3.5">
+                <p className="text-xs opacity-70 leading-relaxed">
+                  Codes are for account holders. Ordering never needs one — but a
+                  discount does.
+                </p>
+                <Link
+                  to="/account"
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs text-diner-accent hover:underline"
+                >
+                  <UserRound size={13} /> Sign in or make an account
+                </Link>
+              </div>
+            ) : (
             <div className="flex gap-2">
               <div className="flex-1 flex items-center gap-2 h-11 px-3.5 rounded-xl border border-diner-ink/15 bg-diner-card focus-within:border-diner-ink/40">
                 <Tag size={15} className="opacity-50 shrink-0" />
@@ -1075,6 +1097,7 @@ function CartSheet({
                 {promoBusy ? <Loader2 size={15} className="animate-spin" /> : 'Apply'}
               </button>
             </div>
+            )}
             {promoError && <p className="mt-1.5 text-xs text-diner-accent">{promoError}</p>}
             {applied && (
               <p className="mt-1.5 text-xs text-semantic-cash flex items-center gap-1.5">
