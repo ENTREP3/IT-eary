@@ -34,6 +34,7 @@ import { supabase } from '../../lib/supabase';
 import { Receipt } from '../Receipt';
 import { ImageWithFallback } from '../sigma/ImageWithFallback';
 import { Wordmark, Tagline } from '../site/SiteChrome';
+import { useBusinessStore } from '../../store/businessStore';
 import {
   getFavourites,
   getHistory,
@@ -81,6 +82,7 @@ const PICKUP_CHOICES: { label: string; minutes: number | null }[] = [
  */
 export function StorefrontApp() {
   const user = useAuthStore((s) => s.user);
+  const show = useBusinessStore((s) => s.profile.storefront);
   const categories = useKarinderyaStore((s) => s.categories);
   const dishes = useKarinderyaStore((s) => s.dishes);
   const menuLoaded = useKarinderyaStore((s) => s.loaded);
@@ -133,8 +135,11 @@ export function StorefrontApp() {
         [d.name, d.tagalog, d.description, d.category].some((f) => f?.toLowerCase().includes(q)),
       );
     }
-    return dishes.filter((d) => d.category === cat);
-  }, [dishes, cat, query, searching]);
+    const inCategory = dishes.filter((d) => d.category === cat);
+    // Hiding sold-out dishes is the owner's call. Left on, a diner sees what to
+    // come back for; switched off, a thin day simply looks shorter.
+    return show.sold_out ? inCategory : inCategory.filter((d) => d.available);
+  }, [dishes, cat, query, searching, show.sold_out]);
 
   const count = cart.reduce((a, c) => a + c.qty, 0);
   const total = cart.reduce((a, c) => a + c.qty * c.dish.price, 0);
@@ -294,8 +299,11 @@ export function StorefrontApp() {
                     qty={cart.find((l) => l.dish.id === d.id)?.qty ?? 0}
                     onAdd={() => add(d)}
                     onSub={() => sub(d.id)}
-                    bestseller={bestsellerIds.has(d.id)}
+                    bestseller={show.bestseller && bestsellerIds.has(d.id)}
                     favourite={favourites.includes(d.id)}
+                    showRating={show.ratings}
+                    showLowStock={show.low_stock}
+                    showComments={show.comments}
                   />
                 ))}
               </div>
@@ -353,6 +361,9 @@ function DishCard({
   onSub,
   bestseller,
   favourite,
+  showRating,
+  showLowStock,
+  showComments,
 }: {
   dish: Dish;
   qty: number;
@@ -360,6 +371,11 @@ function DishCard({
   onSub: () => void;
   bestseller: boolean;
   favourite: boolean;
+  /* What the owner has chosen to show. Passed in rather than read here so one
+     card cannot disagree with the next about what the shop is displaying. */
+  showRating: boolean;
+  showLowStock: boolean;
+  showComments: boolean;
 }) {
   const [rateOpen, setRateOpen] = useState(false);
   const [reviewsOpen, setReviewsOpen] = useState(false);
@@ -373,6 +389,7 @@ function DishCard({
 
   // "Few left" only means something when the kitchen actually set a limit.
   const fewLeft =
+    showLowStock &&
     dish.available && typeof dish.stockCount === 'number' && dish.stockCount > 0 && dish.stockCount <= 3;
 
   return (
@@ -446,9 +463,11 @@ function DishCard({
         )}
 
         <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 min-h-[22px]">
-          {rating ? (
+          {showRating && rating ? (
             <button
               onClick={() => {
+                // Comments can be switched off on their own; the stars stay.
+                if (!showComments) return;
                 if (!comments) loadFor(dish.id);
                 setReviewsOpen((v) => !v);
               }}

@@ -3,6 +3,7 @@ import { Check, Loader2, Plus, Star, Trash2, UserMinus, Users } from 'lucide-rea
 import { supabase } from '../../lib/supabase';
 import { useBusinessStore, type Hours } from '../../store/businessStore';
 import { AppPosterSection } from './AppPosterSection';
+import { StorefrontPanel } from './StorefrontPanel';
 import { useConfirm } from '../shared/useConfirm';
 
 /**
@@ -21,6 +22,7 @@ export function ShopPanel() {
   return (
     <div className="space-y-6">
       <ProfileSection />
+      <StorefrontPanel />
       <AppPosterSection />
       <StaffSection />
       <ReviewSection />
