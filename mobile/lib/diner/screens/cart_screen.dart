@@ -7,6 +7,7 @@ import '../state/cart.dart';
 import '../state/order_history.dart';
 import '../../theme.dart';
 import '../../tokens.dart';
+import 'account_screen.dart';
 import 'ticket_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -239,6 +240,62 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
+
+                  // A field that will refuse whatever is typed into it is worse
+                  // than no field. The database turns codes down without an
+                  // account, so this says so first and offers the way through
+                  // rather than a dead end.
+                  if (!Api.signedIn)
+                    InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AccountScreen()),
+                      ),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Palette.card,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Palette.ink.withValues(alpha: 0.15),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Codes are for account holders. Ordering never '
+                              'needs one — but a discount does.',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                height: 1.45,
+                                color: Palette.ink.withValues(alpha: 0.7),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.person_outline,
+                                  size: 14,
+                                  color: Palette.red,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'Sign in or make an account',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: Palette.red.withValues(alpha: 0.95),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
