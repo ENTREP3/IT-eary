@@ -14,6 +14,7 @@ import {
   Maximize2,
   ShieldCheck,
   FlagTriangleRight,
+  LayoutDashboard,
   X,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
@@ -183,6 +184,19 @@ function CashierCounter() {
               </button>
             ))}
           </div>
+          {/* The dashboard links back to the counter, and nothing linked the
+              other way, so an owner who opened the till had to type the address
+              to reach their own figures. Shown only to an owner, because a
+              cashier following it would only meet a refusal. */}
+          {profile?.role === 'admin' && (
+            <a
+              href="/admin"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#e8dfc8]/15 text-xs hover:bg-[#e8dfc8]/5 transition-colors"
+            >
+              <LayoutDashboard size={13} /> Dashboard
+            </a>
+          )}
+
           <div className="text-right text-xs opacity-60 hidden sm:block">
             <div className="text-[#e8dfc8]/90">{profile?.full_name ?? 'Cashier'}</div>
             <div className="capitalize">{profile?.role} · signed in</div>
