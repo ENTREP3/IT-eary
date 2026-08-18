@@ -9,9 +9,10 @@ import 'tabs/inventory_tab.dart';
 import 'tabs/kitchen_tab.dart';
 import 'tabs/menu_tab.dart';
 import 'tabs/payments_tab.dart';
+import 'tabs/promos_tab.dart';
 import 'tabs/shop_tab.dart';
 
-/// Owner dashboard — the mobile twin of the React admin, same six tabs.
+/// Owner dashboard — the mobile twin of the React admin, tab for tab.
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key, this.onSignOut});
 
@@ -38,6 +39,7 @@ class _AdminScreenState extends State<AdminScreen> {
     ('Sales & profit', 'The numbers, in plain sight'),
     ('Menu control', "Today's menu"),
     ('Payment settings', 'How customers pay you'),
+    ('Promotions', 'Discounts you are running'),
     ('Shop', 'Your details, and what diners see'),
   ];
 
@@ -150,8 +152,13 @@ class _AdminScreenState extends State<AdminScreen> {
         1 => KitchenTab(orders: _orders, onChanged: _loadAll),
         2 => InventoryTab(items: _inventory, onChanged: _loadAll),
         3 => AnalyticsTab(orders: _orders, expenses: _expenses, onChanged: _loadAll),
-        4 => MenuTab(dishes: _dishes, onChanged: _loadAll),
+        4 => MenuTab(
+            dishes: _dishes,
+            inventory: _inventory,
+            onChanged: _loadAll,
+          ),
         5 => const PaymentsTab(),
+        6 => const PromosTab(),
         _ => const ShopTab(),
       };
 
@@ -191,6 +198,7 @@ class _AdminScreenState extends State<AdminScreen> {
       (Icons.show_chart, 'Sales & Profit'),
       (Icons.menu_book_outlined, 'Menu'),
       (Icons.credit_card_outlined, 'Payments'),
+      (Icons.sell_outlined, 'Promotions'),
       (Icons.storefront_outlined, 'Shop'),
     ];
 
