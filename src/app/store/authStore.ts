@@ -5,7 +5,21 @@ import type { Profile, UserRole } from '../lib/types';
 
 type AuthState = {
   session: Session | null;
+
+  /**
+   * The signed-in account, or null.
+   *
+   * Deliberately null for an anonymous session. Every visitor now has one —
+   * that is how a guest ticket becomes provably theirs — so `user` is no longer
+   * a usable test for "has an account", and leaving it set would have shown the
+   * whole account screen, loyalty card and promotions to people who never
+   * signed up for anything. Anything that means "a real account" reads this.
+   */
   user: User | null;
+
+  /** The session's user id, real or anonymous. What owns the orders. */
+  identity: User | null;
+
   profile: Profile | null;
   /** true until the initial session check + profile fetch settles */
   loading: boolean;
@@ -47,6 +61,7 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
+  identity: null,
   user: null,
   profile: null,
   loading: true,
@@ -56,18 +71,41 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (get().initialized) return;
     set({ initialized: true });
 
-    // 1. Hydrate from any persisted session.
+    /**
+     * Anonymous is real, but it is not an account.
+     *
+     * A visitor with no session gets one silently, so the orders they place
+     * belong to somebody the database can name. They are never asked, never
+     * told, and never see a difference — the only thing it changes is that
+     * their ticket is theirs and nobody else's.
+     */
+    const settle = async (session: Session | null) => {
+      const anonymous = session?.user?.is_anonymous === true;
+      const profile =
+        session?.user && !anonymous ? await fetchProfile(session.user.id) : null;
+      set({
+        session,
+        identity: session?.user ?? null,
+        user: anonymous ? null : (session?.user ?? null),
+        profile,
+        loading: false,
+      });
+    };
+
+    // 1. Hydrate from any persisted session, minting one if there is none.
     supabase.auth.getSession().then(async ({ data }) => {
-      const session = data.session;
-      const profile = session?.user ? await fetchProfile(session.user.id) : null;
-      set({ session, user: session?.user ?? null, profile, loading: false });
+      if (data.session) return settle(data.session);
+
+      const { data: anon, error } = await supabase.auth.signInAnonymously();
+      // A shop whose sign-in is unreachable should still take orders. Without a
+      // session the order is placed unattached, which is the behaviour the
+      // system had for its whole life until now.
+      if (error) return settle(null);
+      settle(anon.session);
     });
 
     // 2. Keep state in sync with future auth events (login, logout, refresh).
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-      const profile = session?.user ? await fetchProfile(session.user.id) : null;
-      set({ session, user: session?.user ?? null, profile, loading: false });
-    });
+    supabase.auth.onAuthStateChange(async (_event, session) => settle(session));
   },
 
   refreshProfile: async () => {
@@ -89,6 +127,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signUpCustomer: async (email, password) => {
+    /**
+     * A guest signing up is upgraded in place, not replaced.
+     *
+     * Calling signUp() while an anonymous session exists would mint a second
+     * user and strand every order the first one placed — the diner would make
+     * an account and watch their history vanish. Attaching the address to the
+     * user they already are keeps it.
+     */
+    if (get().identity?.is_anonymous) {
+      const { error: upgradeError } = await supabase.auth.updateUser({ email, password });
+      if (upgradeError) throw upgradeError;
+      // Still anonymous until the address is confirmed, which is right: the
+      // perks belong to a confirmed account.
+      return { needsConfirmation: true };
+    }
+
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
 
@@ -111,6 +165,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signOut: async () => {
     await supabase.auth.signOut();
-    set({ session: null, user: null, profile: null });
+    set({ session: null, identity: null, user: null, profile: null });
+
+    // Straight back to being a guest with a name, rather than nobody at all.
+    // Without this the next order they place would belong to no one and they
+    // could not look it up afterwards.
+    const { data } = await supabase.auth.signInAnonymously();
+    if (data.session) set({ session: data.session, identity: data.session.user });
   },
 }));

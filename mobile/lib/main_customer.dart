@@ -11,7 +11,8 @@ import 'theme.dart';
 /// The diner app: browse, order, hold a ticket. No sign-in anywhere.
 ///
 ///   flutter run -t lib/main_diner.dart
-Future<void> main() => bootstrap(const DinerApp());
+Future<void> main() =>
+    bootstrap(const DinerApp(), anonymousIdentity: true);
 
 class DinerApp extends StatelessWidget {
   const DinerApp({super.key});
