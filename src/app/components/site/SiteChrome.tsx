@@ -165,6 +165,16 @@ export function SiteFooter() {
           <Link to="/contact" className="hover:opacity-100">Contact</Link>
           <Link to="/refund" className="hover:opacity-100">Order issues</Link>
           <Link to="/privacy" className="hover:opacity-100">Privacy</Link>
+
+          {/* The way in to the counter.
+              The staff screens were reachable only by typing the address, or by
+              spotting a small link inside the dashboard — which is no use to a
+              cashier, who has no reason to ever open the dashboard. It is a
+              plain link rather than a hidden shortcut because it guards
+              nothing: the sign-in behind it does that, and a door nobody can
+              find is not security. */}
+          <Link to="/cashier" className="hover:opacity-100">Staff</Link>
+
           <span className="ml-auto">
             &copy; {new Date().getFullYear()} {p.name}
           </span>
