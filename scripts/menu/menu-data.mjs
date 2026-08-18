@@ -48,7 +48,7 @@ export const ingredients = [
   ['toyo',         'Toyo (Silver Swan, bulk)',  'L',     28],
   ['suka',         'Suka (Datu Puti, gallon)',  'L',     35],
   ['mantika',      'Mantika (Golden Fiesta)',   'L',     105],
-  ['patis',        'Patis (Fish sauce)',        'L',     208.33],
+  ['patis',        'Patis (Fish sauce)',        'L',     80],
   ['gata',         'Gata (Coconut milk, bulk)', 'L',     95],
   ['oyster',       'Oyster sauce (bulk gallon)','L',     60],
   ['lechon-sauce', 'Lechon sauce (Mang Tomas 1kg)', 'kg', 87.50, { cup: 0.26 }],
