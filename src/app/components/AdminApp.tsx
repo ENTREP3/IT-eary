@@ -68,6 +68,7 @@ import { KitchenBoard } from './shared/KitchenBoard';
 import { RecipePanel } from './admin/RecipePanel';
 import { ShopPanel } from './admin/ShopPanel';
 import { PriceSuggestions } from './admin/PriceSuggestions';
+import { BestsellerSuggestions } from './admin/BestsellerSuggestions';
 import { CogsPanel } from './admin/CogsPanel';
 import { ReceiptRetention, StorageWarning } from './admin/ReceiptRetention';
 import { ConfirmProvider, useConfirm } from './shared/useConfirm';
@@ -974,7 +975,11 @@ function InventoryPanel() {
                     <button
                       type="button"
                       onClick={() => openEdit(i)}
-                      className="text-[#e8a84a]/80 hover:text-[#e8a84a] underline underline-offset-2"
+                      // The size is repeated here on purpose: a button carries a
+                      // base font-size of its own, so it ignored the 10px on the
+                      // line around it and the warning came out bigger than the
+                      // ingredient it was warning about.
+                      className="text-[10px] text-[#e8a84a]/80 hover:text-[#e8a84a] underline underline-offset-2"
                     >
                       No price set. Dishes using this cannot be costed.
                     </button>
@@ -1918,6 +1923,10 @@ function MenuControl() {
         </button>
       </div>
 
+      {/* Above the list, not buried in a settings screen: it is about these
+          dishes, and the button it asks you to press is on the card below. */}
+      <BestsellerSuggestions />
+
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
         {dishes.map((d) => (
           <Card key={d.id} className="p-5 flex flex-col gap-3">
@@ -1957,10 +1966,10 @@ function MenuControl() {
                     <ChefHat size={13} /> Recipe
                   </button>
 
-                  {/* The one lever the owner has over the front page. The
-                      automatic badges only ever promote what already sells, so
-                      a new dish could never be highlighted no matter how good
-                      it is. This is how the owner says "try this one". */}
+                  {/* One mark, doing everything: the Bestseller badge on the
+                      menu, the rotating photograph on the front page, and the
+                      order of the Best sellers row. Sales only ever suggest it
+                      in the panel above; this button is the decision. */}
                   <button
                     type="button"
                     onClick={() => updateDish(d.id, { featured: !d.featured })}
@@ -1971,12 +1980,12 @@ function MenuControl() {
                     }`}
                     title={
                       d.featured
-                        ? 'Showing on the front page'
-                        : 'Show this off on the front page'
+                        ? 'Marked a bestseller and showing on the front page. Click to unmark.'
+                        : 'Mark it a bestseller and show it on the front page'
                     }
                   >
                     <Star size={13} className={d.featured ? 'fill-[#e8a84a]' : ''} />
-                    {d.featured ? 'Featured' : 'Feature'}
+                    {d.featured ? 'Bestseller' : 'Mark bestseller'}
                   </button>
                 </div>
               </div>
