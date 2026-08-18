@@ -271,7 +271,7 @@
   {
    "id": "kangkong",
    "name": "Kangkong",
-   "unit": "tali",
+   "unit": "bundle",
    "stock": 2,
    "par_level": 2,
    "reorder_at": 1,
@@ -280,7 +280,7 @@
   {
    "id": "sitaw",
    "name": "Sitaw",
-   "unit": "tali",
+   "unit": "bundle",
    "stock": 2,
    "par_level": 2,
    "reorder_at": 1,
@@ -289,7 +289,7 @@
   {
    "id": "dahon-gabi",
    "name": "Dahon ng Gabi",
-   "unit": "tali",
+   "unit": "bundle",
    "stock": 2,
    "par_level": 2,
    "reorder_at": 1,
@@ -298,7 +298,7 @@
   {
    "id": "dahon-sili",
    "name": "Dahon ng Sili",
-   "unit": "tali",
+   "unit": "bundle",
    "stock": 1,
    "par_level": 1,
    "reorder_at": 0.5,
@@ -442,56 +442,56 @@
   {
    "id": "asin",
    "name": "Asin (Salt)",
-   "unit": "kg",
-   "stock": 0.072,
-   "par_level": 0.072,
-   "reorder_at": 0.036,
-   "cost_per_unit": 40
+   "unit": "g",
+   "stock": 72,
+   "par_level": 72,
+   "reorder_at": 36,
+   "cost_per_unit": 0.04
   },
   {
    "id": "asukal",
    "name": "Asukal (Sugar)",
-   "unit": "kg",
-   "stock": 0.1,
-   "par_level": 0.1,
-   "reorder_at": 0.05,
-   "cost_per_unit": 115
+   "unit": "g",
+   "stock": 100,
+   "par_level": 100,
+   "reorder_at": 50,
+   "cost_per_unit": 0.115
   },
   {
    "id": "paminta",
-   "name": "Paminta (ground, 50g pouch)",
-   "unit": "pouch",
-   "stock": 0.092,
-   "par_level": 0.092,
-   "reorder_at": 0.046,
-   "cost_per_unit": 35
+   "name": "Paminta (Ground pepper)",
+   "unit": "g",
+   "stock": 4.6,
+   "par_level": 4.6,
+   "reorder_at": 2.3,
+   "cost_per_unit": 0.7
   },
   {
    "id": "curry",
-   "name": "Curry powder (4g sachet)",
-   "unit": "sachet",
-   "stock": 9.375,
-   "par_level": 9.375,
-   "reorder_at": 4.688,
-   "cost_per_unit": 5
+   "name": "Curry powder",
+   "unit": "g",
+   "stock": 39,
+   "par_level": 39,
+   "reorder_at": 19.5,
+   "cost_per_unit": 1.2019
   },
   {
    "id": "chili-flakes",
-   "name": "Chili flakes (10g pack)",
-   "unit": "pack",
-   "stock": 0.4,
-   "par_level": 0.4,
-   "reorder_at": 0.2,
-   "cost_per_unit": 10
+   "name": "Chili flakes",
+   "unit": "g",
+   "stock": 4,
+   "par_level": 4,
+   "reorder_at": 2,
+   "cost_per_unit": 1
   },
   {
    "id": "cornstarch",
    "name": "Cornstarch",
-   "unit": "kg",
-   "stock": 0.024,
-   "par_level": 0.024,
-   "reorder_at": 0.012,
-   "cost_per_unit": 120
+   "unit": "g",
+   "stock": 24,
+   "par_level": 24,
+   "reorder_at": 12,
+   "cost_per_unit": 0.12
   },
   {
    "id": "seasoning",
@@ -911,7 +911,7 @@
   {
    "dish_id": "adobong-baboy",
    "inventory_id": "paminta",
-   "quantity": 0.092
+   "quantity": 4.6
   },
   {
    "dish_id": "adobong-baboy",
@@ -921,7 +921,7 @@
   {
    "dish_id": "adobong-baboy",
    "inventory_id": "asukal",
-   "quantity": 0.05
+   "quantity": 50
   },
   {
    "dish_id": "adobong-baboy",
@@ -1031,12 +1031,12 @@
   {
    "dish_id": "caldereta",
    "inventory_id": "chili-flakes",
-   "quantity": 0.4
+   "quantity": 4
   },
   {
    "dish_id": "caldereta",
    "inventory_id": "asukal",
-   "quantity": 0.05
+   "quantity": 50
   },
   {
    "dish_id": "caldereta",
@@ -1101,12 +1101,12 @@
   {
    "dish_id": "sisig",
    "inventory_id": "asin",
-   "quantity": 0.036
+   "quantity": 36
   },
   {
    "dish_id": "sisig",
    "inventory_id": "paminta",
-   "quantity": 0.046
+   "quantity": 2.3
   },
   {
    "dish_id": "bopis",
@@ -1151,12 +1151,12 @@
   {
    "dish_id": "bopis",
    "inventory_id": "asukal",
-   "quantity": 0.025
+   "quantity": 25
   },
   {
    "dish_id": "bopis",
    "inventory_id": "paminta",
-   "quantity": 0.092
+   "quantity": 4.6
   },
   {
    "dish_id": "bopis",
@@ -1196,7 +1196,7 @@
   {
    "dish_id": "porksteak",
    "inventory_id": "asukal",
-   "quantity": 0.025
+   "quantity": 25
   },
   {
    "dish_id": "porksteak",
@@ -1211,7 +1211,7 @@
   {
    "dish_id": "porksteak",
    "inventory_id": "paminta",
-   "quantity": 0.046
+   "quantity": 2.3
   },
   {
    "dish_id": "porksteak",
@@ -1266,12 +1266,12 @@
   {
    "dish_id": "bicol-express",
    "inventory_id": "asukal",
-   "quantity": 0.0125
+   "quantity": 12.5
   },
   {
    "dish_id": "bicol-express",
    "inventory_id": "paminta",
-   "quantity": 0.023
+   "quantity": 1.15
   },
   {
    "dish_id": "menudo",
@@ -1316,7 +1316,7 @@
   {
    "dish_id": "menudo",
    "inventory_id": "asukal",
-   "quantity": 0.0125
+   "quantity": 12.5
   },
   {
    "dish_id": "menudo",
@@ -1326,7 +1326,7 @@
   {
    "dish_id": "menudo",
    "inventory_id": "paminta",
-   "quantity": 0.069
+   "quantity": 3.45
   },
   {
    "dish_id": "menudo",
@@ -1361,7 +1361,7 @@
   {
    "dish_id": "lechon-paksiw",
    "inventory_id": "paminta",
-   "quantity": 0.092
+   "quantity": 4.6
   },
   {
    "dish_id": "lechon-paksiw",
@@ -1371,7 +1371,7 @@
   {
    "dish_id": "lechon-paksiw",
    "inventory_id": "asukal",
-   "quantity": 0.1
+   "quantity": 100
   },
   {
    "dish_id": "lechon-paksiw",
@@ -1386,7 +1386,7 @@
   {
    "dish_id": "lechon-paksiw",
    "inventory_id": "asin",
-   "quantity": 0.036
+   "quantity": 36
   },
   {
    "dish_id": "lechon-paksiw",
@@ -1421,7 +1421,7 @@
   {
    "dish_id": "adobong-manok",
    "inventory_id": "paminta",
-   "quantity": 0.092
+   "quantity": 4.6
   },
   {
    "dish_id": "adobong-manok",
@@ -1431,7 +1431,7 @@
   {
    "dish_id": "adobong-manok",
    "inventory_id": "asukal",
-   "quantity": 0.05
+   "quantity": 50
   },
   {
    "dish_id": "adobong-manok",
@@ -1446,7 +1446,7 @@
   {
    "dish_id": "chicken-curry",
    "inventory_id": "curry",
-   "quantity": 9.375
+   "quantity": 39
   },
   {
    "dish_id": "chicken-curry",
@@ -1496,7 +1496,7 @@
   {
    "dish_id": "chicken-curry",
    "inventory_id": "asukal",
-   "quantity": 0.025
+   "quantity": 25
   },
   {
    "dish_id": "chicken-curry",
@@ -1556,7 +1556,7 @@
   {
    "dish_id": "afritada",
    "inventory_id": "asukal",
-   "quantity": 0.025
+   "quantity": 25
   },
   {
    "dish_id": "afritada",
@@ -1566,7 +1566,7 @@
   {
    "dish_id": "afritada",
    "inventory_id": "paminta",
-   "quantity": 0.092
+   "quantity": 4.6
   },
   {
    "dish_id": "afritada",
@@ -1581,12 +1581,12 @@
   {
    "dish_id": "pritong-manok",
    "inventory_id": "asin",
-   "quantity": 0.072
+   "quantity": 72
   },
   {
    "dish_id": "pritong-manok",
    "inventory_id": "paminta",
-   "quantity": 0.092
+   "quantity": 4.6
   },
   {
    "dish_id": "pritong-manok",
@@ -1606,12 +1606,12 @@
   {
    "dish_id": "pritong-tilapia",
    "inventory_id": "asin",
-   "quantity": 0.072
+   "quantity": 72
   },
   {
    "dish_id": "pritong-tilapia",
    "inventory_id": "paminta",
-   "quantity": 0.092
+   "quantity": 4.6
   },
   {
    "dish_id": "pritong-tilapia",
@@ -1641,12 +1641,12 @@
   {
    "dish_id": "pritong-bangus",
    "inventory_id": "asin",
-   "quantity": 0.072
+   "quantity": 72
   },
   {
    "dish_id": "pritong-bangus",
    "inventory_id": "paminta",
-   "quantity": 0.092
+   "quantity": 4.6
   },
   {
    "dish_id": "pritong-bangus",
@@ -1761,12 +1761,12 @@
   {
    "dish_id": "sweet-sour-tilapia",
    "inventory_id": "asin",
-   "quantity": 0.072
+   "quantity": 72
   },
   {
    "dish_id": "sweet-sour-tilapia",
    "inventory_id": "paminta",
-   "quantity": 0.092
+   "quantity": 4.6
   },
   {
    "dish_id": "sweet-sour-tilapia",
@@ -1816,7 +1816,7 @@
   {
    "dish_id": "sweet-sour-tilapia",
    "inventory_id": "asukal",
-   "quantity": 0.1
+   "quantity": 100
   },
   {
    "dish_id": "sweet-sour-tilapia",
@@ -1826,7 +1826,7 @@
   {
    "dish_id": "sweet-sour-tilapia",
    "inventory_id": "cornstarch",
-   "quantity": 0.024
+   "quantity": 24
   },
   {
    "dish_id": "paksiw-bangus",
@@ -1856,7 +1856,7 @@
   {
    "dish_id": "paksiw-bangus",
    "inventory_id": "paminta",
-   "quantity": 0.092
+   "quantity": 4.6
   },
   {
    "dish_id": "paksiw-bangus",
@@ -1866,7 +1866,7 @@
   {
    "dish_id": "paksiw-bangus",
    "inventory_id": "asin",
-   "quantity": 0.036
+   "quantity": 36
   },
   {
    "dish_id": "paksiw-bangus",
@@ -1956,7 +1956,7 @@
   {
    "dish_id": "adobong-sitaw",
    "inventory_id": "paminta",
-   "quantity": 0.092
+   "quantity": 4.6
   },
   {
    "dish_id": "adobong-sitaw",
@@ -1966,7 +1966,7 @@
   {
    "dish_id": "adobong-sitaw",
    "inventory_id": "asukal",
-   "quantity": 0.025
+   "quantity": 25
   },
   {
    "dish_id": "adobong-sitaw",
