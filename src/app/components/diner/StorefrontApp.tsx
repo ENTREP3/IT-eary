@@ -1215,16 +1215,15 @@ function TicketView({
   /**
    * Live: flips to Paid while the diner is standing at the counter.
    *
-   * A signed-in diner gets it pushed, because Realtime can check the row
-   * against their account. A guest cannot: Realtime authorises with the token
-   * in the JWT and a guest has none, so it asks instead — one row every few
-   * seconds, and only while this screen is actually open. That is a fair price
-   * for no longer letting anybody read anybody's ticket.
+   * Pushed for anybody with a session, which since anonymous sign-ins is
+   * everybody — Realtime checks the row against the caller's own id, and a
+   * guest now has one. The polling below is only the fallback for a device
+   * that could not get a session at all.
    */
-  const signedIn = useAuthStore((s) => !!s.user);
+  const identified = useAuthStore((s) => !!s.identity);
 
   useEffect(() => {
-    if (!signedIn) return;
+    if (!identified) return;
     const channel = supabase
       .channel(`diner-ticket-${order.id}`)
       .on(
@@ -1236,10 +1235,10 @@ function TicketView({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [order.id, onUpdate, signedIn]);
+  }, [order.id, onUpdate, identified]);
 
   useEffect(() => {
-    if (signedIn) return;
+    if (identified) return;
     // Nothing more is coming once it is done with; stop asking.
     if (order.status === 'completed' || order.status === 'cancelled') return;
 
@@ -1252,7 +1251,7 @@ function TicketView({
       if (fresh) onUpdate(fresh as Order);
     }, 6000);
     return () => clearInterval(id);
-  }, [order.ticket_code, order.status, onUpdate, signedIn]);
+  }, [order.ticket_code, order.status, onUpdate, identified]);
 
   const upload = async (file: File) => {
     setUploading(true);

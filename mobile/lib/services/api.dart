@@ -55,7 +55,39 @@ class Api {
 
   static User? get currentUser => _db.auth.currentUser;
 
-  static bool get signedIn => currentUser != null;
+  /// Whether this device has an identity at all — real account or anonymous.
+  ///
+  /// What owns the orders. Realtime checks a row against this, which is why a
+  /// guest gets live updates again.
+  static bool get identified => currentUser != null;
+
+  /// Whether there is a real account behind the session.
+  ///
+  /// Deliberately false for an anonymous one. Every diner now has a session —
+  /// that is how a guest ticket becomes provably theirs — so "is there a user"
+  /// stopped being a usable test for "has an account", and every screen that
+  /// asks this one is really asking whether to show the account screen, the
+  /// loyalty card and the promotions.
+  static bool get signedIn =>
+      currentUser != null && currentUser!.isAnonymous != true;
+
+  /// Gives this device an identity if it has none.
+  ///
+  /// Called once at startup. The diner is never asked and never told: the only
+  /// thing it changes is that the orders they place belong to somebody the
+  /// database can name, so they are theirs and nobody else's.
+  ///
+  /// A failure is survivable — the order is simply placed unattached, which is
+  /// how the system worked for its whole life until now — so it never blocks
+  /// the app from opening.
+  static Future<void> ensureIdentity() async {
+    if (currentUser != null) return;
+    try {
+      await _db.auth.signInAnonymously();
+    } catch (_) {
+      /* Ordering still works; the ticket code is still printed. */
+    }
+  }
 
   /// Fires whenever the diner signs in or out, so screens can follow along
   /// instead of each one polling for a session.

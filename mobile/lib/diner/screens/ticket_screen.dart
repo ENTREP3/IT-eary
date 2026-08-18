@@ -36,12 +36,11 @@ class _TicketScreenState extends State<TicketScreen> {
   void initState() {
     super.initState();
 
-    // A signed-in diner gets the change pushed, because Realtime can check the
-    // row against their account. A guest cannot: Realtime authorises with the
-    // token in the connection and a guest has none, so it asks instead — one
-    // row every few seconds, and only while this screen is open. That is a fair
-    // price for no longer letting anybody read anybody's ticket.
-    if (Api.signedIn) {
+    // Pushed for anybody with an identity, which since anonymous sign-ins is
+    // everybody — Realtime checks the row against the caller's own id, and a
+    // guest now has one. The polling below is only the fallback for a device
+    // that could not get a session at all.
+    if (Api.identified) {
       Api.watchTicket(widget.ticket.id).listen(
         (t) {
           if (mounted) setState(() => _ticket = t);
