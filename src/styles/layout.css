@@ -1,0 +1,18 @@
+/**
+ * One width for the whole shop front.
+ *
+ * Every public page used to repeat `max-w-5xl mx-auto px-4 md:px-8`, which is
+ * 1024px however big the screen is. On a phone that is right; on a laptop it
+ * left a third of the window empty on each side and the site read like a
+ * document rather than a shop.
+ *
+ * The cap stays, because text that runs the full width of a wide monitor is
+ * unreadable, but it is set to a width that a laptop actually fills. Anything
+ * that has to stay narrow for reading — a paragraph, a policy page — sets its
+ * own max-width inside this.
+ */
+@layer components {
+  .shell {
+    @apply w-full mx-auto max-w-[90rem] px-4 md:px-8 lg:px-12;
+  }
+}

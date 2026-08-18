@@ -26,11 +26,37 @@ export type Storefront = {
   low_stock: boolean;
   sold_out: boolean;
   recommended: boolean;
+
+  /** Quote every review above the star threshold, or only the ones picked. */
+  reviews_source: 'all' | 'picked';
+  /** Reviews below this are never quoted, however they were chosen. */
+  reviews_min_stars: number;
+  /** How many are on screen at once. */
+  reviews_per_batch: number;
+  /** Seconds each batch stays before the next. 0 means do not cycle. */
+  reviews_seconds: number;
+  /** Seconds each dish stays behind the headline. 0 means hold on the first. */
+  hero_seconds: number;
+
+  /**
+   * Bestseller suggestions the owner has already turned down, against the sales
+   * figure at the time they said no.
+   *
+   * Keeping the number rather than a plain list is what stops this becoming
+   * nagware: a dish declined at 30 sold stays quiet, but if it climbs to 45 the
+   * question is a genuinely new one and worth asking again. Admin-side state
+   * riding in the storefront row rather than a table of its own, because it is
+   * one small object and it is read on the same fetch.
+   */
+  bestseller_dismissed: Record<string, number>;
 };
 
 export const STOREFRONT_DEFAULTS: Storefront = {
   ratings: true, comments: true, bestseller: true,
   low_stock: true, sold_out: true, recommended: true,
+  reviews_source: 'all', reviews_min_stars: 4, reviews_per_batch: 2, reviews_seconds: 8,
+  hero_seconds: 7,
+  bestseller_dismissed: {},
 };
 
 export type BusinessProfile = {
