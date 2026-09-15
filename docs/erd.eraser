@@ -1,0 +1,196 @@
+title Bencris ordering system
+
+// ─────────────────────────────────────────────── the menu and what it is made of
+
+categories [icon: tag, color: green] {
+  name text pk
+  created_at timestamptz
+}
+
+dishes [icon: coffee, color: green] {
+  id text pk
+  category text fk
+  name text
+  tagalog text
+  price numeric
+  description text
+  image text
+  available boolean
+  sold_today integer
+  stock_count integer
+  batch_yield integer
+  cost_when_priced numeric
+  featured boolean
+  created_at timestamptz
+}
+
+inventory [icon: package, color: green] {
+  id text pk
+  name text
+  unit text
+  stock numeric
+  par_level numeric
+  reorder_at numeric
+  cost_per_unit numeric
+  last_received_at timestamptz
+  last_delivery text
+  created_at timestamptz
+}
+
+recipe_items [icon: list, color: green] {
+  dish_id text pk
+  inventory_id text pk
+  quantity numeric
+}
+
+inventory_cost_history [icon: trending-up, color: green] {
+  id uuid pk
+  inventory_id text fk
+  cost_per_unit numeric
+  quantity numeric
+  recorded_at timestamptz
+}
+
+// ─────────────────────────────────────────────────────── ordering and payment
+
+orders [icon: shopping-bag, color: orange] {
+  id uuid pk
+  ticket_code text
+  reference text
+  customer_name text
+  customer_id uuid fk
+  processed_by uuid fk
+  promo_code text fk
+  items jsonb
+  subtotal numeric
+  discount numeric
+  total numeric
+  payment_method text
+  payment_status text
+  status text
+  proof_path text
+  proof_uploaded_at timestamptz
+  verified_in_person boolean
+  review_note text
+  pickup_at timestamptz
+  paid_at timestamptz
+  completed_at timestamptz
+  created_at timestamptz
+}
+
+promo_codes [icon: percent, color: orange] {
+  code text pk
+  label text
+  kind text
+  value numeric
+  min_subtotal numeric
+  max_discount numeric
+  starts_at timestamptz
+  ends_at timestamptz
+  usage_limit integer
+  used_count integer
+  active boolean
+  created_at timestamptz
+}
+
+// ───────────────────────────────────────────────────── people and what they do
+
+auth_users [icon: user, color: blue] {
+  id uuid pk
+  email text
+}
+
+profiles [icon: id-card, color: blue] {
+  id uuid pk
+  full_name text
+  phone text
+  role user_role
+  created_at timestamptz
+}
+
+reviews [icon: star, color: blue] {
+  id uuid pk
+  dish_id text fk
+  ticket_code text
+  rating integer
+  comment text
+  author_name text
+  created_at timestamptz
+}
+
+stock_alerts [icon: bell, color: blue] {
+  id uuid pk
+  customer_id uuid fk
+  dish_id text fk
+  notified_at timestamptz
+  created_at timestamptz
+}
+
+loyalty_rewards [icon: gift, color: blue] {
+  id uuid pk
+  customer_id uuid fk
+  code text fk
+  earned_at timestamptz
+  redeemed_at timestamptz
+}
+
+// ────────────────────────────────────────────────────────── money and settings
+
+expenses [icon: dollar-sign, color: red] {
+  id uuid pk
+  inventory_id text fk
+  label text
+  amount numeric
+  category text
+  spent_on date
+  created_at timestamptz
+}
+
+business_settings [icon: settings, color: gray] {
+  id integer pk
+  name text
+  tagline text
+  blurb text
+  address_line text
+  district text
+  city text
+  province text
+  phone text
+  email text
+  hours jsonb
+  app_download_url text
+  updated_at timestamptz
+}
+
+payment_settings [icon: credit-card, color: gray] {
+  id integer pk
+  cash_enabled boolean
+  gcash_enabled boolean
+  gcash_name text
+  gcash_number text
+  gcash_qr_url text
+  updated_at timestamptz
+}
+
+// ──────────────────────────────────────────────────────────────── relationships
+// < is one-to-many, reading left to right. - is one-to-one.
+
+categories.name < dishes.category
+
+dishes.id < recipe_items.dish_id
+inventory.id < recipe_items.inventory_id
+
+inventory.id < inventory_cost_history.inventory_id
+inventory.id < expenses.inventory_id
+
+dishes.id < reviews.dish_id
+dishes.id < stock_alerts.dish_id
+
+promo_codes.code < orders.promo_code
+promo_codes.code < loyalty_rewards.code
+
+auth_users.id - profiles.id
+auth_users.id < orders.customer_id
+auth_users.id < orders.processed_by
+auth_users.id < stock_alerts.customer_id
+auth_users.id < loyalty_rewards.customer_id
