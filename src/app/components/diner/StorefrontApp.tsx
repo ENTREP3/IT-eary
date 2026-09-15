@@ -1410,6 +1410,15 @@ function CartSheet({
             {busy && <Loader2 size={16} className="animate-spin" />}
             Get my ticket
           </button>
+          {/* One line, not a dialog. The rule has a time limit that is worth
+              knowing before money changes hands, and a dialog at the moment
+              somebody is deciding to spend gets dismissed unread. */}
+          <p className="text-[11px] text-center opacity-55 leading-relaxed">
+            Refundable until the kitchen marks your order ready.{' '}
+            <a href="/refund" target="_blank" rel="noreferrer" className="underline hover:opacity-100">
+              How refunds work
+            </a>
+          </p>
         </div>
       </motion.div>
     </motion.div>
@@ -1530,7 +1539,7 @@ function TicketView({
   useEffect(() => {
     if (identified) return;
     // Nothing more is coming once it is done with; stop asking.
-    if (order.status === 'completed' || order.status === 'cancelled') return;
+    if (order.status === 'completed' || order.status === 'cancelled' || order.status === 'refunded') return;
 
     const id = setInterval(async () => {
       const { data } = await supabase.rpc('find_my_ticket', {
@@ -1701,6 +1710,25 @@ function TicketView({
           somebody at the shop noticed. */}
       {!paid && order.status === 'pending' && (
         <CancelOrder order={order} onCancelled={onDone} />
+      )}
+
+      {/* The refund rule, as a live fact about this order rather than a policy
+          page nobody opens. It says so while it is still true and disappears
+          by itself the moment the kitchen marks the food ready, which is the
+          only moment the answer changes. */}
+      {paid && (order.status === 'paid' || order.status === 'preparing') && (
+        <p className="mt-4 text-center text-xs opacity-60 leading-relaxed">
+          Changed your mind? Ask at the counter and we will refund you, up until the kitchen
+          marks your order ready.
+        </p>
+      )}
+      {order.status === 'refunded' && (
+        <div className="mt-4 rounded-2xl border border-diner-accent/40 bg-diner-accent/5 p-4 text-center">
+          <p className="text-sm font-medium">This order was refunded.</p>
+          <p className="mt-1 text-xs opacity-70">
+            ₱{Number(order.total).toFixed(2)} has been returned to you.
+          </p>
+        </div>
       )}
 
       <Receipt order={order} />

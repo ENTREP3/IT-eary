@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/models.dart';
 import '../../../tokens.dart';
+import '../../widgets/refund_sheet.dart';
 import '../admin_api.dart';
 import 'widgets.dart';
 
@@ -39,6 +40,11 @@ class _KitchenTabState extends State<KitchenTab> {
     } finally {
       if (mounted) setState(() => _busy = null);
     }
+  }
+
+  Future<void> _refund(Ticket t) async {
+    final done = await RefundSheet.open(context, t);
+    if (done) await widget.onChanged();
   }
 
   @override
@@ -138,14 +144,29 @@ class _KitchenTabState extends State<KitchenTab> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              IconButton(
-                                onPressed: _busy == o.id
-                                    ? null
-                                    : () => _advance(o, 'cancelled'),
-                                icon: const Icon(Icons.close, size: 18),
-                                color: Tokens.semanticAlert,
-                                tooltip: 'Cancel order',
-                              ),
+
+                              // Two different words for two different events.
+                              // An unpaid ticket is cancelled and nobody is
+                              // owed anything; a paid one is refunded and
+                              // money crosses the counter. Whichever one is
+                              // true is offered, and never both.
+                              if (!o.isPaid)
+                                IconButton(
+                                  onPressed: _busy == o.id
+                                      ? null
+                                      : () => _advance(o, 'cancelled'),
+                                  icon: const Icon(Icons.close, size: 18),
+                                  color: Tokens.semanticAlert,
+                                  tooltip: 'Cancel order',
+                                )
+                              else if (o.isRefundable)
+                                IconButton(
+                                  onPressed:
+                                      _busy == o.id ? null : () => _refund(o),
+                                  icon: const Icon(Icons.undo, size: 18),
+                                  color: Tokens.staffAccent,
+                                  tooltip: 'Refund ${peso(o.total)}',
+                                ),
                             ]),
                           ],
                         ),

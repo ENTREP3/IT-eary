@@ -1,3 +1,4 @@
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/models.dart';
@@ -20,6 +21,38 @@ class AdminApi {
         .limit(500);
     return rows.map<Ticket>((r) => Ticket.fromMap(r)).toList();
   }
+
+  /// Orders further back than the dashboard's list keeps, for the history
+  /// screen. [days] of 0 means everything the shop has ever taken.
+  static Future<List<Ticket>> orderHistory({int days = 30}) async {
+    var q = _db.from('orders').select();
+    if (days > 0) {
+      q = q.gte(
+        'created_at',
+        DateTime.now().subtract(Duration(days: days)).toIso8601String(),
+      );
+    }
+    final rows = await q.order('created_at', ascending: false).limit(2000);
+    return rows.map<Ticket>((r) => Ticket.fromMap(r)).toList();
+  }
+
+  /// Hands the money back on a ticket.
+  ///
+  /// The database decides whether it is allowed. The shop's rule is that a
+  /// refund is only possible while the food can still go back in the platter,
+  /// and a rule about money that only lives in a screen is not a rule.
+  static Future<void> refundOrder(
+    String ticketCode, {
+    required String reason,
+    String? method,
+    String? note,
+  }) =>
+      _db.rpc('refund_order', params: {
+        'p_ticket_code': ticketCode.trim().toUpperCase(),
+        'p_reason': reason,
+        'p_method': method,
+        'p_note': note,
+      });
 
   static Future<void> setStatus(String id, String status) =>
       _db.from('orders').update({'status': status}).eq('id', id);
@@ -50,9 +83,44 @@ class AdminApi {
   static Future<void> deleteDish(String id) =>
       _db.from('dishes').delete().eq('id', id);
 
+  /// Puts a new dish on the menu.
+  ///
+  /// The id is generated here rather than by the database because the web admin
+  /// does the same and the column is plain text, not a uuid default — a dish
+  /// added from a phone has to look like one added from a laptop.
+  static Future<String> addDish(Map<String, dynamic> row) async {
+    final id = row['id'] as String? ??
+        'dish-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
+    await _db.from('dishes').insert({...row, 'id': id});
+    return id;
+  }
+
   static Future<List<String>> categories() async {
     final rows = await _db.from('categories').select('name').order('name');
     return rows.map<String>((r) => r['name'] as String).toList();
+  }
+
+  /// Returns false when the name is blank or already taken.
+  static Future<bool> addCategory(String raw) async {
+    final name = raw.trim();
+    if (name.isEmpty) return false;
+    final existing = await categories();
+    if (existing.any((c) => c.toLowerCase() == name.toLowerCase())) return false;
+    await _db.from('categories').insert({'name': name});
+    return true;
+  }
+
+  /// Removes a category, moving its dishes to another one first.
+  ///
+  /// Dishes are never deleted along with the grouping — losing a category is
+  /// meant to lose the heading, not the food underneath it. The last remaining
+  /// category cannot be removed, since there would be nowhere to move them.
+  static Future<void> removeCategory(String name) async {
+    final all = await categories();
+    if (!all.contains(name) || all.length <= 1) return;
+    final fallback = all.firstWhere((c) => c != name);
+    await _db.from('dishes').update({'category': fallback}).eq('category', name);
+    await _db.from('categories').delete().eq('name', name);
   }
 
   // ---- inventory -----------------------------------------------------------
@@ -67,6 +135,25 @@ class AdminApi {
 
   static Future<void> deleteInventory(String id) =>
       _db.from('inventory').delete().eq('id', id);
+
+  /// Records a delivery: the one way stock goes up.
+  ///
+  /// A plain edit to the stock figure is a correction and explains nothing.
+  /// This stamps the delivery date, updates what the ingredient costs, and
+  /// books the expense in one step, so a delivery never has to be typed twice
+  /// and the cost of every dish using it moves with the new price.
+  ///
+  /// A null [unitCost] means "unchanged". Zero would wipe the recorded price.
+  static Future<void> receiveStock(
+    String inventoryId,
+    double quantity, {
+    double? unitCost,
+  }) =>
+      _db.rpc('receive_stock', params: {
+        'p_inventory_id': inventoryId,
+        'p_quantity': quantity,
+        'p_unit_cost': unitCost,
+      });
 
   static Future<void> addInventory(Map<String, dynamic> row) =>
       _db.from('inventory').insert(row);
@@ -97,6 +184,37 @@ class AdminApi {
     return row == null
         ? PaymentSettings.fallback
         : PaymentSettings.fromMap(row);
+  }
+
+  /// Replaces the scan-to-pay QR image and points the settings row at it.
+  ///
+  /// Uploaded to a stable path with upsert rather than a fresh name each time,
+  /// so replacing a blurry code does not leave the old one behind in the
+  /// bucket. The saved URL carries a cache-buster, since the path never
+  /// changes and browsers would otherwise keep showing the previous image.
+  static Future<String> uploadGcashQr() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1000,
+      imageQuality: 90,
+    );
+    if (picked == null) return '';
+
+    final isPng = picked.name.toLowerCase().endsWith('.png');
+    final path = 'gcash-qr.${isPng ? 'png' : 'jpg'}';
+    await _db.storage.from('payment-assets').uploadBinary(
+          path,
+          await picked.readAsBytes(),
+          fileOptions: FileOptions(
+            upsert: true,
+            contentType: isPng ? 'image/png' : 'image/jpeg',
+          ),
+        );
+
+    final base = _db.storage.from('payment-assets').getPublicUrl(path);
+    final url = '$base?v=${DateTime.now().millisecondsSinceEpoch}';
+    await updatePaymentSettings({'gcash_qr_url': url});
+    return url;
   }
 
   static Future<void> updatePaymentSettings(Map<String, dynamic> patch) =>
@@ -205,6 +323,14 @@ class AdminApi {
         .select('id');
     return (rows as List).isNotEmpty;
   }
+
+  /// Removes a review for good.
+  ///
+  /// Kept separate from un-quoting one: hiding a bad review the shop simply
+  /// disagrees with is not what this is for. It is for abuse, which has to be
+  /// removable from wherever the owner is standing when they see it.
+  static Future<void> deleteReview(String id) =>
+      _db.from('reviews').delete().eq('id', id);
 
   // ---- staff logins --------------------------------------------------------
 

@@ -28,9 +28,11 @@ import type { Order } from '../../lib/types';
  * when a sold-out dish comes back.
  */
 
-type Stage = { kind: 'preparing' | 'ready' | 'completed' | 'waiting' | 'cancelled'; label: string; blurb: string };
+type Stage = { kind: 'preparing' | 'ready' | 'completed' | 'waiting' | 'cancelled' | 'refunded'; label: string; blurb: string };
 
 function stageOf(o: Order): Stage {
+  if (o.status === 'refunded')
+    return { kind: 'refunded', label: 'Refunded', blurb: 'This order was refunded. The money has been returned to you.' };
   if (o.status === 'cancelled') return { kind: 'cancelled', label: 'Cancelled', blurb: 'This order was cancelled.' };
   if (o.status === 'completed') return { kind: 'completed', label: 'Completed', blurb: 'Collected. Salamat po!' };
   if (o.status === 'ready') return { kind: 'ready', label: 'Ready', blurb: 'Ready at the counter. Show your code.' };
@@ -115,10 +117,10 @@ function GuestOrders() {
   if (!orders?.length) return null;
 
   const live = orders.filter(
-    (o) => o.status !== 'completed' && o.status !== 'cancelled',
+    (o) => o.status !== 'completed' && o.status !== 'cancelled' && o.status !== 'refunded',
   );
   const past = orders.filter(
-    (o) => o.status === 'completed' || o.status === 'cancelled',
+    (o) => o.status === 'completed' || o.status === 'cancelled' || o.status === 'refunded',
   );
 
   return (
@@ -170,7 +172,9 @@ function GuestOrders() {
 function GuestStatus({ order }: { order: Order }) {
   const paid = !!order.paid_at;
   const [label, tone] =
-    order.status === 'cancelled'
+    order.status === 'refunded'
+      ? ['Refunded', 'opacity-50']
+      : order.status === 'cancelled'
       ? ['Cancelled', 'opacity-50']
       : order.status === 'completed'
         ? ['Collected', 'opacity-60']
@@ -540,7 +544,7 @@ function OrderCard({ order }: { order: Order }) {
   const tone =
     stage.kind === 'ready'
       ? 'text-semantic-cash border-semantic-cash/40'
-      : stage.kind === 'cancelled'
+      : stage.kind === 'cancelled' || stage.kind === 'refunded'
         ? 'text-diner-accent border-diner-accent/40'
         : 'text-diner-ink border-diner-ink/20';
 
@@ -556,7 +560,7 @@ function OrderCard({ order }: { order: Order }) {
       </p>
 
       {/* progress rail: waiting, preparing, ready, completed */}
-      {stage.kind !== 'cancelled' && (
+      {stage.kind !== 'cancelled' && stage.kind !== 'refunded' && (
         <div className="mt-4 flex items-center gap-1.5">
           {STAGE_ORDER.map((s, i) => (
             <React.Fragment key={s}>

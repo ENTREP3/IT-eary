@@ -24,6 +24,8 @@ class _PaymentsTabState extends State<PaymentsTab> {
   bool _cash = true;
   bool _loading = true;
   bool _saving = false;
+  bool _uploading = false;
+  String _qrUrl = '';
   String? _saved;
   List<Map<String, dynamic>> _usage = [];
 
@@ -54,9 +56,32 @@ class _PaymentsTabState extends State<PaymentsTab> {
       _number.text = s.gcashNumber;
       _gcash = s.gcashEnabled;
       _cash = s.cashEnabled;
+      _qrUrl = s.gcashQrUrl ?? '';
       _usage = usage;
       _loading = false;
     });
+  }
+
+  Future<void> _uploadQr() async {
+    setState(() {
+      _uploading = true;
+      _saved = null;
+    });
+    try {
+      final url = await AdminApi.uploadGcashQr();
+      if (!mounted) return;
+      // Empty means the picker was dismissed, which is not a failure.
+      setState(() {
+        if (url.isNotEmpty) {
+          _qrUrl = url;
+          _saved = 'QR code updated.';
+        }
+      });
+    } catch (e) {
+      if (mounted) setState(() => _saved = '$e');
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
   }
 
   Future<void> _save() async {
@@ -116,6 +141,57 @@ class _PaymentsTabState extends State<PaymentsTab> {
                 style: const TextStyle(color: Tokens.staffInk),
                 decoration: _dec('GCash number'),
               ),
+              const SizedBox(height: 14),
+
+              // The image a diner scans to pay. Without this here the owner had
+              // to find a laptop to change the account money lands in.
+              Row(children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    color: Tokens.staffInk.withValues(alpha: 0.06),
+                    child: _qrUrl.isEmpty
+                        ? Icon(Icons.qr_code_2,
+                            color: Tokens.staffInk.withValues(alpha: 0.4))
+                        : Image.network(_qrUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Icon(Icons.qr_code_2,
+                                color:
+                                    Tokens.staffInk.withValues(alpha: 0.4))),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _uploading ? null : _uploadQr,
+                        icon: const Icon(Icons.upload_outlined, size: 16),
+                        label: Text(_uploading
+                            ? 'Uploading…'
+                            : _qrUrl.isEmpty
+                                ? 'Upload QR code'
+                                : 'Replace QR code'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Tokens.staffInk,
+                          side: BorderSide(
+                              color: Tokens.staffInk.withValues(alpha: 0.2)),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Shown at checkout for diners paying by GCash.',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: Tokens.staffInk.withValues(alpha: 0.5)),
+                      ),
+                    ],
+                  ),
+                ),
+              ]),
               const SizedBox(height: 14),
               SwitchListTile(
                 value: _gcash,

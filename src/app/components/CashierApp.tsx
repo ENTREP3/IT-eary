@@ -15,12 +15,14 @@ import {
   ShieldCheck,
   FlagTriangleRight,
   LayoutDashboard,
+  Undo2,
   X,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
-import { useOrdersStore } from '../store/ordersStore';
+import { useOrdersStore, isRefundable } from '../store/ordersStore';
 import { Receipt } from './Receipt';
 import { KitchenBoard } from './shared/KitchenBoard';
+import { RefundDialog } from './shared/RefundDialog';
 import type { Order, PaymentMethod, PaymentStatus } from '../lib/types';
 import { supabase } from '../lib/supabase';
 
@@ -57,6 +59,7 @@ function CashierCounter({ chrome }: { chrome: boolean }) {
   const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [proofLoading, setProofLoading] = useState(false);
   const [zoomed, setZoomed] = useState(false);
+  const [refunding, setRefunding] = useState<Order | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const profile = useAuthStore((s) => s.profile);
@@ -537,10 +540,43 @@ function CashierCounter({ chrome }: { chrome: boolean }) {
                 </div>
               )}
               <Receipt order={order} />
+
+              {/* The counter is where a diner actually asks for their money
+                  back, so the button belongs on the ticket they just looked
+                  up. It disappears the moment the kitchen marks the food
+                  ready, because at that point the shop's answer is no. */}
+              {isRefundable(order) && (
+                <button
+                  onClick={() => setRefunding(order)}
+                  className="mt-4 w-full h-11 rounded-xl border border-[#e8a84a]/40 text-[#e8a84a] text-sm inline-flex items-center justify-center gap-2 hover:bg-[#e8a84a]/10 print:hidden"
+                >
+                  <Undo2 size={15} /> Refund ₱{Number(order.total).toFixed(2)}
+                </button>
+              )}
+              {order.status === 'refunded' && (
+                <p className="mt-4 text-center text-xs text-[#e87a5c] print:hidden">
+                  This order was refunded. The servings went back on the menu.
+                </p>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
       </main>
+      )}
+
+      {refunding && (
+        <RefundDialog
+          order={refunding}
+          // Re-read the ticket either way. On a refund the shown receipt has to
+          // stop offering the button it just used; on a change of mind nothing
+          // moves and the re-read costs one query.
+          onClose={async () => {
+            const code = refunding.ticket_code;
+            setRefunding(null);
+            const fresh = await findByTicket(code);
+            if (fresh) setOrder(fresh);
+          }}
+        />
       )}
 
       {/* Full-screen proof, for reading a reference number off a small photo. */}

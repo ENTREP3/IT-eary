@@ -402,12 +402,14 @@ class _OrderCard extends StatelessWidget {
     'ready': 'Ready for pickup',
     'completed': 'Collected',
     'cancelled': 'Cancelled',
+    'refunded': 'Refunded',
   };
 
   @override
   Widget build(BuildContext context) {
     final step = _flow.indexOf(ticket.status);
-    final cancelled = ticket.status == 'cancelled';
+    final cancelled =
+        ticket.status == 'cancelled' || ticket.status == 'refunded';
 
     return InkWell(
       onTap: () => Navigator.of(context).push(
@@ -452,7 +454,7 @@ class _OrderCard extends StatelessWidget {
 
             if (cancelled)
               Text(
-                _labels['cancelled']!,
+                _labels[ticket.status] ?? 'Cancelled',
                 style: const TextStyle(color: Palette.red, fontWeight: FontWeight.w600),
               )
             else ...[
@@ -580,10 +582,16 @@ class _GuestOrdersState extends State<_GuestOrders> {
     if (_orders.isEmpty) return const SizedBox.shrink();
 
     final live = _orders
-        .where((o) => o.status != 'completed' && o.status != 'cancelled')
+        .where((o) =>
+            o.status != 'completed' &&
+            o.status != 'cancelled' &&
+            o.status != 'refunded')
         .toList();
     final past = _orders
-        .where((o) => o.status == 'completed' || o.status == 'cancelled')
+        .where((o) =>
+            o.status == 'completed' ||
+            o.status == 'cancelled' ||
+            o.status == 'refunded')
         .toList();
     final shown = live.isNotEmpty ? live : past.take(5).toList();
 
@@ -669,6 +677,7 @@ class _GuestOrdersState extends State<_GuestOrders> {
 
   /// Where the ticket has got to, in the words a diner would use.
   static String _stageOf(Ticket o) {
+    if (o.status == 'refunded') return 'Refunded';
     if (o.status == 'cancelled') return 'Cancelled';
     if (o.status == 'completed') return 'Collected';
     if (o.status == 'ready') return 'Ready to collect';
@@ -678,7 +687,9 @@ class _GuestOrdersState extends State<_GuestOrders> {
   }
 
   static Color _toneOf(Ticket o) {
-    if (o.status == 'cancelled' || o.status == 'completed') {
+    if (o.status == 'cancelled' ||
+        o.status == 'completed' ||
+        o.status == 'refunded') {
       return Palette.ink.withValues(alpha: 0.45);
     }
     if (o.status == 'ready' || o.isPaid) return Tokens.semanticGood;

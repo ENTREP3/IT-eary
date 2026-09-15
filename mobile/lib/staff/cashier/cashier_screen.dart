@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../tokens.dart';
 import '../admin/tabs/kitchen_tab.dart';
+import '../widgets/refund_sheet.dart';
 import '../staff_api.dart';
 
 enum _CounterView { counter, kitchen }
@@ -112,6 +113,18 @@ class _CashierScreenState extends State<CashierScreen> {
         _busy = false;
       });
     }
+  }
+
+  /// Hands the money back, then re-reads the ticket.
+  ///
+  /// Re-read rather than patched locally: the shown receipt has to stop
+  /// offering the button it just used, and the database is the only thing that
+  /// knows whether the refund actually went through.
+  Future<void> _refund(Ticket t) async {
+    final done = await RefundSheet.open(context, t);
+    if (!done || !mounted) return;
+    final fresh = await StaffApi.findTicket(t.ticketCode);
+    if (fresh != null && mounted) setState(() => _ticket = fresh);
   }
 
   void _reset() {
@@ -371,6 +384,37 @@ class _CashierScreenState extends State<CashierScreen> {
           if (paid) ...[
             const SizedBox(height: 16),
             _settledBanner(t),
+
+            // The counter is where a diner actually asks for their money back,
+            // so the button belongs on the ticket just looked up. It goes away
+            // the moment the kitchen marks the food ready, because at that
+            // point the shop's answer is no.
+            if (t.isRefundable) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : () => _refund(t),
+                icon: const Icon(Icons.undo, size: 16),
+                label: Text('Refund ₱${t.total.toStringAsFixed(2)}'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Tokens.staffAccent,
+                  side: BorderSide(
+                      color: Tokens.staffAccent.withValues(alpha: 0.45)),
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+            if (t.status == 'refunded') ...[
+              const SizedBox(height: 12),
+              Text(
+                'This order was refunded. The servings went back on the menu.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 12,
+                    color: Tokens.semanticAlert.withValues(alpha: 0.9)),
+              ),
+            ],
           ] else if (t.isGcash) ...[
             const SizedBox(height: 16),
             _proofPanel(t),

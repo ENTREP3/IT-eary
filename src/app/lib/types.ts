@@ -29,7 +29,10 @@ export type OrderStatus =
   | 'preparing'
   | 'ready'
   | 'completed'
-  | 'cancelled';
+  /** Never paid for. Nothing is owed to anybody. */
+  | 'cancelled'
+  /** Paid for, and the money went back. Only reachable from paid or preparing. */
+  | 'refunded';
 
 export type OrderItem = {
   id?: string;

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../services/api.dart';
 import '../../theme.dart';
+import '../../widgets/dish_image.dart';
 import '../widgets/hero_header.dart';
 import '../widgets/review_band.dart';
 import 'account_screen.dart';
@@ -439,8 +440,8 @@ class _DishPreview extends StatelessWidget {
                 height: 62,
                 child: dish.image.isEmpty
                     ? Container(color: Palette.card)
-                    : Image.network(
-                        dish.image,
+                    : DishImage(
+                        url: dish.image,
                         fit: BoxFit.cover,
                         errorBuilder: (_, _, _) => Container(color: Palette.card),
                       ),

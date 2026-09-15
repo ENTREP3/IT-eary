@@ -52,7 +52,9 @@ class _TicketScreenState extends State<TicketScreen> {
     } else {
       _poll = Timer.periodic(const Duration(seconds: 6), (_) async {
         // Nothing more is coming once it is done with; stop asking.
-        if (_ticket.status == 'completed' || _ticket.status == 'cancelled') {
+        if (_ticket.status == 'completed' ||
+            _ticket.status == 'cancelled' ||
+            _ticket.status == 'refunded') {
           _poll?.cancel();
           return;
         }
@@ -495,6 +497,47 @@ class _TicketScreenState extends State<TicketScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Text('Cancel this order'),
+              ),
+            ],
+
+            // The refund rule, as a live fact about this order rather than a
+            // policy page nobody opens. It says so while it is still true and
+            // goes away by itself the moment the kitchen marks the food ready,
+            // which is the only moment the answer changes.
+            if (paid &&
+                (_ticket.status == 'paid' ||
+                    _ticket.status == 'preparing')) ...[
+              const SizedBox(height: 14),
+              Text(
+                'Changed your mind? Ask at the counter and we will refund you, '
+                'up until the kitchen marks your order ready.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 12,
+                    height: 1.5,
+                    color: Palette.ink.withValues(alpha: 0.6)),
+              ),
+            ],
+            if (_ticket.status == 'refunded') ...[
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Palette.red.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Palette.red.withValues(alpha: 0.35)),
+                ),
+                child: Column(children: [
+                  const Text('This order was refunded.',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 3),
+                  Text(
+                    '₱${_ticket.total.toStringAsFixed(2)} has been returned to you.',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Palette.ink.withValues(alpha: 0.7)),
+                  ),
+                ]),
               ),
             ],
           ],

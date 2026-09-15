@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/models.dart';
 import '../../services/api.dart';
+import '../../widgets/dish_image.dart';
 import '../state/cart.dart';
 import '../state/favourites.dart';
 import '../widgets/review_band.dart' show Stars;
@@ -475,8 +476,8 @@ class _DishImage extends StatelessWidget {
                 0.2126, 0.7152, 0.0722, 0, 0, //
                 0, 0, 0, 1, 0, //
               ]),
-        child: Image.network(
-          dish.image,
+        child: DishImage(
+          url: dish.image,
           fit: BoxFit.cover,
           errorBuilder: (_, _, _) => Container(
             color: Palette.ink.withValues(alpha: 0.06),

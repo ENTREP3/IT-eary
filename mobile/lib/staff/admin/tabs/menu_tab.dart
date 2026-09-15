@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../models/models.dart';
 import '../../../tokens.dart';
+import '../../../widgets/dish_image.dart';
 import '../admin_api.dart';
 import 'widgets.dart';
 
@@ -29,6 +32,69 @@ class MenuTab extends StatefulWidget {
 
 class _MenuTabState extends State<MenuTab> {
   String? _busy;
+  List<String> _categories = const [];
+  final _newCategory = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  @override
+  void dispose() {
+    _newCategory.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadCategories() async {
+    final cats = await AdminApi.categories();
+    if (mounted) setState(() => _categories = cats);
+  }
+
+  Future<void> _addCategory() async {
+    final name = _newCategory.text.trim();
+    if (name.isEmpty) return;
+    final added = await AdminApi.addCategory(name);
+    if (!mounted) return;
+    if (added) {
+      _newCategory.clear();
+      await _loadCategories();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('There is already a $name category.')),
+      );
+    }
+  }
+
+  Future<void> _removeCategory(String name) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Tokens.staffCard,
+        title: Text('Delete the $name category?',
+            style: const TextStyle(color: Tokens.staffInk)),
+        content: const Text(
+            'Dishes in it stay on the menu but lose their grouping.',
+            style: TextStyle(color: Tokens.staffInk)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+                backgroundColor: Tokens.semanticCritical),
+            child: const Text('Delete category'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await AdminApi.removeCategory(name);
+    await _loadCategories();
+    await widget.onChanged();
+  }
 
   Future<void> _toggle(Dish d, bool value) async {
     setState(() => _busy = d.id);
@@ -70,7 +136,8 @@ class _MenuTabState extends State<MenuTab> {
     await widget.onChanged();
   }
 
-  Future<void> _edit(Dish d) async {
+  /// Opens the food form. A null dish means a new one.
+  Future<void> _edit(Dish? d) async {
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -78,9 +145,12 @@ class _MenuTabState extends State<MenuTab> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _DishForm(dish: d),
+      builder: (_) => _DishForm(dish: d, categories: _categories),
     );
-    if (saved == true) await widget.onChanged();
+    if (saved == true) {
+      await _loadCategories();
+      await widget.onChanged();
+    }
   }
 
   Future<void> _delete(Dish d) async {
@@ -115,6 +185,107 @@ class _MenuTabState extends State<MenuTab> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        FilledButton.icon(
+          onPressed: () => _edit(null),
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('Add food'),
+          style: FilledButton.styleFrom(
+            backgroundColor: Tokens.staffAccent,
+            foregroundColor: Tokens.staffCard,
+            minimumSize: const Size.fromHeight(46),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        AdminCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'CATEGORIES',
+                style: TextStyle(
+                  fontSize: 10,
+                  letterSpacing: 2,
+                  color: Tokens.staffInk.withValues(alpha: 0.5),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(children: [
+                Expanded(
+                  child: TextField(
+                    controller: _newCategory,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _addCategory(),
+                    style: const TextStyle(
+                        color: Tokens.staffInk, fontSize: 14),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: 'e.g. Pancit',
+                      hintStyle: TextStyle(
+                          color: Tokens.staffInk.withValues(alpha: 0.35)),
+                      filled: true,
+                      fillColor: Tokens.staffGround,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                            color: Tokens.staffInk.withValues(alpha: 0.15)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: _addCategory,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Tokens.staffInk,
+                    side: BorderSide(
+                        color: Tokens.staffInk.withValues(alpha: 0.2)),
+                  ),
+                  child: const Text('Add'),
+                ),
+              ]),
+              if (_categories.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final c in _categories)
+                      Container(
+                        padding: const EdgeInsets.only(
+                            left: 12, right: 4, top: 4, bottom: 4),
+                        decoration: BoxDecoration(
+                          color: Tokens.staffGround,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                              color: Tokens.staffInk.withValues(alpha: 0.15)),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Text(c,
+                              style: const TextStyle(
+                                  fontSize: 12, color: Tokens.staffInk)),
+                          // The last one has nowhere to move its dishes to.
+                          if (_categories.length > 1)
+                            IconButton(
+                              onPressed: () => _removeCategory(c),
+                              icon: const Icon(Icons.close, size: 13),
+                              color: Tokens.staffInk.withValues(alpha: 0.7),
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(),
+                            )
+                          else
+                            const SizedBox(width: 8),
+                        ]),
+                      ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+
         // Above the list, because it is about these dishes and the button it
         // asks you to press is on the card below.
         _Suggestions(dishes: widget.dishes, onChanged: widget.onChanged),
@@ -129,8 +300,8 @@ class _MenuTabState extends State<MenuTab> {
                   if (d.image.isNotEmpty)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        d.image,
+                      child: DishImage(
+                        url: d.image,
                         width: 56,
                         height: 56,
                         fit: BoxFit.cover,
@@ -254,12 +425,32 @@ class _SuggestionsState extends State<_Suggestions> {
   /// claim.
   static const _clearlyAhead = 2;
 
+  /// How many the rival has to have sold before being outsold means anything.
+  ///
+  /// Without a floor, "twice as many" is satisfied by nothing at all: a marked
+  /// dish on nought sales was reported as outsold by an unmarked dish also on
+  /// nought, because nought is not less than twice nought. The card then
+  /// claimed "0 sold, while Chicken Curry has sold 0", which is not evidence.
+  static const _enoughToJudge = 3;
+
   /// Refused un-mark suggestions share the one settings object with the marks,
   /// under this prefix.
   static const _unmarkKey = 'unmark:';
 
+  /// The figure a refused suggestion has to beat before it is raised again.
+  ///
+  /// Not a bare multiplication. Refusing at nought stored nought, and every
+  /// later figure beat nought times anything, so the card returned immediately
+  /// and the decline buttons looked broken. Refusing always suppresses at least
+  /// the figure it was refused at, whatever that figure was.
+  static double _askAgainAbove(int refusedAt) =>
+      (refusedAt * _askAgainAt) > (refusedAt + 1)
+          ? refusedAt * _askAgainAt
+          : (refusedAt + 1).toDouble();
+
   Map<String, dynamic> _dismissed = const {};
   String? _busy;
+  String? _error;
   bool _ready = false;
 
   @override
@@ -311,7 +502,7 @@ class _SuggestionsState extends State<_Suggestions> {
       final d = entry.value;
       if (d.featured) continue;
       final refusedAt = (_dismissed[d.id] as num?)?.toInt();
-      if (refusedAt != null && d.soldToday < refusedAt * _askAgainAt) continue;
+      if (refusedAt != null && d.soldToday < _askAgainAbove(refusedAt)) continue;
       out.add((dish: d, runnerUp: second[entry.key] ?? 0));
     }
     out.sort((a, b) => b.dish.soldToday.compareTo(a.dish.soldToday));
@@ -332,13 +523,17 @@ class _SuggestionsState extends State<_Suggestions> {
       for (final other in widget.dishes) {
         if (other.featured || !other.available) continue;
         if (other.category != d.category) continue;
+        // Enough sales to be evidence, and clearly ahead of the marked dish.
+        // Both are needed: the margin alone is met by nothing outselling
+        // nothing.
+        if (other.soldToday < _enoughToJudge) continue;
         if (other.soldToday < d.soldToday * _clearlyAhead) continue;
         if (rival == null || other.soldToday > rival.soldToday) rival = other;
       }
       if (rival == null) continue;
 
       final refusedAt = (_dismissed['$_unmarkKey${d.id}'] as num?)?.toInt();
-      if (refusedAt != null && rival.soldToday < refusedAt * _askAgainAt) {
+      if (refusedAt != null && rival.soldToday < _askAgainAbove(refusedAt)) {
         continue;
       }
       out.add((dish: d, rival: rival));
@@ -359,12 +554,19 @@ class _SuggestionsState extends State<_Suggestions> {
   }
 
   Future<void> _decline(Dish d) async {
-    setState(() => _busy = d.id);
+    setState(() {
+      _busy = d.id;
+      _error = null;
+    });
     try {
       await AdminApi.dismissBestseller(d.id, d.soldToday);
       if (mounted) {
         setState(() => _dismissed = {..._dismissed, d.id: d.soldToday});
       }
+    } catch (e) {
+      // A refusal that fails silently leaves the card sitting there, which
+      // reads as a broken button rather than a failed save.
+      if (mounted) setState(() => _error = 'That did not save. $e');
     } finally {
       if (mounted) setState(() => _busy = null);
     }
@@ -390,7 +592,10 @@ class _SuggestionsState extends State<_Suggestions> {
   }
 
   Future<void> _keep(({Dish dish, Dish rival}) s) async {
-    setState(() => _busy = s.dish.id);
+    setState(() {
+      _busy = s.dish.id;
+      _error = null;
+    });
     try {
       await AdminApi.dismissBestseller(
         '$_unmarkKey${s.dish.id}',
@@ -404,6 +609,8 @@ class _SuggestionsState extends State<_Suggestions> {
           },
         );
       }
+    } catch (e) {
+      if (mounted) setState(() => _error = 'That did not save. $e');
     } finally {
       if (mounted) setState(() => _busy = null);
     }
@@ -456,6 +663,16 @@ class _SuggestionsState extends State<_Suggestions> {
               ),
             ),
             const SizedBox(height: 12),
+
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(
+                      fontSize: 12, color: Tokens.semanticAlert),
+                ),
+              ),
 
             if (suggestions.isNotEmpty) _Heading('Selling well — mark them?'),
             for (final s in suggestions)
@@ -665,21 +882,38 @@ class _MarkButton extends StatelessWidget {
   }
 }
 
+/// The whole of a dish, in one sheet. A null [dish] adds a new one.
 class _DishForm extends StatefulWidget {
-  const _DishForm({required this.dish});
+  const _DishForm({required this.dish, required this.categories});
 
-  final Dish dish;
+  final Dish? dish;
+  final List<String> categories;
 
   @override
   State<_DishForm> createState() => _DishFormState();
 }
 
 class _DishFormState extends State<_DishForm> {
-  late final _name = TextEditingController(text: widget.dish.name);
+  Dish? get _dish => widget.dish;
+  bool get _isNew => widget.dish == null;
+
+  late final _name = TextEditingController(text: _dish?.name ?? '');
   late final _price =
-      TextEditingController(text: widget.dish.price.toStringAsFixed(0));
-  late final _tagalog = TextEditingController(text: widget.dish.tagalog);
-  late final _desc = TextEditingController(text: widget.dish.description);
+      TextEditingController(text: _dish == null ? '' : _dish!.price.toStringAsFixed(0));
+  late final _tagalog = TextEditingController(text: _dish?.tagalog ?? '');
+  late final _desc = TextEditingController(text: _dish?.description ?? '');
+  late final _sold =
+      TextEditingController(text: _dish == null ? '' : '${_dish!.soldToday}');
+  late final _stock =
+      TextEditingController(text: _dish?.stockCount?.toString() ?? '');
+  final _newCategory = TextEditingController();
+
+  late String _category = _dish?.category ??
+      (widget.categories.isNotEmpty ? widget.categories.first : 'Ulam');
+  late bool _available = _dish?.available ?? true;
+  late String _image = _dish?.image ?? '';
+  String? _imageName;
+
   bool _busy = false;
   String? _error;
 
@@ -689,21 +923,67 @@ class _DishFormState extends State<_DishForm> {
     _price.dispose();
     _tagalog.dispose();
     _desc.dispose();
+    _sold.dispose();
+    _stock.dispose();
+    _newCategory.dispose();
     super.dispose();
   }
 
+  /// Stores the photo as a data URI, which is what the web admin writes.
+  ///
+  /// Not a storage upload: the two would then disagree about where a dish photo
+  /// lives, and a dish edited on a laptop would lose the picture added on a
+  /// phone. Shrunk hard first, because this ends up inside a database row that
+  /// every diner loading the menu has to download.
+  Future<void> _pickImage() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 900,
+      imageQuality: 65,
+    );
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    final mime =
+        picked.name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+    if (!mounted) return;
+    setState(() {
+      _image = 'data:$mime;base64,${base64Encode(bytes)}';
+      _imageName = picked.name;
+    });
+  }
+
   Future<void> _save() async {
+    if (_name.text.trim().isEmpty) {
+      setState(() => _error = 'A dish needs a name.');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      await AdminApi.updateDish(widget.dish.id, {
+      final fresh = _newCategory.text.trim();
+      if (fresh.isNotEmpty) await AdminApi.addCategory(fresh);
+      final category = fresh.isNotEmpty ? fresh : _category;
+
+      final row = {
         'name': _name.text.trim(),
-        'price': double.tryParse(_price.text) ?? widget.dish.price,
         'tagalog': _tagalog.text.trim(),
+        'price': double.tryParse(_price.text.trim()) ?? 0,
+        'category': category,
         'description': _desc.text.trim(),
-      });
+        'image': _image,
+        'available': _available,
+        'sold_today': int.tryParse(_sold.text.trim()) ?? 0,
+        'stock_count':
+            _stock.text.trim().isEmpty ? null : int.tryParse(_stock.text.trim()),
+      };
+
+      if (_isNew) {
+        await AdminApi.addDish(row);
+      } else {
+        await AdminApi.updateDish(_dish!.id, row);
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
@@ -717,6 +997,7 @@ class _DishFormState extends State<_DishForm> {
 
   @override
   Widget build(BuildContext context) {
+    final faint = Tokens.staffInk.withValues(alpha: 0.55);
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
@@ -724,44 +1005,165 @@ class _DishFormState extends State<_DishForm> {
         top: 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text('Edit dish',
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: Tokens.staffInk)),
-          const SizedBox(height: 16),
-          _field(_name, 'Name'),
-          const SizedBox(height: 10),
-          _field(_price, 'Price (₱)', number: true),
-          const SizedBox(height: 10),
-          _field(_tagalog, 'Tagalog subtitle'),
-          const SizedBox(height: 10),
-          _field(_desc, 'Description', lines: 3),
-          if (_error != null) ...[
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(_isNew ? 'Add food' : 'Edit food',
+                style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Tokens.staffInk)),
+            const SizedBox(height: 16),
+            _field(_name, 'Name'),
             const SizedBox(height: 10),
-            Text(_error!, style: const TextStyle(color: Tokens.semanticAlert)),
-          ],
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _busy ? null : _save,
-            style: FilledButton.styleFrom(
-              backgroundColor: Tokens.staffAccent,
-              foregroundColor: Tokens.staffCard,
-              minimumSize: const Size.fromHeight(48),
+            _field(_tagalog, 'Tagalog / subtitle'),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: _field(_price, 'Price (₱)', number: true)),
+              const SizedBox(width: 10),
+              Expanded(child: _field(_sold, 'Sold today', number: true)),
+            ]),
+            const SizedBox(height: 10),
+            _field(_stock, 'Servings left today', number: true,
+                hint: 'Unlimited'),
+            const SizedBox(height: 6),
+            Text(
+              'Plates of this dish still available. Each order takes one off, '
+              'and at 0 the dish marks itself sold out and leaves the menu.',
+              style: TextStyle(fontSize: 11, height: 1.4, color: faint),
             ),
-            child: Text(_busy ? 'Saving…' : 'Save'),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Text.rich(
+              TextSpan(children: [
+                const TextSpan(
+                  text: 'Typing here does not touch your ingredients. ',
+                  style: TextStyle(color: Tokens.staffAccent),
+                ),
+                TextSpan(
+                  text: 'To cook more and have the ingredients deducted, use '
+                      'Record cooking under Recipe.',
+                  style: TextStyle(color: faint),
+                ),
+              ]),
+              style: const TextStyle(fontSize: 11, height: 1.4),
+            ),
+            const SizedBox(height: 14),
+
+            InputDecorator(
+              decoration: _decoration('Category'),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: widget.categories.contains(_category)
+                      ? _category
+                      : null,
+                  hint: Text(_category,
+                      style: const TextStyle(color: Tokens.staffInk)),
+                  isExpanded: true,
+                  dropdownColor: Tokens.staffCard,
+                  style: const TextStyle(color: Tokens.staffInk, fontSize: 15),
+                  items: [
+                    for (final c in widget.categories)
+                      DropdownMenuItem(value: c, child: Text(c)),
+                  ],
+                  onChanged: (v) => setState(() => _category = v ?? _category),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _field(_newCategory, 'Or new category',
+                hint: 'Leave empty to use the selection above'),
+            const SizedBox(height: 10),
+            _field(_desc, 'Description', lines: 3),
+            const SizedBox(height: 14),
+
+            Row(children: [
+              if (_image.isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: DishImage(
+                    url: _image,
+                    width: 48,
+                    height: 48,
+                    errorBuilder: (_, _, _) => Container(
+                      width: 48,
+                      height: 48,
+                      color: Tokens.staffInk.withValues(alpha: 0.08),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              OutlinedButton.icon(
+                onPressed: _pickImage,
+                icon: const Icon(Icons.upload_outlined, size: 16),
+                label: Text(_image.isEmpty ? 'Meal photo' : 'Change photo'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Tokens.staffInk,
+                  side: BorderSide(
+                      color: Tokens.staffInk.withValues(alpha: 0.2)),
+                ),
+              ),
+              if (_imageName != null) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(_imageName!,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 11, color: faint)),
+                ),
+              ],
+            ]),
+            const SizedBox(height: 6),
+
+            CheckboxListTile(
+              value: _available,
+              onChanged: (v) => setState(() => _available = v ?? true),
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              activeColor: Tokens.staffAccent,
+              checkColor: Tokens.staffCard,
+              title: const Text('Available for ordering',
+                  style: TextStyle(color: Tokens.staffInk, fontSize: 14)),
+            ),
+
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(_error!,
+                  style: const TextStyle(color: Tokens.semanticAlert)),
+            ],
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: _busy ? null : _save,
+              style: FilledButton.styleFrom(
+                backgroundColor: Tokens.staffAccent,
+                foregroundColor: Tokens.staffCard,
+                minimumSize: const Size.fromHeight(48),
+              ),
+              child: Text(_busy ? 'Saving…' : 'Save'),
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  InputDecoration _decoration(String label, {String? hint}) => InputDecoration(
+        labelText: label,
+        hintText: hint,
+        hintStyle: TextStyle(color: Tokens.staffInk.withValues(alpha: 0.35)),
+        labelStyle: TextStyle(color: Tokens.staffInk.withValues(alpha: 0.6)),
+        filled: true,
+        fillColor: Tokens.staffGround,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              BorderSide(color: Tokens.staffInk.withValues(alpha: 0.15)),
+        ),
+      );
+
   Widget _field(TextEditingController c, String label,
-          {bool number = false, int lines = 1}) =>
+          {bool number = false, int lines = 1, String? hint}) =>
       TextField(
         controller: c,
         maxLines: lines,
@@ -769,17 +1171,7 @@ class _DishFormState extends State<_DishForm> {
             ? const TextInputType.numberWithOptions(decimal: true)
             : TextInputType.text,
         style: const TextStyle(color: Tokens.staffInk),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(color: Tokens.staffInk.withValues(alpha: 0.6)),
-          filled: true,
-          fillColor: Tokens.staffGround,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide:
-                BorderSide(color: Tokens.staffInk.withValues(alpha: 0.15)),
-          ),
-        ),
+        decoration: _decoration(label, hint: hint),
       );
 }
 

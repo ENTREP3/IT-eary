@@ -25,7 +25,12 @@ class _PromosTabState extends State<PromosTab> {
   final _label = TextEditingController();
   final _value = TextEditingController(text: '10');
   final _minimum = TextEditingController(text: '100');
+  final _maxDiscount = TextEditingController();
+  final _usageLimit = TextEditingController();
   String _kind = 'percent';
+
+  /// When the code stops working. Null means it runs until the owner pauses it.
+  DateTime? _endsAt;
 
   @override
   void initState() {
@@ -39,6 +44,8 @@ class _PromosTabState extends State<PromosTab> {
     _label.dispose();
     _value.dispose();
     _minimum.dispose();
+    _maxDiscount.dispose();
+    _usageLimit.dispose();
     super.dispose();
   }
 
@@ -88,14 +95,38 @@ class _PromosTabState extends State<PromosTab> {
         'kind': _kind,
         'value': value,
         'min_subtotal': double.tryParse(_minimum.text.trim()) ?? 0,
+        // Left out rather than sent as zero: the columns are nullable and null
+        // means "no cap", where 0 would mean a code worth nothing.
+        'max_discount': double.tryParse(_maxDiscount.text.trim()),
+        'usage_limit': int.tryParse(_usageLimit.text.trim()),
+        'ends_at': _endsAt?.toIso8601String(),
       });
       _code.clear();
       _label.clear();
+      _maxDiscount.clear();
+      _usageLimit.clear();
+      _endsAt = null;
       await _load();
     } catch (e) {
       if (mounted) setState(() => _error = '$e');
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _pickEndsAt() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _endsAt ?? now.add(const Duration(days: 7)),
+      firstDate: now,
+      lastDate: DateTime(now.year + 2),
+    );
+    if (picked != null && mounted) {
+      // End of the chosen day, not its first second, or a code set to end today
+      // would already be dead when the owner set it.
+      setState(() => _endsAt =
+          DateTime(picked.year, picked.month, picked.day, 23, 59, 59));
     }
   }
 
@@ -229,6 +260,71 @@ class _PromosTabState extends State<PromosTab> {
                 label: 'Minimum spend (₱)',
                 number: true,
               ),
+              Row(children: [
+                Expanded(
+                  child: _Field(
+                    controller: _maxDiscount,
+                    label: 'Most it can take off',
+                    hint: 'Optional',
+                    number: true,
+                    bare: true,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _Field(
+                    controller: _usageLimit,
+                    label: 'How many times',
+                    hint: 'Optional',
+                    number: true,
+                    bare: true,
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 10),
+              InkWell(
+                onTap: _pickEndsAt,
+                borderRadius: BorderRadius.circular(12),
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Ends on',
+                    labelStyle:
+                        TextStyle(color: Tokens.staffInk.withValues(alpha: 0.6)),
+                    filled: true,
+                    fillColor: Tokens.staffGround,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                          color: Tokens.staffInk.withValues(alpha: 0.15)),
+                    ),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.event_outlined,
+                        size: 16, color: Tokens.staffInk),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _endsAt == null
+                            ? 'Runs until you pause it'
+                            : _endsAt!.toIso8601String().substring(0, 10),
+                        style: TextStyle(
+                          color: _endsAt == null
+                              ? Tokens.staffInk.withValues(alpha: 0.5)
+                              : Tokens.staffInk,
+                        ),
+                      ),
+                    ),
+                    if (_endsAt != null)
+                      GestureDetector(
+                        onTap: () => setState(() => _endsAt = null),
+                        child: Icon(Icons.close,
+                            size: 16,
+                            color: Tokens.staffInk.withValues(alpha: 0.6)),
+                      ),
+                  ]),
+                ),
+              ),
+              const SizedBox(height: 12),
 
               if (_error != null)
                 Padding(

@@ -206,11 +206,28 @@ export function RefundPage() {
         not left standing at the counter over a network problem.
       </p>
 
+      <H2>Cancelling an order you have not paid for</H2>
+      <p>
+        While your ticket is still unpaid you can cancel it yourself from your order screen.
+        Nothing has changed hands, so there is nothing to give back, and the servings go straight
+        back on the menu for somebody else.
+      </p>
+
       <H2>Refunds</H2>
       <p>
-        Food is prepared fresh and served immediately, so we do not refund an order once it has
-        been handed over and eaten. If you are unhappy with what you received, tell us at the
-        counter that day and we will make it right.
+        If you have already paid, ask at the counter and we will refund you in full, as long as
+        the kitchen has not yet marked your order ready. Up to that point your food is still in
+        the platter and nothing is wasted, so there is no reason to keep your money.
+      </p>
+      <p>
+        You get back exactly what you paid. If you used a discount code, the refund is the
+        discounted amount you actually handed over, not the menu price. The code itself counts as
+        used once you have ordered with it.
+      </p>
+      <p>
+        Once your order is marked ready it has been plated and set aside for you, and we can no
+        longer refund it. The same is true after it has been collected and eaten. If something
+        was wrong with your food, tell us at the counter that day and we will make it right.
       </p>
     </Page>
   );

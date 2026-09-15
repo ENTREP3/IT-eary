@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:file_saver/file_saver.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
@@ -5,6 +9,32 @@ import '../../../models/models.dart';
 import '../../../tokens.dart';
 import '../admin_api.dart';
 import 'widgets.dart';
+
+/// Quotes a cell only when it would otherwise break the row.
+String _csvCell(Object? v) {
+  final s = v?.toString() ?? '';
+  if (RegExp(r'[",\n\r]').hasMatch(s)) return '"${s.replaceAll('"', '""')}"';
+  return s;
+}
+
+/// Builds the same multi-section sheet the web admin exports.
+///
+/// One file with titled blocks rather than six downloads, because the owner
+/// opens it in a spreadsheet to compare the sections against each other.
+String _buildCsv(
+    List<({String title, List<String> headers, List<List<Object?>> rows})> s) {
+  final out = <String>[];
+  for (final section in s) {
+    out.add(section.title);
+    out.add(section.headers.map(_csvCell).join(','));
+    for (final r in section.rows) {
+      out.add(r.map(_csvCell).join(','));
+    }
+    out.add('');
+  }
+  // Byte order mark, so Excel reads the peso signs as UTF-8 rather than mojibake.
+  return '﻿${out.join('\r\n')}';
+}
 
 /// Sales, costs and what's selling — plus expense entry.
 class AnalyticsTab extends StatefulWidget {
@@ -28,8 +58,20 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
   final _amount = TextEditingController();
   String _category = 'Supplies';
   bool _busy = false;
+  bool _exporting = false;
 
-  static const _categories = ['Supplies', 'Utilities', 'Labor', 'Other'];
+  /// The day the money went out, which is not always today. A sack of rice
+  /// bought yesterday and logged this morning belongs to yesterday, or both
+  /// days' profit lines are wrong.
+  DateTime _spentOn = DateTime.now();
+
+  static const _categories = [
+    'Supplies',
+    'Utilities',
+    'Labor',
+    'Rent',
+    'Other'
+  ];
 
   @override
   void dispose() {
@@ -38,9 +80,12 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
     super.dispose();
   }
 
-  List<Ticket> get _settled => widget.orders.where((o) => o.isPaid).toList();
+  List<Ticket> get _settled =>
+      widget.orders.where((o) => o.countsAsSale).toList();
 
-  String get _todayIso => DateTime.now().toIso8601String().substring(0, 10);
+  static String _iso(DateTime d) => d.toIso8601String().substring(0, 10);
+
+  String get _todayIso => _iso(DateTime.now());
 
   double get _todayGross => _settled
       .where((o) => o.createdAt.toIso8601String().startsWith(_todayIso))
@@ -49,6 +94,156 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
   double get _todayExpenses => widget.expenses
       .where((e) => e.spentOn == _todayIso)
       .fold(0.0, (a, e) => a + e.amount);
+
+  /// Saves everything on this screen as one spreadsheet.
+  ///
+  /// The menu and inventory are fetched here rather than passed in: this screen
+  /// does not otherwise need them, and an export is rare enough that a read at
+  /// the moment it is asked for is cheaper than holding two more lists in
+  /// memory all day.
+  Future<void> _export() async {
+    setState(() => _exporting = true);
+    try {
+      final dishes = await AdminApi.dishes();
+      final inventory = await AdminApi.inventory();
+
+      final days = List.generate(7, (i) {
+        final d = DateTime.now().subtract(Duration(days: 6 - i));
+        return _iso(d);
+      });
+      final gcash = _settled.where((o) => o.isGcash).length;
+      final cash = _settled.length - gcash;
+      final mixTotal = gcash + cash;
+      int pct(int n) => mixTotal == 0 ? 0 : ((n / mixTotal) * 100).round();
+
+      final csv = _buildCsv([
+        (
+          title: 'Sales (last 7 days, paid and not cancelled)',
+          headers: ['day', 'sales_php'],
+          rows: [
+            for (final d in days)
+              [
+                d,
+                _settled
+                    .where((o) => o.createdAt.toIso8601String().startsWith(d))
+                    .fold(0.0, (a, o) => a + o.total)
+                    .toStringAsFixed(2),
+              ],
+          ],
+        ),
+        (
+          title: 'Orders (all loaded)',
+          headers: [
+            'ticket',
+            'items',
+            'total_php',
+            'method',
+            'status',
+            'created_at',
+            'paid_at',
+          ],
+          rows: [
+            for (final o in widget.orders)
+              [
+                o.ticketCode,
+                o.items.map((i) => '${i.qty}x ${i.name}').join('; '),
+                o.total.toStringAsFixed(2),
+                o.paymentMethod ?? 'unpaid',
+                o.status,
+                o.createdAt.toIso8601String(),
+                o.paidAt?.toIso8601String() ?? '',
+              ],
+          ],
+        ),
+        (
+          title: 'Payment mix (paid and not cancelled)',
+          headers: ['method', 'orders', 'percent'],
+          rows: [
+            ['GCash', gcash, pct(gcash)],
+            ['Cash', cash, pct(cash)],
+          ],
+        ),
+        (
+          title: 'Expenses',
+          headers: ['spent_on', 'label', 'category', 'amount_php'],
+          rows: [
+            for (final e in widget.expenses)
+              [e.spentOn, e.label, e.category, e.amount.toStringAsFixed(2)],
+          ],
+        ),
+        (
+          title: 'Menu items (current)',
+          headers: ['id', 'name', 'tagalog', 'category', 'price_php', 'available'],
+          rows: [
+            for (final d in dishes)
+              [
+                d.id,
+                d.name,
+                d.tagalog,
+                d.category,
+                d.price.toStringAsFixed(2),
+                d.available,
+              ],
+          ],
+        ),
+        (
+          title: 'Inventory (current)',
+          headers: [
+            'id',
+            'name',
+            'unit',
+            'stock',
+            'reorder_at',
+            'cost_per_unit_php',
+            'last_delivery',
+          ],
+          rows: [
+            for (final i in inventory)
+              [
+                i.id,
+                i.name,
+                i.unit,
+                i.stock,
+                i.reorderAt,
+                i.costPerUnit.toStringAsFixed(2),
+                i.lastDelivery ?? '',
+              ],
+          ],
+        ),
+      ]);
+
+      await FileSaver.instance.saveFile(
+        name: 'bencris-analytics-${_iso(DateTime.now())}',
+        bytes: Uint8List.fromList(utf8.encode(csv)),
+        ext: 'csv',
+        mimeType: MimeType.csv,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Saved to your downloads.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  Future<void> _pickSpentOn() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _spentOn,
+      firstDate: DateTime(now.year - 1),
+      // Money cannot go out in the future.
+      lastDate: now,
+    );
+    if (picked != null && mounted) setState(() => _spentOn = picked);
+  }
 
   Future<void> _addExpense() async {
     final amount = double.tryParse(_amount.text) ?? 0;
@@ -59,10 +254,11 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
         'label': _label.text.trim(),
         'amount': amount,
         'category': _category,
-        'spent_on': _todayIso,
+        'spent_on': _iso(_spentOn),
       });
       _label.clear();
       _amount.clear();
+      _spentOn = DateTime.now();
       await widget.onChanged();
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -84,6 +280,19 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
         // a sales chart, which only ever shows money coming in.
         PriceSuggestions(onChanged: widget.onChanged),
         const CogsPanel(),
+        Align(
+          alignment: Alignment.centerRight,
+          child: OutlinedButton.icon(
+            onPressed: _exporting ? null : _export,
+            icon: const Icon(Icons.download_outlined, size: 16),
+            label: Text(_exporting ? 'Preparing…' : 'Export CSV'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Tokens.staffInk,
+              side: BorderSide(color: Tokens.staffInk.withValues(alpha: 0.2)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
@@ -247,6 +456,25 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
                 ),
               ]),
               const SizedBox(height: 10),
+              InkWell(
+                onTap: _pickSpentOn,
+                borderRadius: BorderRadius.circular(12),
+                child: InputDecorator(
+                  decoration: _dec('Date'),
+                  child: Row(children: [
+                    const Icon(Icons.event_outlined,
+                        size: 16, color: Tokens.staffInk),
+                    const SizedBox(width: 8),
+                    Text(
+                      _iso(_spentOn) == _todayIso
+                          ? 'Today, ${_iso(_spentOn)}'
+                          : _iso(_spentOn),
+                      style: const TextStyle(color: Tokens.staffInk),
+                    ),
+                  ]),
+                ),
+              ),
+              const SizedBox(height: 10),
               FilledButton.icon(
                 onPressed: _busy ? null : _addExpense,
                 icon: const Icon(Icons.add, size: 18),
@@ -351,7 +579,8 @@ class _SalesChart extends StatelessWidget {
     });
 
     double salesOn(String iso) => orders
-        .where((o) => o.createdAt.toIso8601String().startsWith(iso))
+        .where((o) =>
+            o.countsAsSale && o.createdAt.toIso8601String().startsWith(iso))
         .fold(0.0, (a, o) => a + o.total);
     double expOn(String iso) =>
         expenses.where((e) => e.spentOn == iso).fold(0.0, (a, e) => a + e.amount);
