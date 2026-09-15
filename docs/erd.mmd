@@ -1,0 +1,179 @@
+erDiagram
+    CATEGORIES  ||--o{ DISHES                 : "groups"
+    DISHES      ||--o{ RECIPE_ITEMS           : "is made from"
+    INVENTORY   ||--o{ RECIPE_ITEMS           : "is used in"
+    INVENTORY   ||--o{ INVENTORY_COST_HISTORY : "was priced at"
+    INVENTORY   |o--o{ EXPENSES               : "was bought as"
+    DISHES      ||--o{ REVIEWS                : "is rated in"
+    DISHES      ||--o{ STOCK_ALERTS           : "is awaited in"
+    PROMO_CODES |o--o{ ORDERS                 : "discounts"
+    PROMO_CODES ||--o{ LOYALTY_REWARDS        : "is issued as"
+    AUTH_USERS  ||--|| PROFILES               : "has"
+    AUTH_USERS  |o--o{ ORDERS                 : "placed"
+    AUTH_USERS  |o--o{ ORDERS                 : "settled at the counter"
+    AUTH_USERS  ||--o{ STOCK_ALERTS           : "asked to be told"
+    AUTH_USERS  ||--o{ LOYALTY_REWARDS        : "earned"
+
+    CATEGORIES {
+        text        name       PK "Ulam, Silog, Merienda, Inumin"
+        timestamptz created_at
+    }
+
+    DISHES {
+        text        id               PK "slug, e.g. sinigang"
+        text        category         FK "must be a real category"
+        text        name
+        text        tagalog
+        numeric     price
+        text        description
+        text        image
+        boolean     available        "hides itself when it runs out"
+        integer     sold_today
+        integer     stock_count      "empty means unlimited"
+        integer     batch_yield      "servings per pot"
+        numeric     cost_when_priced
+        boolean     featured         "the owner pick"
+        timestamptz created_at
+    }
+
+    INVENTORY {
+        text        id               PK
+        text        name
+        text        unit             "kg, L, tray"
+        numeric     stock
+        numeric     par_level        "a full stock"
+        numeric     reorder_at
+        numeric     cost_per_unit    "what one unit costs to buy"
+        timestamptz last_received_at
+        text        last_delivery
+        timestamptz created_at
+    }
+
+    RECIPE_ITEMS {
+        text    dish_id      PK "FK, half of the key"
+        text    inventory_id PK "FK, the other half"
+        numeric quantity     "per batch, not per serving"
+    }
+
+    INVENTORY_COST_HISTORY {
+        uuid        id            PK
+        text        inventory_id  FK
+        numeric     cost_per_unit
+        numeric     quantity
+        timestamptz recorded_at
+    }
+
+    PROMO_CODES {
+        text        code         PK
+        text        label
+        text        kind         "percent or fixed"
+        numeric     value
+        numeric     min_subtotal
+        numeric     max_discount
+        timestamptz starts_at
+        timestamptz ends_at
+        integer     usage_limit  "empty means unlimited"
+        integer     used_count
+        boolean     active
+        timestamptz created_at
+    }
+
+    AUTH_USERS {
+        uuid id    PK "lives in the Supabase auth schema"
+        text email
+    }
+
+    PROFILES {
+        uuid        id         PK "FK, the same id as the login"
+        text        full_name
+        text        phone
+        user_role   role       "customer, cashier or admin"
+        timestamptz created_at
+    }
+
+    ORDERS {
+        uuid        id                 PK
+        text        ticket_code        "shown at the counter"
+        text        reference
+        text        customer_name      "a guest may still leave a name"
+        uuid        customer_id        FK "empty for a guest order"
+        uuid        processed_by       FK "the staff member who took the money"
+        text        promo_code         FK "empty when no discount was used"
+        jsonb       items              "priced at checkout, never by the client"
+        numeric     subtotal
+        numeric     discount
+        numeric     total
+        text        payment_method     "cash or gcash"
+        text        payment_status
+        text        status             "pending to completed"
+        text        proof_path         "the GCash receipt"
+        timestamptz proof_uploaded_at
+        boolean     verified_in_person
+        text        review_note
+        timestamptz pickup_at          "when the diner said they would collect"
+        timestamptz paid_at
+        timestamptz completed_at
+        timestamptz created_at
+    }
+
+    REVIEWS {
+        uuid        id          PK
+        text        dish_id     FK
+        text        ticket_code "the proof of purchase"
+        integer     rating      "1 to 5"
+        text        comment
+        text        author_name
+        timestamptz created_at
+    }
+
+    STOCK_ALERTS {
+        uuid        id          PK
+        uuid        customer_id FK
+        text        dish_id     FK
+        timestamptz notified_at "set when the dish comes back"
+        timestamptz created_at
+    }
+
+    LOYALTY_REWARDS {
+        uuid        id          PK
+        uuid        customer_id FK
+        text        code        FK
+        timestamptz earned_at
+        timestamptz redeemed_at
+    }
+
+    EXPENSES {
+        uuid        id           PK
+        text        inventory_id FK "empty for rent, gas and the like"
+        text        label
+        numeric     amount
+        text        category
+        date        spent_on
+        timestamptz created_at
+    }
+
+    BUSINESS_SETTINGS {
+        integer     id               PK "always 1"
+        text        name
+        text        tagline
+        text        blurb
+        text        address_line
+        text        district
+        text        city
+        text        province
+        text        phone
+        text        email
+        jsonb       hours
+        text        app_download_url "what the printed QR points at"
+        timestamptz updated_at
+    }
+
+    PAYMENT_SETTINGS {
+        integer     id             PK "always 1"
+        boolean     cash_enabled
+        boolean     gcash_enabled
+        text        gcash_name
+        text        gcash_number
+        text        gcash_qr_url
+        timestamptz updated_at
+    }
