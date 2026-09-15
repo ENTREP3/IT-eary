@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { AlertTriangle, CalendarClock, Clock, X } from 'lucide-react';
-import { useOrdersStore, formatOrderTime } from '../../store/ordersStore';
+import { AlertTriangle, CalendarClock, Clock, Undo2, X } from 'lucide-react';
+import { useOrdersStore, formatOrderTime, isRefundable } from '../../store/ordersStore';
 import type { Order } from '../../lib/types';
 import { useConfirm } from './useConfirm';
+import { RefundDialog } from './RefundDialog';
 
 /** Same panel skin the staff screens use elsewhere. */
 const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
@@ -72,6 +73,8 @@ export function KitchenBoard({ orders }: { orders: Order[] }) {
     const id = setInterval(() => tick((n) => n + 1), 30_000);
     return () => clearInterval(id);
   }, []);
+
+  const [refunding, setRefunding] = useState<Order | null>(null);
 
   const lanes = [
     { title: 'New', statuses: ['pending', 'paid'], accent: '#6dadff', next: 'preparing' as const, nextLabel: 'Start preparing' },
@@ -197,12 +200,16 @@ export function KitchenBoard({ orders }: { orders: Order[] }) {
                     >
                       {lane.nextLabel}
                     </button>
-                    {lane.title === 'New' && (
+                    {/* Two different words for two different events. An unpaid
+                        ticket is cancelled and nobody is owed anything; a paid
+                        one is refunded and money crosses the counter. The board
+                        offers whichever one is true, and never both. */}
+                    {!o.paid_at && lane.title === 'New' && (
                       <button
                         onClick={() =>
                           confirm({
                             title: `Cancel ticket ${o.ticket_code}?`,
-                            body: 'The diner sees it as cancelled, and it stops counting towards the day. This cannot be undone.',
+                            body: 'Nothing has been paid, so nothing goes back. The servings return to the menu and the diner sees it as cancelled.',
                             action: 'Cancel the order',
                             danger: true,
                             onConfirm: () => setStatus(o.ticket_code, 'cancelled'),
@@ -214,6 +221,16 @@ export function KitchenBoard({ orders }: { orders: Order[] }) {
                         <X size={15} />
                       </button>
                     )}
+                    {isRefundable(o) && (
+                      <button
+                        onClick={() => setRefunding(o)}
+                        className="px-3 py-2 rounded-lg border border-[#e8dfc8]/15 text-[#e8a84a] hover:bg-[#e8a84a]/15"
+                        title={`Refund ₱${Number(o.total).toFixed(2)}`}
+                        aria-label="Refund order"
+                      >
+                        <Undo2 size={15} />
+                      </button>
+                    )}
                   </div>
                 </Card>
               </motion.div>
@@ -222,6 +239,8 @@ export function KitchenBoard({ orders }: { orders: Order[] }) {
           </div>
         );
       })}
+
+      {refunding && <RefundDialog order={refunding} onClose={() => setRefunding(null)} />}
     </div>
   );
 }

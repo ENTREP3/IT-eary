@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/models.dart';
 import '../../theme.dart';
+import '../../widgets/dish_image.dart';
 
 /// The front page opens on the food, not on a paragraph.
 ///
@@ -114,8 +115,8 @@ class _HeroHeaderState extends State<HeroHeader> {
               // of dead colour above and below it.
               child: SizedBox.expand(
                 key: ValueKey(current.id),
-                child: Image.network(
-                  current.image,
+                child: DishImage(
+                  url: current.image,
                   fit: BoxFit.cover,
                   errorBuilder: (_, _, _) => Container(color: Palette.ink),
                 ),

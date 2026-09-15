@@ -23,6 +23,7 @@ import {
   ShoppingBag,
   X,
   ChefHat,
+  Receipt,
   Star,
   Store,
   Clock,
@@ -67,6 +68,7 @@ import { KitchenBoard } from './shared/KitchenBoard';
 import { CashierApp } from './CashierApp';
 import { RecipePanel } from './admin/RecipePanel';
 import { ShopPanel } from './admin/ShopPanel';
+import { OrderHistory, OrderDetail } from './admin/OrderHistory';
 import { PriceSuggestions } from './admin/PriceSuggestions';
 import { BestsellerSuggestions } from './admin/BestsellerSuggestions';
 import { CogsPanel } from './admin/CogsPanel';
@@ -93,7 +95,16 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 
-type Tab = 'dashboard' | 'kitchen' | 'inventory' | 'analytics' | 'menu' | 'payments' | 'promos' | 'shop';
+type Tab =
+  | 'dashboard'
+  | 'kitchen'
+  | 'history'
+  | 'inventory'
+  | 'analytics'
+  | 'menu'
+  | 'payments'
+  | 'promos'
+  | 'shop';
 
 /** payment_method is null until a cashier settles the ticket. */
 function PaymentBadge({ method }: { method: Order['payment_method'] }) {
@@ -196,6 +207,7 @@ function AdminDashboard() {
           [
             ['dashboard', 'Dashboard', LayoutDashboard],
             ['kitchen', 'Kitchen', ChefHat],
+            ['history', 'Order History', Receipt],
             ['inventory', 'Inventory', Package],
             ['analytics', 'Sales & Profit', LineIcon],
             ['menu', 'Menu', UtensilsCrossed],
@@ -278,6 +290,7 @@ function AdminDashboard() {
               <div className="text-[10px] tracking-[0.3em] uppercase opacity-50">
                 {tab === 'dashboard' && '— Overview'}
                 {tab === 'kitchen' && '— Order queue'}
+                {tab === 'history' && '— Order history'}
                 {tab === 'inventory' && '— Stock room'}
                 {tab === 'analytics' && '— Sales & Profit'}
                 {tab === 'menu' && '— Menu control'}
@@ -291,6 +304,7 @@ function AdminDashboard() {
               >
                 {tab === 'dashboard' && `Magandang hapon, ${(profile?.full_name ?? 'Mary').split(' ')[0]}.`}
                 {tab === 'kitchen' && 'Orders on the line'}
+                {tab === 'history' && 'Every order you have taken'}
                 {tab === 'inventory' && 'What we have in stock'}
                 {tab === 'analytics' && 'The numbers, in plain sight'}
                 {tab === 'menu' && "Today's menu"}
@@ -359,8 +373,9 @@ function AdminDashboard() {
         </div>
 
         <div className="p-4 md:p-8">
-          {tab === 'dashboard' && <Dashboard orders={orders} />}
+          {tab === 'dashboard' && <Dashboard orders={orders} onSeeHistory={() => setTab('history')} />}
           {tab === 'kitchen' && <KitchenPage orders={orders} />}
+          {tab === 'history' && <OrderHistory />}
           {tab === 'inventory' && <InventoryPanel />}
           {tab === 'analytics' && <AnalyticsPanel orders={orders} />}
           {tab === 'menu' && <MenuControl />}
@@ -709,9 +724,13 @@ function KitchenPage({ orders }: { orders: Order[] }) {
   );
 }
 
-function Dashboard({ orders }: { orders: Order[] }) {
+function Dashboard({ orders, onSeeHistory }: { orders: Order[]; onSeeHistory: () => void }) {
   const inventory = useKarinderyaStore((s) => s.inventory);
   const low = inventory.filter((i) => i.stock <= i.reorderAt);
+
+  // The five on the card are a glance during service. Anything else the owner
+  // wants to know about an order needs the whole ticket, so each row opens it.
+  const [openOrder, setOpenOrder] = useState<Order | null>(null);
 
   const today = ordersToday(orders);
   const sales7d = totalSales(orders);
@@ -780,13 +799,24 @@ function Dashboard({ orders }: { orders: Order[] }) {
         </Card>
 
         <Card className="p-4 md:p-6">
-          <div className="text-[10px] tracking-[0.25em] uppercase opacity-50">Latest Orders</div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-[10px] tracking-[0.25em] uppercase opacity-50">Latest Orders</div>
+            <button
+              type="button"
+              onClick={onSeeHistory}
+              className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg border border-[#e8dfc8]/20 hover:bg-[#e8dfc8]/5 transition-colors"
+            >
+              <Receipt size={12} /> See all orders
+            </button>
+          </div>
           <div className="mt-4 space-y-3">
             {recent.length === 0 && <div className="text-sm opacity-40">No orders yet today.</div>}
             {recent.map((o) => (
-              <div
+              <button
                 key={o.id}
-                className="flex items-center justify-between gap-3 text-sm pb-3 border-b border-[#e8dfc8]/10 last:border-0"
+                type="button"
+                onClick={() => setOpenOrder(o)}
+                className="w-full text-left flex items-center justify-between gap-3 text-sm pb-3 border-b border-[#e8dfc8]/10 last:border-0 hover:opacity-100 opacity-95 transition-opacity"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -799,11 +829,13 @@ function Dashboard({ orders }: { orders: Order[] }) {
                   <div style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }}>₱{o.total}</div>
                   <div className="text-[10px] opacity-50">{formatOrderTime(o.created_at)}</div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </Card>
       </div>
+
+      {openOrder && <OrderDetail order={openOrder} onClose={() => setOpenOrder(null)} />}
     </div>
   );
 }

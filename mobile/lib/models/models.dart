@@ -90,6 +90,18 @@ class InventoryItem {
   final double reorderAt;
   final String? lastDelivery;
 
+  /// What one [unit] of this costs to buy. Every recipe costing, and so every
+  /// profit figure the owner sees, is built out of these.
+  final double costPerUnit;
+
+  /// A full stock of this ingredient. The screen shows stock out of this, and
+  /// this minus stock is what to buy.
+  final double parLevel;
+
+  /// Stamped by `receive_stock`, unlike the free-text [lastDelivery] that
+  /// anything recorded before deliveries were tracked still carries.
+  final DateTime? lastReceivedAt;
+
   const InventoryItem({
     required this.id,
     required this.name,
@@ -97,6 +109,9 @@ class InventoryItem {
     required this.unit,
     required this.reorderAt,
     required this.lastDelivery,
+    this.costPerUnit = 0,
+    this.parLevel = 0,
+    this.lastReceivedAt,
   });
 
   factory InventoryItem.fromMap(Map<String, dynamic> m) => InventoryItem(
@@ -106,14 +121,30 @@ class InventoryItem {
     unit: m['unit'] as String? ?? '',
     reorderAt: (m['reorder_at'] as num?)?.toDouble() ?? 0,
     lastDelivery: m['last_delivery'] as String?,
+    costPerUnit: (m['cost_per_unit'] as num?)?.toDouble() ?? 0,
+    parLevel: (m['par_level'] as num?)?.toDouble() ?? 0,
+    lastReceivedAt: m['last_received_at'] == null
+        ? null
+        : DateTime.tryParse(m['last_received_at'] as String),
   );
+
+  /// How much to buy to get back to a full stock.
+  double get shortfall =>
+      parLevel <= 0 ? 0 : (parLevel - stock).clamp(0, double.infinity);
 
   bool get isLow => stock <= reorderAt;
   bool get isOut => stock <= 0;
 
-  /// 0–1 fill for the level bar, matching the web admin's scale.
-  double get level =>
-      reorderAt <= 0 ? 1 : (stock / (reorderAt * 2.5)).clamp(0, 1).toDouble();
+  /// 0–1 fill for the level bar, measured against a full stock.
+  ///
+  /// Against [parLevel] where the owner has set one, which is the same scale
+  /// the web admin uses and the same one the "x of y" caption reads from. The
+  /// reorder point is the fallback for a row nobody has given a full stock yet.
+  double get level => parLevel > 0
+      ? (stock / parLevel).clamp(0, 1).toDouble()
+      : reorderAt <= 0
+          ? 1
+          : (stock / (reorderAt * 2.5)).clamp(0, 1).toDouble();
 }
 
 /// A recorded cost. Owner-only; drives the net-profit figure.
@@ -196,6 +227,12 @@ class Ticket {
   final DateTime? paidAt;
   final DateTime createdAt;
 
+  /// Menu price before any discount. subtotal - discount = total.
+  final double subtotal;
+  final double discount;
+  final String? promoCode;
+  final DateTime? completedAt;
+
   const Ticket({
     required this.id,
     required this.ticketCode,
@@ -209,6 +246,10 @@ class Ticket {
     this.verifiedInPerson = false,
     required this.paidAt,
     required this.createdAt,
+    this.subtotal = 0,
+    this.discount = 0,
+    this.promoCode,
+    this.completedAt,
   });
 
   factory Ticket.fromMap(Map<String, dynamic> m) => Ticket(
@@ -228,6 +269,12 @@ class Ticket {
         ? null
         : DateTime.parse(m['paid_at'] as String).toLocal(),
     createdAt: DateTime.parse(m['created_at'] as String).toLocal(),
+    subtotal: (m['subtotal'] as num?)?.toDouble() ?? 0,
+    discount: (m['discount'] as num?)?.toDouble() ?? 0,
+    promoCode: m['promo_code'] as String?,
+    completedAt: m['completed_at'] == null
+        ? null
+        : DateTime.parse(m['completed_at'] as String).toLocal(),
   );
 
   /// Local mirror of `clear_payment_proof()`, for when the diner clears a
@@ -248,6 +295,22 @@ class Ticket {
   );
 
   bool get isPaid => paidAt != null;
+
+  /// Whether this ticket is money the shop actually took.
+  ///
+  /// Every sales figure runs through this. A ticket used to count from the
+  /// moment it was created, so a diner filling a cart moved the day's takings
+  /// and a cancelled order stayed in them forever. A sale is a payment the
+  /// counter confirmed, on an order that still exists.
+  bool get countsAsSale =>
+      paidAt != null && status != 'cancelled' && status != 'refunded';
+
+  /// Whether the shop can still hand money back on this ticket.
+  ///
+  /// The shop's rule: a refund is only possible while the food can still go
+  /// back in the platter. Once the kitchen marks it ready the answer is no.
+  bool get isRefundable =>
+      paidAt != null && (status == 'paid' || status == 'preparing');
 
   bool get isGcash => paymentMethod == 'gcash';
 
@@ -281,6 +344,7 @@ class Ticket {
       'ready' => 'Ready for pickup!',
       'completed' => 'Completed',
       'cancelled' => 'Cancelled',
+      'refunded' => 'Refunded — your money has been returned',
       _ => status,
     };
   }

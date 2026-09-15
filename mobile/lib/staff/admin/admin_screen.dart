@@ -5,6 +5,7 @@ import '../../tokens.dart';
 import 'admin_api.dart';
 import 'tabs/analytics_tab.dart';
 import 'tabs/dashboard_tab.dart';
+import 'tabs/history_tab.dart';
 import 'tabs/inventory_tab.dart';
 import 'tabs/kitchen_tab.dart';
 import 'tabs/menu_tab.dart';
@@ -35,6 +36,7 @@ class _AdminScreenState extends State<AdminScreen> {
   static const _titles = [
     ('Overview', 'Magandang hapon'),
     ('Order queue', 'Orders on the line'),
+    ('Order history', 'Every order you have taken'),
     ('Stock room', 'What we have in stock'),
     ('Sales & profit', 'The numbers, in plain sight'),
     ('Menu control', "Today's menu"),
@@ -148,17 +150,19 @@ class _AdminScreenState extends State<AdminScreen> {
             orders: _orders,
             inventory: _inventory,
             onResolved: _loadAll,
+            onSeeHistory: () => setState(() => _tab = 2),
           ),
         1 => KitchenTab(orders: _orders, onChanged: _loadAll),
-        2 => InventoryTab(items: _inventory, onChanged: _loadAll),
-        3 => AnalyticsTab(orders: _orders, expenses: _expenses, onChanged: _loadAll),
-        4 => MenuTab(
+        2 => const HistoryTab(),
+        3 => InventoryTab(items: _inventory, onChanged: _loadAll),
+        4 => AnalyticsTab(orders: _orders, expenses: _expenses, onChanged: _loadAll),
+        5 => MenuTab(
             dishes: _dishes,
             inventory: _inventory,
             onChanged: _loadAll,
           ),
-        5 => const PaymentsTab(),
-        6 => const PromosTab(),
+        6 => const PaymentsTab(),
+        7 => const PromosTab(),
         _ => const ShopTab(),
       };
 
@@ -194,6 +198,7 @@ class _AdminScreenState extends State<AdminScreen> {
     const items = [
       (Icons.dashboard_outlined, 'Dashboard'),
       (Icons.restaurant_outlined, 'Kitchen'),
+      (Icons.receipt_long_outlined, 'Order History'),
       (Icons.inventory_2_outlined, 'Inventory'),
       (Icons.show_chart, 'Sales & Profit'),
       (Icons.menu_book_outlined, 'Menu'),
@@ -251,7 +256,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   final selected = i == _tab;
                   final badge = i == 1
                       ? _activeOrders
-                      : i == 2
+                      : i == 3
                           ? _lowStock
                           : 0;
                   return ListTile(

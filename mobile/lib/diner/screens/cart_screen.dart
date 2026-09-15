@@ -470,6 +470,18 @@ class _CartScreenState extends State<CartScreen> {
                             style: TextStyle(fontSize: 16),
                           ),
                   ),
+                  const SizedBox(height: 10),
+                  // One line, not a dialog. The rule has a time limit worth
+                  // knowing before money changes hands, and a dialog at the
+                  // moment somebody is deciding to spend gets dismissed unread.
+                  Text(
+                    'Refundable until the kitchen marks your order ready.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: 11,
+                        height: 1.5,
+                        color: Palette.ink.withValues(alpha: 0.55)),
+                  ),
                 ],
               ),
             ),

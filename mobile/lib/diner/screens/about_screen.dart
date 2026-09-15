@@ -103,6 +103,49 @@ class _AboutScreenState extends State<AboutScreen> {
             ),
             const SizedBox(height: 12),
             _card(
+              icon: Icons.undo_outlined,
+              title: 'Cancelling and refunds',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final line in const [
+                    'Not paid yet? Cancel it yourself from your ticket. '
+                        'Nothing has changed hands, so there is nothing to '
+                        'give back.',
+                    'Already paid? Ask at the counter and we will refund you '
+                        'in full, as long as the kitchen has not marked your '
+                        'order ready. Until then your food is still in the '
+                        'platter and nothing is wasted.',
+                    'You get back exactly what you paid. If you used a '
+                        'discount code, that is the discounted amount, not '
+                        'the menu price. The code counts as used once you '
+                        'have ordered with it.',
+                    'Once your order is marked ready it has been plated and '
+                        'set aside for you, and we can no longer refund it. '
+                        'If something was wrong with your food, tell us at '
+                        'the counter that day and we will make it right.',
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('• '),
+                          Expanded(
+                            child: Text(line,
+                                style: TextStyle(
+                                    height: 1.45,
+                                    color:
+                                        Palette.ink.withValues(alpha: 0.75))),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _card(
               icon: Icons.receipt_long_outlined,
               title: 'How ordering works',
               child: Column(

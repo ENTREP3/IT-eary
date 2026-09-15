@@ -33,6 +33,17 @@ class _ShopTabState extends State<ShopTab> {
 
   final _fields = <String, TextEditingController>{};
 
+  /// Opening hours, one set of controllers per row.
+  ///
+  /// Controllers rather than plain strings because a row can be deleted from
+  /// the middle: rebuilding fields from a list of values would leave the field
+  /// below holding the deleted row's text.
+  ///
+  /// The diner app reads these to decide whether the shop is open right now, so
+  /// leaving them uneditable meant the owner could not correct hours their own
+  /// app was showing.
+  final _hours = <_HourRow>[];
+
   static const _details = [
     ('name', 'Shop name'),
     ('tagline', 'Tagline'),
@@ -42,6 +53,7 @@ class _ShopTabState extends State<ShopTab> {
     ('city', 'City or municipality'),
     ('province', 'Province'),
     ('phone', 'Contact number'),
+    ('email', 'Email (optional)'),
   ];
 
   @override
@@ -54,6 +66,9 @@ class _ShopTabState extends State<ShopTab> {
   void dispose() {
     for (final c in _fields.values) {
       c.dispose();
+    }
+    for (final r in _hours) {
+      r.dispose();
     }
     super.dispose();
   }
@@ -75,6 +90,19 @@ class _ShopTabState extends State<ShopTab> {
             text: (row?[key] as String?) ?? '',
           );
         }
+        for (final r in _hours) {
+          r.dispose();
+        }
+        _hours
+          ..clear()
+          ..addAll(((row?['hours'] as List?) ?? const []).map((h) {
+            final m = Map<String, dynamic>.from(h as Map);
+            return _HourRow(
+              days: m['days'] as String? ?? '',
+              opens: m['opens'] as String? ?? '',
+              closes: m['closes'] as String? ?? '',
+            );
+          }));
         _loading = false;
       });
     } catch (e) {
@@ -86,6 +114,20 @@ class _ShopTabState extends State<ShopTab> {
     }
   }
 
+  Widget _hourField(TextEditingController c, String label) => TextField(
+        controller: c,
+        style: const TextStyle(color: Tokens.staffInk, fontSize: 14),
+        decoration: InputDecoration(
+          labelText: label,
+          isDense: true,
+          labelStyle:
+              TextStyle(color: Tokens.staffInk.withValues(alpha: 0.6)),
+          filled: true,
+          fillColor: Tokens.staffGround,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+
   Future<void> _saveDetails() async {
     setState(() {
       _busy = true;
@@ -94,6 +136,15 @@ class _ShopTabState extends State<ShopTab> {
     try {
       await AdminApi.updateShop({
         for (final entry in _fields.entries) entry.key: entry.value.text.trim(),
+        'hours': [
+          for (final h in _hours)
+            if (h.days.text.trim().isNotEmpty)
+              {
+                'days': h.days.text.trim(),
+                'opens': h.opens.text.trim(),
+                'closes': h.closes.text.trim(),
+              },
+        ],
       });
       if (!mounted) return;
       setState(() => _saved = 'Details saved');
@@ -231,6 +282,60 @@ class _ShopTabState extends State<ShopTab> {
                     ),
                   ),
                 ),
+
+              const SizedBox(height: 6),
+              Text(
+                'OPENING HOURS',
+                style: TextStyle(
+                  fontSize: 11,
+                  letterSpacing: 2,
+                  color: Tokens.staffInk.withValues(alpha: 0.55),
+                ),
+              ),
+              const SizedBox(height: 10),
+              for (final row in _hours)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                          flex: 3,
+                          child: _hourField(row.days, 'Days')),
+                      const SizedBox(width: 8),
+                      Expanded(
+                          flex: 2,
+                          child: _hourField(row.opens, 'Opens')),
+                      const SizedBox(width: 8),
+                      Expanded(
+                          flex: 2,
+                          child: _hourField(row.closes, 'Closes')),
+                      IconButton(
+                        onPressed: () => setState(() {
+                          _hours.remove(row);
+                          row.dispose();
+                        }),
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        color: Tokens.semanticAlert,
+                        tooltip: 'Remove this row',
+                      ),
+                    ],
+                  ),
+                ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => setState(() => _hours.add(_HourRow(
+                      days: '', opens: '6:00 AM', closes: '8:00 PM'))),
+                  icon: const Icon(Icons.add, size: 15),
+                  label: const Text('Add another row'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Tokens.staffInk.withValues(alpha: 0.75),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+
               Align(
                 alignment: Alignment.centerRight,
                 child: FilledButton(
@@ -399,11 +504,14 @@ class _ShopTabState extends State<ShopTab> {
         ),
         const SizedBox(height: 12),
 
-        // Only when it can do anything. A picker offering to choose which
-        // reviews are quoted, while the setting above says to quote them all,
-        // is a control that changes nothing and reads as broken.
-        if (_show.ratings && _show.reviewsSource == 'picked')
-          const _ReviewPicker(),
+        // The list is always here, because an abusive review has to be
+        // removable whatever the quoting setting says. Only the tap-to-quote
+        // is conditional: offering to choose which reviews are quoted, while
+        // the setting above says to quote them all, is a control that changes
+        // nothing and reads as broken.
+        _ReviewPicker(
+          canPick: _show.ratings && _show.reviewsSource == 'picked',
+        ),
 
         const SizedBox(height: 12),
         _AppPoster(
@@ -621,13 +729,16 @@ class _Note extends StatelessWidget {
   }
 }
 
-/// Choosing which reviews the shop quotes on its front page.
+/// Every review the shop has, with what the owner can do about each.
 ///
-/// Every review still counts towards the dish average. This only decides which
-/// are put on show, which is why it appears solely when the setting above says
-/// the owner is choosing them by hand.
+/// Two different powers live here. Quoting only decides which reviews are put
+/// on the front of the shop, and is offered only when the setting above says
+/// the owner is choosing them by hand. Deleting is for abuse, and is offered
+/// always — it does not become less urgent because the quoting setting changed.
 class _ReviewPicker extends StatefulWidget {
-  const _ReviewPicker();
+  const _ReviewPicker({required this.canPick});
+
+  final bool canPick;
 
   @override
   State<_ReviewPicker> createState() => _ReviewPickerState();
@@ -655,6 +766,48 @@ class _ReviewPickerState extends State<_ReviewPicker> {
           _rows = const [];
         });
       }
+    }
+  }
+
+  Future<void> _delete(Map<String, dynamic> r) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Tokens.staffCard,
+        title: const Text('Delete this review?',
+            style: TextStyle(color: Tokens.staffInk)),
+        content: const Text(
+          'It goes for good, and the dish average is worked out again without '
+          'it. Keep a fair review you happen to disagree with.',
+          style: TextStyle(color: Tokens.staffInk),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+                backgroundColor: Tokens.semanticCritical),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    final id = r['id'] as String;
+    setState(() {
+      _busy = id;
+      _error = null;
+    });
+    try {
+      await AdminApi.deleteReview(id);
+      await _load();
+    } catch (e) {
+      if (mounted) setState(() => _error = '$e');
+    } finally {
+      if (mounted) setState(() => _busy = null);
     }
   }
 
@@ -696,12 +849,14 @@ class _ReviewPickerState extends State<_ReviewPicker> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionTitle(
+          _SectionTitle(
             icon: Icons.format_quote,
-            title: 'Choose what to quote',
-            subtitle:
-                'Every review still counts towards the dish average. This only '
-                'decides which are quoted on the front of the shop.',
+            title: widget.canPick ? 'Choose what to quote' : 'Ratings',
+            subtitle: widget.canPick
+                ? 'Every review still counts towards the dish average. This '
+                    'only decides which are quoted on the front of the shop.'
+                : 'Every review the shop has received. Delete one only if it '
+                    'is abusive, not because you disagree with it.',
           ),
           const SizedBox(height: 12),
 
@@ -742,7 +897,9 @@ class _ReviewPickerState extends State<_ReviewPicker> {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: InkWell(
-                      onTap: _busy == r['id'] ? null : () => _pick(r),
+                      onTap: !widget.canPick || _busy == r['id']
+                          ? null
+                          : () => _pick(r),
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
                         padding: const EdgeInsets.all(10),
@@ -797,6 +954,21 @@ class _ReviewPickerState extends State<_ReviewPicker> {
                                       color: Tokens.staffAccent,
                                     ),
                                   ),
+                                // For abuse, not for a bad review the shop
+                                // simply disagrees with — hence a confirmation
+                                // and a separate control from un-quoting.
+                                IconButton(
+                                  onPressed: _busy == r['id']
+                                      ? null
+                                      : () => _delete(r),
+                                  icon: const Icon(Icons.delete_outline,
+                                      size: 15),
+                                  color: Tokens.semanticAlert,
+                                  tooltip: 'Delete this review',
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.only(left: 6),
+                                  constraints: const BoxConstraints(),
+                                ),
                               ],
                             ),
                             const SizedBox(height: 4),
@@ -1450,5 +1622,23 @@ class _AppPosterState extends State<_AppPoster> {
         ],
       ),
     );
+  }
+}
+
+/// One line of opening hours while it is being edited.
+class _HourRow {
+  _HourRow({required String days, required String opens, required String closes})
+      : days = TextEditingController(text: days),
+        opens = TextEditingController(text: opens),
+        closes = TextEditingController(text: closes);
+
+  final TextEditingController days;
+  final TextEditingController opens;
+  final TextEditingController closes;
+
+  void dispose() {
+    days.dispose();
+    opens.dispose();
+    closes.dispose();
   }
 }

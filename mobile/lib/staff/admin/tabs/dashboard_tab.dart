@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../models/models.dart';
 import '../../../tokens.dart';
 import '../admin_api.dart';
+import 'history_tab.dart' show OrderDetailSheet, OrderRow;
 import 'widgets.dart';
 
 /// Today at a glance: money in, what needs attention, and the last few orders.
@@ -13,11 +14,15 @@ class DashboardTab extends StatelessWidget {
     required this.orders,
     required this.inventory,
     required this.onResolved,
+    required this.onSeeHistory,
   });
 
   final List<Ticket> orders;
   final List<InventoryItem> inventory;
   final Future<void> Function() onResolved;
+
+  /// Opens the full order history, which is a whole screen rather than a sheet.
+  final VoidCallback onSeeHistory;
 
   List<Ticket> get _today {
     final start = DateTime.now().copyWith(
@@ -26,7 +31,7 @@ class DashboardTab extends StatelessWidget {
   }
 
   double _sales(List<Ticket> list) =>
-      list.where((o) => o.isPaid).fold(0.0, (a, o) => a + o.total);
+      list.where((o) => o.countsAsSale).fold(0.0, (a, o) => a + o.total);
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +122,24 @@ class DashboardTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Eyebrow('Latest orders'),
+              Row(children: [
+                const Eyebrow('Latest orders'),
+                const Spacer(),
+                // Six is the right number for a glance during service and the
+                // wrong number for every other question. This is the way out
+                // to the whole record.
+                TextButton.icon(
+                  onPressed: onSeeHistory,
+                  icon: const Icon(Icons.receipt_long_outlined, size: 14),
+                  label: const Text('See all'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Tokens.staffInk.withValues(alpha: 0.75),
+                    textStyle: const TextStyle(fontSize: 12),
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                ),
+              ]),
               const SizedBox(height: 10),
               if (orders.isEmpty)
                 Text('No orders yet.',
@@ -125,61 +147,23 @@ class DashboardTab extends StatelessWidget {
                         TextStyle(color: Tokens.staffInk.withValues(alpha: 0.5)))
               else
                 for (final o in orders.take(6))
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(children: [
-                                Text(
-                                  o.ticketCode,
-                                  style: const TextStyle(
-                                    fontFamily: 'monospace',
-                                    letterSpacing: 1.5,
-                                    color: Tokens.staffInk,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Pill(
-                                  o.isPaid ? o.paymentLabel : 'Unpaid',
-                                  color: !o.isPaid
-                                      ? Tokens.semanticAlert
-                                      : o.isGcash
-                                          ? Tokens.semanticGcashSoft
-                                          : Tokens.semanticGood,
-                                ),
-                              ]),
-                              Text(
-                                o.items.map((i) => '${i.qty}× ${i.name}').join(', '),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Tokens.staffInk.withValues(alpha: 0.55),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(peso(o.total),
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: Tokens.staffInk)),
-                            Text(shortTime(o.createdAt),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color:
-                                      Tokens.staffInk.withValues(alpha: 0.4),
-                                )),
-                          ],
-                        ),
-                      ],
+                  // Tappable: anything the owner wants to know beyond the
+                  // ticket code needs the whole order, not a truncated line.
+                  InkWell(
+                    onTap: () => showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Tokens.staffCard,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      builder: (_) => OrderDetailSheet(order: o),
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: OrderRow(order: o),
                     ),
                   ),
             ],

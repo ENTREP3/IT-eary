@@ -40,6 +40,27 @@ const ASK_AGAIN_AT = 1.5;
  */
 const CLEARLY_AHEAD = 2;
 
+/**
+ * How many the rival has to have sold before being outsold means anything.
+ *
+ * Without a floor, "twice as many" is satisfied by nothing at all: a marked
+ * dish on nought sales was reported as outsold by an unmarked dish also on
+ * nought, because nought is not less than twice nought. The card then claimed
+ * "0 sold, while Chicken Curry has sold 0", which is not evidence of anything.
+ */
+const ENOUGH_TO_JUDGE = 3;
+
+/**
+ * The figure a refused suggestion has to beat before it is raised again.
+ *
+ * Not a bare multiplication. Refusing at nought stored nought, and every later
+ * figure beat nought times anything, so the card returned immediately and the
+ * decline buttons looked broken. Refusing always suppresses at least the figure
+ * it was refused at, whatever that figure was.
+ */
+const askAgainAbove = (refusedAt: number) =>
+  Math.max(refusedAt * ASK_AGAIN_AT, refusedAt + 1);
+
 /** Dismissed un-mark suggestions are stored under this prefix, alongside the
  *  marks, so both halves of the panel share one small object. */
 const UNMARK = 'unmark:';
@@ -84,7 +105,7 @@ export function BestsellerSuggestions() {
         if (!dish || dish.featured) return false;
         const refusedAt = dismissed[s.id];
         if (refusedAt === undefined) return true;
-        return s.sold >= refusedAt * ASK_AGAIN_AT;
+        return s.sold >= askAgainAbove(refusedAt);
       })
       .sort((a, b) => b.sold - a.sold);
   }, [dishes, dismissed]);
@@ -104,13 +125,16 @@ export function BestsellerSuggestions() {
       let rival: typeof d | null = null;
       for (const other of dishes) {
         if (other.featured || !other.available || other.category !== d.category) continue;
+        // Enough sales to be evidence, and clearly ahead of the marked dish.
+        // Both are needed: the margin alone is met by nothing outselling nothing.
+        if (other.soldToday < ENOUGH_TO_JUDGE) continue;
         if (other.soldToday < d.soldToday * CLEARLY_AHEAD) continue;
         if (!rival || other.soldToday > rival.soldToday) rival = other;
       }
       if (!rival) continue;
 
       const refusedAt = dismissed[UNMARK + d.id];
-      if (refusedAt !== undefined && rival.soldToday < refusedAt * ASK_AGAIN_AT) continue;
+      if (refusedAt !== undefined && rival.soldToday < askAgainAbove(refusedAt)) continue;
 
       out.push({
         id: d.id,
