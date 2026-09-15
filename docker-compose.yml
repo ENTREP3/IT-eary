@@ -19,11 +19,27 @@
 # the web container. Pick one. Two servers showing the same site at different
 # addresses is confusing, and only one of them is the one you are editing.
 
+# Why the long-running services set a restart policy
+#
+# `web` and `api` both bind-mount this project from the Windows drive, which
+# means /app is not a Linux filesystem: every read crosses a file-sharing bridge
+# out of the Docker VM. When that bridge drops — the host sleeping, Docker
+# Desktop restarting, the drive spinning down — the path does not disappear, it
+# starts answering every syscall with an I/O error, and whatever is reading it
+# dies. Both containers went down together this way once, 140 milliseconds
+# apart, and Compose's default policy of `no` meant nothing brought them back:
+# they sat stopped for eighteen hours until somebody noticed by hand.
+#
+# `unless-stopped` rather than `always`, so `docker compose stop` still means
+# stopped. This does not prevent the drop, which is Docker Desktop's business;
+# it turns a dead stack into a few seconds of downtime.
+
 services:
   web:
     build:
       context: .
       target: dev
+    restart: unless-stopped
     ports:
       - "5173:5173"
     volumes:
@@ -42,6 +58,7 @@ services:
     build:
       context: ./mobile
       target: serve
+    restart: unless-stopped
     ports:
       - "5180:80"
     volumes:
@@ -75,6 +92,7 @@ services:
     build:
       context: ./api
       target: dev
+    restart: unless-stopped
     ports:
       - "8000:8000"
     volumes:
@@ -89,6 +107,7 @@ services:
     build:
       context: .
       target: production
+    restart: unless-stopped
     ports:
       - "8080:80"
 
