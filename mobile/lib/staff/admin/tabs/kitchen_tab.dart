@@ -35,8 +35,17 @@ class _KitchenTabState extends State<KitchenTab> {
   Future<void> _advance(Ticket t, String next) async {
     setState(() => _busy = t.id);
     try {
-      await AdminApi.setStatus(t.id, next);
+      await AdminApi.setStatus(t.ticketCode, next);
       await widget.onChanged();
+    } catch (e) {
+      // The database refuses what the shop's rules forbid — cooking an unpaid
+      // ticket, a cashier cancelling, acting on one already refunded. Shown as
+      // written, because the refusal is the rule speaking.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = null);
     }

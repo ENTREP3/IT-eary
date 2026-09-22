@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/models.dart';
+import '../../widgets/photo_sizes.dart';
 import '../../services/api.dart';
 import '../../widgets/dish_image.dart';
+import '../widgets/dish_photos.dart';
 import '../state/cart.dart';
 import '../state/favourites.dart';
 import '../widgets/review_band.dart' show Stars;
@@ -415,7 +417,20 @@ class _DishCard extends StatelessWidget {
             if (dish.image.isNotEmpty)
               Stack(
                 children: [
-                  _DishImage(dish: dish),
+                  // Tapping the photograph opens every photo of this dish,
+                  // full screen. On a phone that is what people already try.
+                  GestureDetector(
+                    onTap: () =>
+                        DishPhotoViewer.open(context, dish, show.dishSeconds),
+                    child: _DishImage(dish: dish),
+                  ),
+
+                  if (dish.images.length > 1)
+                    Positioned(
+                      right: 12,
+                      bottom: 12,
+                      child: MorePhotosBadge(count: dish.images.length),
+                    ),
                   // The badges the owner switched on, over the top-left of the
                   // photograph, exactly where the website puts them.
                   Positioned(
@@ -477,7 +492,7 @@ class _DishImage extends StatelessWidget {
                 0, 0, 0, 1, 0, //
               ]),
         child: DishImage(
-          url: dish.image,
+          url: displayPhoto(dish.image),
           fit: BoxFit.cover,
           errorBuilder: (_, _, _) => Container(
             color: Palette.ink.withValues(alpha: 0.06),

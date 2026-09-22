@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/models.dart';
+import '../../widgets/photo_sizes.dart';
 import '../../services/api.dart';
 import '../../theme.dart';
 import '../../widgets/dish_image.dart';
@@ -441,7 +442,7 @@ class _DishPreview extends StatelessWidget {
                 child: dish.image.isEmpty
                     ? Container(color: Palette.card)
                     : DishImage(
-                        url: dish.image,
+                        url: displayPhoto(dish.image),
                         fit: BoxFit.cover,
                         errorBuilder: (_, _, _) => Container(color: Palette.card),
                       ),

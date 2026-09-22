@@ -260,10 +260,52 @@ class _SignedInState extends State<_SignedIn> {
   }
 }
 
-class _LoyaltyCard extends StatelessWidget {
+/// The loyalty card, and the one button that spends it.
+///
+/// It used to be read-only here: a diner could watch the stamps fill on their
+/// phone and then had to find a laptop to actually claim the reward, which is
+/// the wrong way round for the device they ordered on.
+class _LoyaltyCard extends StatefulWidget {
   const _LoyaltyCard({required this.loyalty});
 
   final Loyalty loyalty;
+
+  @override
+  State<_LoyaltyCard> createState() => _LoyaltyCardState();
+}
+
+class _LoyaltyCardState extends State<_LoyaltyCard> {
+  bool _claiming = false;
+  String? _code;
+  String? _error;
+
+  Loyalty get loyalty => widget.loyalty;
+
+  /// A full card is five completed orders with nothing yet taken off it.
+  bool get _earned => loyalty.completed > 0 && loyalty.stamps == 0;
+
+  Future<void> _claim() async {
+    setState(() {
+      _claiming = true;
+      _error = null;
+    });
+    try {
+      final code = await Api.claimLoyaltyReward();
+      if (!mounted) return;
+      setState(() {
+        _code = code;
+        _claiming = false;
+        if (code == null) _error = 'There is nothing to claim yet.';
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = '$e';
+          _claiming = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -314,6 +356,57 @@ class _LoyaltyCard extends StatelessWidget {
                 : '${loyalty.completed} completed. ${loyalty.untilNext} more and you earn 20 pesos off.',
             style: TextStyle(fontSize: 12, color: Palette.ink.withValues(alpha: 0.65)),
           ),
+
+          if (_code != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Palette.red.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Palette.red.withValues(alpha: 0.35)),
+              ),
+              child: Column(children: [
+                Text('Your code',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: Palette.ink.withValues(alpha: 0.6))),
+                const SizedBox(height: 4),
+                SelectableText(
+                  _code!,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    letterSpacing: 3,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text('Type it in at checkout.',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: Palette.ink.withValues(alpha: 0.6))),
+              ]),
+            ),
+          ] else if (_earned) ...[
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: _claiming ? null : _claim,
+              style: FilledButton.styleFrom(
+                backgroundColor: Palette.red,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(46),
+                shape: const StadiumBorder(),
+              ),
+              child: Text(_claiming ? 'Claiming…' : 'Claim 20 pesos off'),
+            ),
+          ],
+
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!,
+                style: const TextStyle(fontSize: 12, color: Palette.red)),
+          ],
         ],
       ),
     );
@@ -403,13 +496,16 @@ class _OrderCard extends StatelessWidget {
     'completed': 'Collected',
     'cancelled': 'Cancelled',
     'refunded': 'Refunded',
+    'expired': 'Expired',
   };
 
   @override
   Widget build(BuildContext context) {
     final step = _flow.indexOf(ticket.status);
     final cancelled =
-        ticket.status == 'cancelled' || ticket.status == 'refunded';
+        ticket.status == 'cancelled' ||
+        ticket.status == 'refunded' ||
+        ticket.status == 'expired';
 
     return InkWell(
       onTap: () => Navigator.of(context).push(
@@ -585,13 +681,15 @@ class _GuestOrdersState extends State<_GuestOrders> {
         .where((o) =>
             o.status != 'completed' &&
             o.status != 'cancelled' &&
-            o.status != 'refunded')
+            o.status != 'refunded' &&
+            o.status != 'expired')
         .toList();
     final past = _orders
         .where((o) =>
             o.status == 'completed' ||
             o.status == 'cancelled' ||
-            o.status == 'refunded')
+            o.status == 'refunded' ||
+            o.status == 'expired')
         .toList();
     final shown = live.isNotEmpty ? live : past.take(5).toList();
 
@@ -677,6 +775,7 @@ class _GuestOrdersState extends State<_GuestOrders> {
 
   /// Where the ticket has got to, in the words a diner would use.
   static String _stageOf(Ticket o) {
+    if (o.status == 'expired') return 'Expired';
     if (o.status == 'refunded') return 'Refunded';
     if (o.status == 'cancelled') return 'Cancelled';
     if (o.status == 'completed') return 'Collected';
@@ -689,7 +788,8 @@ class _GuestOrdersState extends State<_GuestOrders> {
   static Color _toneOf(Ticket o) {
     if (o.status == 'cancelled' ||
         o.status == 'completed' ||
-        o.status == 'refunded') {
+        o.status == 'refunded' ||
+        o.status == 'expired') {
       return Palette.ink.withValues(alpha: 0.45);
     }
     if (o.status == 'ready' || o.isPaid) return Tokens.semanticGood;

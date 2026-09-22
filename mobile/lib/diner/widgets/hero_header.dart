@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../models/models.dart';
+import '../../widgets/photo_sizes.dart';
 import '../../theme.dart';
 import '../../widgets/dish_image.dart';
 
@@ -116,7 +117,7 @@ class _HeroHeaderState extends State<HeroHeader> {
               child: SizedBox.expand(
                 key: ValueKey(current.id),
                 child: DishImage(
-                  url: current.image,
+                  url: displayPhoto(current.image),
                   fit: BoxFit.cover,
                   errorBuilder: (_, _, _) => Container(color: Palette.ink),
                 ),

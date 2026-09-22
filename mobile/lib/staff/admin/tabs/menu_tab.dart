@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../models/models.dart';
+import '../../../widgets/photo_sizes.dart';
 import '../../../tokens.dart';
 import '../../../widgets/dish_image.dart';
 import '../admin_api.dart';
@@ -301,7 +300,7 @@ class _MenuTabState extends State<MenuTab> {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: DishImage(
-                        url: d.image,
+                        url: displayPhoto(d.image),
                         width: 56,
                         height: 56,
                         fit: BoxFit.cover,
@@ -911,8 +910,8 @@ class _DishFormState extends State<_DishForm> {
   late String _category = _dish?.category ??
       (widget.categories.isNotEmpty ? widget.categories.first : 'Ulam');
   late bool _available = _dish?.available ?? true;
-  late String _image = _dish?.image ?? '';
-  String? _imageName;
+  late final List<String> _images = List<String>.from(_dish?.images ?? const []);
+  bool _uploading = false;
 
   bool _busy = false;
   String? _error;
@@ -929,28 +928,56 @@ class _DishFormState extends State<_DishForm> {
     super.dispose();
   }
 
-  /// Stores the photo as a data URI, which is what the web admin writes.
+  /// Adds photos to the dish being edited.
   ///
-  /// Not a storage upload: the two would then disagree about where a dish photo
-  /// lives, and a dish edited on a laptop would lose the picture added on a
-  /// phone. Shrunk hard first, because this ends up inside a database row that
-  /// every diner loading the menu has to download.
-  Future<void> _pickImage() async {
-    final picked = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 900,
-      imageQuality: 65,
-    );
-    if (picked == null) return;
-    final bytes = await picked.readAsBytes();
-    final mime =
-        picked.name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
-    if (!mounted) return;
+  /// They upload immediately rather than on save, because a photo is a file and
+  /// the rest of this form is a handful of words: waiting to send several
+  /// megabytes until the Save button would make Save feel broken. Backing out
+  /// of the sheet leaves the dish alone and only costs an unused file.
+  Future<void> _pickImages() async {
+    final room = maxDishPhotos - _images.length;
+    if (room <= 0) {
+      setState(() => _error =
+          'A dish can hold $maxDishPhotos photos. Remove one first.');
+      return;
+    }
     setState(() {
-      _image = 'data:$mime;base64,${base64Encode(bytes)}';
-      _imageName = picked.name;
+      _uploading = true;
+      _error = null;
     });
+    try {
+      // A dish being created has no id yet, so it gets a provisional folder.
+      // The id only decides where the file sits, never which dish shows it.
+      final folder = _dish?.id ??
+          'new-${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}';
+      final urls =
+          await AdminApi.pickAndUploadDishPhotos(folder, limit: room);
+      if (!mounted) return;
+      setState(() => _images.addAll(urls));
+    } catch (e) {
+      if (mounted) setState(() => _error = '$e');
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
   }
+
+  /// Drops a photo from the dish, and from the bucket if we put it there.
+  Future<void> _dropPhoto(String url) async {
+    setState(() => _images.remove(url));
+    try {
+      await AdminApi.removeDishPhoto(url);
+    } catch (_) {
+      // The row is what diners read. A file left behind is untidy, not wrong,
+      // and not worth failing the edit over.
+    }
+  }
+
+  /// Moves a photo to the front, which is the one shown on the menu card.
+  void _makeFirst(String url) => setState(() {
+        _images
+          ..remove(url)
+          ..insert(0, url);
+      });
 
   Future<void> _save() async {
     if (_name.text.trim().isEmpty) {
@@ -972,7 +999,9 @@ class _DishFormState extends State<_DishForm> {
         'price': double.tryParse(_price.text.trim()) ?? 0,
         'category': category,
         'description': _desc.text.trim(),
-        'image': _image,
+        // The list is what the shop stores; a database trigger keeps the
+        // single-image column equal to its first entry.
+        'images': _images,
         'available': _available,
         'sold_today': int.tryParse(_sold.text.trim()) ?? 0,
         'stock_count':
@@ -1078,42 +1107,13 @@ class _DishFormState extends State<_DishForm> {
             _field(_desc, 'Description', lines: 3),
             const SizedBox(height: 14),
 
-            Row(children: [
-              if (_image.isNotEmpty) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: DishImage(
-                    url: _image,
-                    width: 48,
-                    height: 48,
-                    errorBuilder: (_, _, _) => Container(
-                      width: 48,
-                      height: 48,
-                      color: Tokens.staffInk.withValues(alpha: 0.08),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-              ],
-              OutlinedButton.icon(
-                onPressed: _pickImage,
-                icon: const Icon(Icons.upload_outlined, size: 16),
-                label: Text(_image.isEmpty ? 'Meal photo' : 'Change photo'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Tokens.staffInk,
-                  side: BorderSide(
-                      color: Tokens.staffInk.withValues(alpha: 0.2)),
-                ),
-              ),
-              if (_imageName != null) ...[
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(_imageName!,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 11, color: faint)),
-                ),
-              ],
-            ]),
+            _PhotoEditor(
+              images: _images,
+              uploading: _uploading,
+              onAdd: _pickImages,
+              onRemove: _dropPhoto,
+              onMakeFirst: _makeFirst,
+            ),
             const SizedBox(height: 6),
 
             CheckboxListTile(
@@ -1602,4 +1602,156 @@ class _RecipeSheetState extends State<_RecipeSheet> {
     isDense: true,
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
   );
+}
+
+/// How many photos one dish may carry.
+///
+/// Enough for the plate, the platter and the meal with rice, which is what a
+/// karinderya actually wants to show. A cap at all because every one of these
+/// is fetched when a diner opens the dish, and because a gallery nobody
+/// curates stops being a gallery.
+const maxDishPhotos = 4;
+
+/// Arranging a dish's photographs.
+///
+/// The first one is what the menu card and the front page show, so it is
+/// labelled rather than left to be guessed at, and any other can be promoted
+/// to it with one tap.
+class _PhotoEditor extends StatelessWidget {
+  const _PhotoEditor({
+    required this.images,
+    required this.uploading,
+    required this.onAdd,
+    required this.onRemove,
+    required this.onMakeFirst,
+  });
+
+  final List<String> images;
+  final bool uploading;
+  final VoidCallback onAdd;
+  final void Function(String url) onRemove;
+  final void Function(String url) onMakeFirst;
+
+  @override
+  Widget build(BuildContext context) {
+    final faint = Tokens.staffInk.withValues(alpha: 0.55);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(children: [
+          Icon(Icons.photo_library_outlined, size: 15, color: faint),
+          const SizedBox(width: 6),
+          Text('Meal photos',
+              style: TextStyle(fontSize: 12, color: faint)),
+          const Spacer(),
+          Text('${images.length} of $maxDishPhotos',
+              style: TextStyle(fontSize: 11, color: faint)),
+        ]),
+        const SizedBox(height: 8),
+
+        if (images.isNotEmpty)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final url in images)
+                Stack(children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: DishImage(
+                      url: displayPhoto(url),
+                      width: 82,
+                      height: 82,
+                      errorBuilder: (_, _, _) => Container(
+                        width: 82,
+                        height: 82,
+                        color: Tokens.staffInk.withValues(alpha: 0.08),
+                        child: const Icon(Icons.broken_image_outlined,
+                            size: 18, color: Tokens.staffInk),
+                      ),
+                    ),
+                  ),
+                  if (url == images.first)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        color: Tokens.staffAccent,
+                        child: const Text('On the card',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 8, color: Tokens.staffCard)),
+                      ),
+                    )
+                  else
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: GestureDetector(
+                        onTap: () => onMakeFirst(url),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          color: Colors.black.withValues(alpha: 0.6),
+                          child: const Text('Use on card',
+                              textAlign: TextAlign.center,
+                              style:
+                                  TextStyle(fontSize: 8, color: Colors.white)),
+                        ),
+                      ),
+                    ),
+                  Positioned(
+                    top: 2,
+                    right: 2,
+                    child: GestureDetector(
+                      onTap: () => onRemove(url),
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close,
+                            size: 12, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ]),
+            ],
+          ),
+
+        if (images.isNotEmpty) const SizedBox(height: 8),
+        if (images.length < maxDishPhotos)
+          OutlinedButton.icon(
+            onPressed: uploading ? null : onAdd,
+            icon: uploading
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.upload_outlined, size: 16),
+            label: Text(uploading
+                ? 'Uploading…'
+                : images.isEmpty
+                    ? 'Choose photos'
+                    : 'Add another'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Tokens.staffInk,
+              side: BorderSide(color: Tokens.staffInk.withValues(alpha: 0.2)),
+            ),
+          ),
+        if (images.length > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'Diners flip through these when they open the dish.',
+              style: TextStyle(fontSize: 11, color: faint),
+            ),
+          ),
+      ],
+    );
+  }
 }

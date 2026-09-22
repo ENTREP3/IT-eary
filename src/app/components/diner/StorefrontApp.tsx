@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { displayPhoto } from '../../lib/photos';
 import { Link } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -23,6 +24,7 @@ import {
   History,
   Tag,
   Flame,
+  Images as ImagesIcon,
   BellRing,
   UserRound,
 } from 'lucide-react';
@@ -355,6 +357,7 @@ export function StorefrontApp() {
             comments={reviews[openDish.id]}
             showRating={show.ratings}
             showComments={show.comments}
+            gallerySeconds={show.dish_seconds ?? 4}
             onAdd={() => add(openDish)}
             onAddRice={(r, servings) => {
               for (let i = 0; i < servings; i++) add(r);
@@ -464,10 +467,20 @@ function DishCard({
     >
       <div className="aspect-[4/3] overflow-hidden relative">
         <ImageWithFallback
-          src={dish.image}
+          src={displayPhoto(dish.image)}
           alt={dish.name}
           className={`w-full h-full object-cover ${dish.available ? '' : 'grayscale'}`}
         />
+
+        {/* Says there is more to see without moving. The card itself stays
+            still — a grid of tiles all cross-fading on their own timers reads
+            as a page malfunctioning, and it would make every photo of every
+            dish download before the menu could finish loading. */}
+        {(dish.images?.length ?? 0) > 1 && (
+          <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-black/55 backdrop-blur-sm text-white text-[10px]">
+            <ImagesIcon size={10} /> {dish.images.length}
+          </span>
+        )}
 
         <div className="absolute top-3 left-3 flex flex-col items-start gap-1.5">
           {bestseller && dish.available && (
@@ -656,6 +669,84 @@ function DishCard({
  * part of the menu. Asking here, at the moment they choose the dish, is asking
  * at the only point they are actually thinking about the meal.
  */
+/**
+ * A dish's photographs, taking turns.
+ *
+ * One picture was never going to sell food. A karinderya has the plate, the
+ * serving in the platter and the meal with rice beside it, and all three say
+ * something different — so the sheet shows them in turn rather than making the
+ * owner pick which one to tell the truth with.
+ *
+ * Rotation lives here and not on the menu cards. Eight cards cross-fading on
+ * their own timers reads as a page malfunctioning, and it would force every
+ * photo of every dish to download before the menu could finish. Here the diner
+ * has already chosen this dish and is looking straight at it.
+ *
+ * The dots are buttons, because somebody who wants the third picture should not
+ * have to wait for it to come round again. Touching one stops the timer: the
+ * diner is now driving, and a slideshow that pulls away from you is worse than
+ * one that never moved.
+ */
+function DishGallery({ dish, seconds }: { dish: Dish; seconds: number }) {
+  const photos = dish.images?.length ? dish.images : dish.image ? [dish.image] : [];
+  const [at, setAt] = useState(0);
+  const [held, setHeld] = useState(false);
+
+  useEffect(() => {
+    setAt(0);
+    setHeld(false);
+  }, [dish.id]);
+
+  useEffect(() => {
+    if (held || photos.length < 2) return;
+    const id = setInterval(() => setAt((n) => (n + 1) % photos.length), Math.max(2, seconds) * 1000);
+    return () => clearInterval(id);
+  }, [held, photos.length, seconds]);
+
+  if (photos.length === 0) return null;
+  const shown = Math.min(at, photos.length - 1);
+
+  return (
+    <div className="relative aspect-[16/9] overflow-hidden bg-diner-card">
+      {photos.map((src, i) => (
+        // All of them mounted and cross-faded by opacity rather than swapped,
+        // so the next photo is already decoded when its turn comes and the
+        // change does not flash white on a slow connection.
+        <ImageWithFallback
+          key={src}
+          // The 2000px copy, not the original. At the size this sheet draws it
+          // the two are indistinguishable, and the original can be five
+          // megabytes of detail nobody on this screen can see.
+          src={displayPhoto(src)}
+          alt={i === 0 ? dish.name : `${dish.name}, photo ${i + 1}`}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
+            i === shown ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
+      ))}
+
+      {photos.length > 1 && (
+        <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5">
+          {photos.map((src, i) => (
+            <button
+              key={src}
+              onClick={() => {
+                setAt(i);
+                setHeld(true);
+              }}
+              aria-label={`Show photo ${i + 1} of ${photos.length}`}
+              aria-current={i === shown}
+              className={`h-1.5 rounded-full transition-all ${
+                i === shown ? 'w-5 bg-white' : 'w-1.5 bg-white/55 hover:bg-white/80'
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DishSheet({
   dish,
   rice,
@@ -663,6 +754,7 @@ function DishSheet({
   comments,
   showRating,
   showComments,
+  gallerySeconds,
   onAdd,
   onAddRice,
   onClose,
@@ -674,6 +766,8 @@ function DishSheet({
   comments?: { id: string; rating: number; comment: string; author_name: string | null }[];
   showRating: boolean;
   showComments: boolean;
+  /** How long each photo is held, from the owner's storefront settings. */
+  gallerySeconds: number;
   onAdd: () => void;
   onAddRice: (rice: Dish, servings: number) => void;
   onClose: () => void;
@@ -707,11 +801,7 @@ function DishSheet({
         onClick={(e) => e.stopPropagation()}
         className="w-full sm:max-w-lg max-h-[92vh] overflow-auto bg-diner-ground rounded-t-3xl sm:rounded-3xl"
       >
-        {dish.image && (
-          <div className="aspect-[16/9] overflow-hidden">
-            <ImageWithFallback src={dish.image} alt={dish.name} className="w-full h-full object-cover" />
-          </div>
-        )}
+        <DishGallery dish={dish} seconds={gallerySeconds} />
 
         <div className="p-5">
           <div className="flex items-start justify-between gap-3">
@@ -1539,7 +1629,14 @@ function TicketView({
   useEffect(() => {
     if (identified) return;
     // Nothing more is coming once it is done with; stop asking.
-    if (order.status === 'completed' || order.status === 'cancelled' || order.status === 'refunded') return;
+    if (
+      order.status === 'completed' ||
+      order.status === 'cancelled' ||
+      order.status === 'refunded' ||
+      order.status === 'expired'
+    ) {
+      return;
+    }
 
     const id = setInterval(async () => {
       const { data } = await supabase.rpc('find_my_ticket', {

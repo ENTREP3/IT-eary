@@ -1,13 +1,18 @@
+import 'dart:math';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/models.dart';
+import '../../widgets/photo_sizes.dart';
 
 /// Owner-only reads and writes. Every one of these is also gated in Postgres by
 /// RLS or an `is_admin()` check, so a cashier calling them directly gets
 /// nothing — this class is convenience, not the security boundary.
 class AdminApi {
   static SupabaseClient get _db => Supabase.instance.client;
+
+  /// Where dish photographs live. Public, because this is the menu.
+  static const dishBucket = 'dish-photos';
 
   // ---- orders --------------------------------------------------------------
 
@@ -46,24 +51,48 @@ class AdminApi {
     required String reason,
     String? method,
     String? note,
-  }) =>
-      _db.rpc('refund_order', params: {
-        'p_ticket_code': ticketCode.trim().toUpperCase(),
-        'p_reason': reason,
-        'p_method': method,
-        'p_note': note,
-      });
-
-  static Future<void> setStatus(String id, String status) =>
-      _db.from('orders').update({'status': status}).eq('id', id);
-
-  static Future<Ticket> resolveReview(String code, bool verified,
-      {String? note}) async {
-    final row = await _db.rpc('resolve_payment_review', params: {
-      'p_ticket_code': code.trim().toUpperCase(),
-      'p_verified': verified,
+  }) => _db.rpc(
+    'refund_order',
+    params: {
+      'p_ticket_code': ticketCode.trim().toUpperCase(),
+      'p_reason': reason,
+      'p_method': method,
       'p_note': note,
-    });
+    },
+  );
+
+  /// Moves an order along the kitchen flow.
+  ///
+  /// Goes through `advance_order_status()` rather than updating the row, which
+  /// is what this used to do. The direct write looked identical from the
+  /// counter, because the staff update policy allows it, but it skipped every
+  /// guard the function exists to apply: food could be started on a ticket
+  /// nobody had paid for, any staff member could cancel rather than only the
+  /// owner, `completed_at` was never stamped, and a paid order could be
+  /// cancelled outright — returning the food and reversing the sale without a
+  /// refund ever being recorded.
+  ///
+  /// Keyed by ticket code because that is what the function takes, and what
+  /// the counter reads off the diner's phone.
+  static Future<void> setStatus(String ticketCode, String status) =>
+      _db.rpc(
+        'advance_order_status',
+        params: {'p_ticket_code': ticketCode, 'p_status': status},
+      );
+
+  static Future<Ticket> resolveReview(
+    String code,
+    bool verified, {
+    String? note,
+  }) async {
+    final row = await _db.rpc(
+      'resolve_payment_review',
+      params: {
+        'p_ticket_code': code.trim().toUpperCase(),
+        'p_verified': verified,
+        'p_note': note,
+      },
+    );
     return Ticket.fromMap(Map<String, dynamic>.from(row as Map));
   }
 
@@ -83,13 +112,113 @@ class AdminApi {
   static Future<void> deleteDish(String id) =>
       _db.from('dishes').delete().eq('id', id);
 
+  /// Picks photos and puts them in the bucket, returning their URLs.
+  ///
+  /// Storage rather than a data URI in the row: the menu query reads every dish
+  /// column, so a base64 photo is downloaded by every diner just to see the
+  /// list. A URL is a few hundred bytes and the picture is fetched only when it
+  /// is actually shown.
+  ///
+  /// The file is uploaded exactly as it was taken. Nothing is resized and
+  /// nothing is re-encoded.
+  ///
+  /// The picker is deliberately given no `maxWidth` and no `imageQuality`.
+  /// Either one makes it decode the photograph and write a new JPEG, which
+  /// throws away detail permanently — and the loss only becomes visible later,
+  /// on the front page, where the first photo is stretched across a whole
+  /// laptop screen. A receipt can be squeezed to 900px because nobody frames it;
+  /// food is the one thing on this site meant to be looked at.
+  static Future<List<String>> pickAndUploadDishPhotos(
+    String dishId, {
+    int limit = 4,
+  }) async {
+    final picked = await ImagePicker().pickMultiImage();
+    if (picked.isEmpty) return const [];
+
+    final urls = <String>[];
+    for (final file in picked.take(limit)) {
+      // The original extension is kept rather than forced to jpg. Renaming a
+      // PNG or a WebP does not convert it; it only makes the stored type a lie,
+      // and browsers then guess at what they were handed.
+      final dot = file.name.lastIndexOf('.');
+      final ext = dot > 0 ? file.name.substring(dot + 1).toLowerCase() : 'jpg';
+      // A fresh name every time rather than overwriting: replacing a photo
+      // should not change the picture on a page somebody already has open.
+      final suffix = Random().nextInt(1 << 32).toRadixString(36);
+      final path = '$dishId/$suffix.$ext';
+      final bytes = await file.readAsBytes();
+      await _db.storage
+          .from(dishBucket)
+          .uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(
+              contentType: file.mimeType ?? _mimeFor(ext),
+              upsert: false,
+            ),
+          );
+
+      // The smaller copy the menu will actually load. Made here because this is
+      // the one moment the full file is already in hand, and stored under a
+      // fixed sibling name so nothing extra is needed to find it.
+      //
+      // A failure is deliberately swallowed: the photo itself is safely up, and
+      // a card that falls back to the original is slow, not broken. Losing the
+      // whole upload over a thumbnail would be the worse trade.
+      try {
+        final small = makeDisplayCopy(bytes);
+        if (small != null) {
+          await _db.storage
+              .from(dishBucket)
+              .uploadBinary(
+                displayPath(path),
+                small,
+                fileOptions: const FileOptions(
+                  contentType: 'image/jpeg',
+                  upsert: true,
+                ),
+              );
+        }
+      } catch (_) {
+        // The original is what matters.
+      }
+
+      urls.add(_db.storage.from(dishBucket).getPublicUrl(path));
+    }
+    return urls;
+  }
+
+  static String _mimeFor(String ext) => switch (ext) {
+    'png' => 'image/png',
+    'webp' => 'image/webp',
+    'gif' => 'image/gif',
+    'heic' => 'image/heic',
+    'heif' => 'image/heif',
+    _ => 'image/jpeg',
+  };
+
+  /// Removes a photo from the bucket. Silent for anything not stored by us,
+  /// such as the data URIs written before photos had a bucket of their own.
+  static Future<void> removeDishPhoto(String url) async {
+    const marker = '/$dishBucket/';
+    final at = url.indexOf(marker);
+    if (at < 0) return;
+    final path = Uri.decodeComponent(
+      url.substring(at + marker.length).split('?').first,
+    );
+    // Both copies, or the bucket slowly fills with display sizes belonging to
+    // photos nobody can see any more.
+    await _db.storage.from(dishBucket).remove([path, displayPath(path)]);
+  }
+
   /// Puts a new dish on the menu.
   ///
   /// The id is generated here rather than by the database because the web admin
   /// does the same and the column is plain text, not a uuid default — a dish
   /// added from a phone has to look like one added from a laptop.
   static Future<String> addDish(Map<String, dynamic> row) async {
-    final id = row['id'] as String? ??
+    final id =
+        row['id'] as String? ??
         'dish-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
     await _db.from('dishes').insert({...row, 'id': id});
     return id;
@@ -105,7 +234,9 @@ class AdminApi {
     final name = raw.trim();
     if (name.isEmpty) return false;
     final existing = await categories();
-    if (existing.any((c) => c.toLowerCase() == name.toLowerCase())) return false;
+    if (existing.any((c) => c.toLowerCase() == name.toLowerCase())) {
+      return false;
+    }
     await _db.from('categories').insert({'name': name});
     return true;
   }
@@ -119,8 +250,58 @@ class AdminApi {
     final all = await categories();
     if (!all.contains(name) || all.length <= 1) return;
     final fallback = all.firstWhere((c) => c != name);
-    await _db.from('dishes').update({'category': fallback}).eq('category', name);
+    await _db
+        .from('dishes')
+        .update({'category': fallback})
+        .eq('category', name);
     await _db.from('categories').delete().eq('name', name);
+  }
+
+
+  // ---- the kitchen, in numbers ---------------------------------------------
+  //
+  // Every one of these is a SECURITY DEFINER function that checks is_admin()
+  // for itself, so a cashier calling them directly gets a refusal rather than
+  // a figure. See the migration for what each one counts.
+
+  static Future<Map<String, dynamic>?> orderOutcomes({int days = 30}) async {
+    final rows = await _db.rpc('order_outcomes', params: {'p_days': days});
+    final list = rows as List;
+    return list.isEmpty ? null : Map<String, dynamic>.from(list.first as Map);
+  }
+
+  static Future<Map<String, dynamic>?> customerValue() async {
+    final rows = await _db.rpc('customer_value');
+    final list = rows as List;
+    return list.isEmpty ? null : Map<String, dynamic>.from(list.first as Map);
+  }
+
+  static Future<List<Map<String, dynamic>>> dishMargins() async {
+    final rows = await _db.rpc('dish_margins');
+    return (rows as List)
+        .map((r) => Map<String, dynamic>.from(r as Map))
+        .toList();
+  }
+
+  static Future<List<Map<String, dynamic>>> priceDrift({int days = 365}) async {
+    final rows = await _db.rpc('ingredient_price_drift', params: {'p_days': days});
+    return (rows as List)
+        .map((r) => Map<String, dynamic>.from(r as Map))
+        .toList();
+  }
+
+  static Future<List<Map<String, dynamic>>> wasteByDay({int days = 7}) async {
+    final rows = await _db.rpc('waste_by_day', params: {'p_days': days});
+    return (rows as List)
+        .map((r) => Map<String, dynamic>.from(r as Map))
+        .toList();
+  }
+
+  static Future<List<Map<String, dynamic>>> refundReasons({int days = 30}) async {
+    final rows = await _db.rpc('refund_reasons', params: {'p_days': days});
+    return (rows as List)
+        .map((r) => Map<String, dynamic>.from(r as Map))
+        .toList();
   }
 
   // ---- inventory -----------------------------------------------------------
@@ -148,12 +329,14 @@ class AdminApi {
     String inventoryId,
     double quantity, {
     double? unitCost,
-  }) =>
-      _db.rpc('receive_stock', params: {
-        'p_inventory_id': inventoryId,
-        'p_quantity': quantity,
-        'p_unit_cost': unitCost,
-      });
+  }) => _db.rpc(
+    'receive_stock',
+    params: {
+      'p_inventory_id': inventoryId,
+      'p_quantity': quantity,
+      'p_unit_cost': unitCost,
+    },
+  );
 
   static Future<void> addInventory(Map<String, dynamic> row) =>
       _db.from('inventory').insert(row);
@@ -179,8 +362,11 @@ class AdminApi {
   // ---- payments ------------------------------------------------------------
 
   static Future<PaymentSettings> paymentSettings() async {
-    final row =
-        await _db.from('payment_settings').select().eq('id', 1).maybeSingle();
+    final row = await _db
+        .from('payment_settings')
+        .select()
+        .eq('id', 1)
+        .maybeSingle();
     return row == null
         ? PaymentSettings.fallback
         : PaymentSettings.fromMap(row);
@@ -202,7 +388,9 @@ class AdminApi {
 
     final isPng = picked.name.toLowerCase().endsWith('.png');
     final path = 'gcash-qr.${isPng ? 'png' : 'jpg'}';
-    await _db.storage.from('payment-assets').uploadBinary(
+    await _db.storage
+        .from('payment-assets')
+        .uploadBinary(
           path,
           await picked.readAsBytes(),
           fileOptions: FileOptions(
@@ -227,8 +415,11 @@ class AdminApi {
   /// Read as a map rather than through [Shop] because this screen edits the
   /// individual columns and needs the raw values back to fill the form.
   static Future<Map<String, dynamic>?> shopSettings() async {
-    final row =
-        await _db.from('business_settings').select().eq('id', 1).maybeSingle();
+    final row = await _db
+        .from('business_settings')
+        .select()
+        .eq('id', 1)
+        .maybeSingle();
     return row == null ? null : Map<String, dynamic>.from(row);
   }
 
@@ -306,7 +497,9 @@ class AdminApi {
   /// which are quoted on the front of the shop.
   static Future<List<Map<String, dynamic>>> allReviews() async {
     final rows = await _db.rpc('all_reviews');
-    return (rows as List).map((r) => Map<String, dynamic>.from(r as Map)).toList();
+    return (rows as List)
+        .map((r) => Map<String, dynamic>.from(r as Map))
+        .toList();
   }
 
   /// Marks a review as one to quote.
@@ -336,7 +529,9 @@ class AdminApi {
 
   static Future<List<Map<String, dynamic>>> listStaff() async {
     final rows = await _db.rpc('list_staff');
-    return (rows as List).map((r) => Map<String, dynamic>.from(r as Map)).toList();
+    return (rows as List)
+        .map((r) => Map<String, dynamic>.from(r as Map))
+        .toList();
   }
 
   static Future<String> createStaff({
@@ -369,7 +564,9 @@ class AdminApi {
   // ---- receipts ------------------------------------------------------------
 
   /// Orders still holding a GCash receipt, optionally only the old ones.
-  static Future<List<Map<String, dynamic>>> receipts({int olderThanDays = 90}) async {
+  static Future<List<Map<String, dynamic>>> receipts({
+    int olderThanDays = 90,
+  }) async {
     var q = _db
         .from('orders')
         .select('ticket_code, proof_path, created_at, total')
@@ -501,20 +698,23 @@ class AdminApi {
   }
 
   /// Accepts a new price, or dismisses the suggestion by passing null.
-  static Future<void> confirmDishPrice(String dishId, double? price) =>
-      _db.rpc(
-        'confirm_dish_price',
-        params: {'p_dish_id': dishId, 'p_price': price},
-      );
+  static Future<void> confirmDishPrice(String dishId, double? price) => _db.rpc(
+    'confirm_dish_price',
+    params: {'p_dish_id': dishId, 'p_price': price},
+  );
 
   static Future<List<Map<String, dynamic>>> storageUsage() async {
     final rows = await _db.rpc('storage_usage');
-    return (rows as List).map((r) => Map<String, dynamic>.from(r as Map)).toList();
+    return (rows as List)
+        .map((r) => Map<String, dynamic>.from(r as Map))
+        .toList();
   }
 
   static Future<String?> proofUrl(String path) async {
     try {
-      return await _db.storage.from('payment-proofs').createSignedUrl(path, 300);
+      return await _db.storage
+          .from('payment-proofs')
+          .createSignedUrl(path, 300);
     } catch (_) {
       return null;
     }

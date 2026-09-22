@@ -1,4 +1,5 @@
 import React from 'react';
+import { displayPhoto } from '../../lib/photos';
 import { Link } from 'react-router';
 import { Clock, ShieldCheck, Utensils } from 'lucide-react';
 import { useKarinderyaStore } from '../../store/karinderyaStore';
@@ -72,7 +73,7 @@ export function Landing() {
               >
                 <div className="aspect-[4/3] overflow-hidden">
                   <ImageWithFallback
-                    src={d.image}
+                    src={displayPhoto(d.image)}
                     alt={d.name}
                     className="w-full h-full object-cover"
                   />

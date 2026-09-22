@@ -8,7 +8,12 @@ class Dish {
   final double price;
   final String category;
   final String description;
+  /// The photo shown wherever one image is wanted. Always equal to images[0].
   final String image;
+
+  /// Every photo of this dish, in the order the owner arranged them.
+  final List<String> images;
+
   final bool available;
 
   /// Marked a bestseller by the owner.
@@ -33,6 +38,7 @@ class Dish {
     required this.category,
     required this.description,
     required this.image,
+    this.images = const [],
     required this.available,
     this.featured = false,
     this.stockCount,
@@ -47,6 +53,13 @@ class Dish {
     category: m['category'] as String? ?? 'Ulam',
     description: m['description'] as String? ?? '',
     image: m['image'] as String? ?? '',
+    images: () {
+      final list = (m['images'] as List?)?.cast<String>() ?? const <String>[];
+      // A dish photographed before the column existed still has its one picture.
+      if (list.isNotEmpty) return list;
+      final one = m['image'] as String? ?? '';
+      return one.isEmpty ? const <String>[] : <String>[one];
+    }(),
     available: m['available'] as bool? ?? true,
     featured: m['featured'] as bool? ?? false,
     stockCount: (m['stock_count'] as num?)?.toInt(),
@@ -303,7 +316,10 @@ class Ticket {
   /// and a cancelled order stayed in them forever. A sale is a payment the
   /// counter confirmed, on an order that still exists.
   bool get countsAsSale =>
-      paidAt != null && status != 'cancelled' && status != 'refunded';
+      paidAt != null &&
+      status != 'cancelled' &&
+      status != 'refunded' &&
+      status != 'expired';
 
   /// Whether the shop can still hand money back on this ticket.
   ///
@@ -345,6 +361,8 @@ class Ticket {
       'completed' => 'Completed',
       'cancelled' => 'Cancelled',
       'refunded' => 'Refunded — your money has been returned',
+      'expired' =>
+        'Expired — nobody collected it, so it went back on the menu',
       _ => status,
     };
   }
@@ -387,6 +405,9 @@ class Storefront {
   /// Seconds a dish stays behind the headline. 0 means hold on the first.
   final int heroSeconds;
 
+  /// How long each of a dish's photos is held before the next one.
+  final int dishSeconds;
+
   const Storefront({
     this.ratings = true,
     this.comments = true,
@@ -399,6 +420,7 @@ class Storefront {
     this.reviewsPerBatch = 2,
     this.reviewsSeconds = 8,
     this.heroSeconds = 7,
+    this.dishSeconds = 4,
   });
 
   static const defaults = Storefront();
@@ -415,6 +437,7 @@ class Storefront {
     reviewsPerBatch: (m['reviews_per_batch'] as num?)?.toInt() ?? 2,
     reviewsSeconds: (m['reviews_seconds'] as num?)?.toInt() ?? 8,
     heroSeconds: (m['hero_seconds'] as num?)?.toInt() ?? 7,
+    dishSeconds: (m['dish_seconds'] as num?)?.toInt() ?? 4,
   );
 }
 
