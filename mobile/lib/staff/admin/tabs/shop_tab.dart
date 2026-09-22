@@ -180,6 +180,7 @@ class _ShopTabState extends State<ShopTab> {
           'reviews_per_batch': next.reviewsPerBatch,
           'reviews_seconds': next.reviewsSeconds,
           'hero_seconds': next.heroSeconds,
+          'dish_seconds': next.dishSeconds,
           // Carried through untouched: this screen does not offer the
           // suggestion history, and rewriting the object without it would
           // forget every dish the owner has already declined.
@@ -215,6 +216,7 @@ class _ShopTabState extends State<ShopTab> {
     int? reviewsPerBatch,
     int? reviewsSeconds,
     int? heroSeconds,
+    int? dishSeconds,
   }) => Storefront(
     ratings: ratings ?? _show.ratings,
     comments: comments ?? _show.comments,
@@ -227,6 +229,7 @@ class _ShopTabState extends State<ShopTab> {
     reviewsPerBatch: reviewsPerBatch ?? _show.reviewsPerBatch,
     reviewsSeconds: reviewsSeconds ?? _show.reviewsSeconds,
     heroSeconds: heroSeconds ?? _show.heroSeconds,
+    dishSeconds: dishSeconds ?? _show.dishSeconds,
   );
 
   @override
@@ -498,6 +501,22 @@ class _ShopTabState extends State<ShopTab> {
                 ],
                 busy: _busy,
                 onChanged: (v) => _commit(_with(heroSeconds: _parseSeconds(v))),
+              ),
+              // Only dishes with more than one photo change at all, and a
+              // diner touching the picture stops it so they can look properly.
+              _ChoiceRow(
+                label: "A dish's photos change every",
+                value: _seconds(_show.dishSeconds),
+                options: const [
+                  'Do not change',
+                  '3 seconds',
+                  '4 seconds',
+                  '5 seconds',
+                  '7 seconds',
+                  '10 seconds',
+                ],
+                busy: _busy,
+                onChanged: (v) => _commit(_with(dishSeconds: _parseSeconds(v))),
               ),
             ],
           ),

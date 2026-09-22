@@ -37,6 +37,8 @@ export type Storefront = {
   reviews_seconds: number;
   /** Seconds each dish stays behind the headline. 0 means hold on the first. */
   hero_seconds: number;
+  /** How long each of a dish's photos is held before the next one. */
+  dish_seconds: number;
 
   /**
    * Bestseller suggestions the owner has already turned down, against the sales
@@ -56,6 +58,7 @@ export const STOREFRONT_DEFAULTS: Storefront = {
   low_stock: true, sold_out: true, recommended: true,
   reviews_source: 'all', reviews_min_stars: 4, reviews_per_batch: 2, reviews_seconds: 8,
   hero_seconds: 7,
+  dish_seconds: 4,
   bestseller_dismissed: {},
 };
 

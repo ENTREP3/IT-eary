@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../../../models/models.dart';
 import '../../../tokens.dart';
 import '../admin_api.dart';
+import 'insights.dart';
 import 'widgets.dart';
 
 /// Quotes a cell only when it would otherwise break the row.
@@ -280,6 +281,11 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
         // a sales chart, which only ever shows money coming in.
         PriceSuggestions(onChanged: widget.onChanged),
         const CogsPanel(),
+        const SizedBox(height: 12),
+
+        // What the money figures cannot say: which dish is quietly sold at a
+        // loss, what went in the bin, and which supplier price ate the rest.
+        const KitchenInsights(),
         Align(
           alignment: Alignment.centerRight,
           child: OutlinedButton.icon(

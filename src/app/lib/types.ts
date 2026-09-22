@@ -32,7 +32,9 @@ export type OrderStatus =
   /** Never paid for. Nothing is owed to anybody. */
   | 'cancelled'
   /** Paid for, and the money went back. Only reachable from paid or preparing. */
-  | 'refunded';
+  | 'refunded'
+  /** Nobody came for it. Never paid, and its servings went back on the menu. */
+  | 'expired';
 
 export type OrderItem = {
   id?: string;

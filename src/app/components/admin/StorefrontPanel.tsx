@@ -360,6 +360,29 @@ export function StorefrontPanel() {
           </label>
         </div>
 
+        <div className="rounded-2xl border border-[#e8dfc8]/12 p-4">
+          <div className="text-sm font-medium">A dish's own photos</div>
+          <p className="text-xs opacity-55 mt-1 mb-3 max-w-prose leading-relaxed">
+            When a diner opens a dish, its photographs take turns. Only dishes with
+            more than one photo change at all, and touching the dots stops it so
+            they can look properly.
+          </p>
+          <label className="block max-w-[220px]">
+            <span className="text-[11px] opacity-55">Hold each photo for</span>
+            <select
+              value={draft.dish_seconds}
+              disabled={busy}
+              onChange={(e) => set('dish_seconds', Number(e.target.value))}
+              className={`${field} w-full mt-1`}
+            >
+              <option value={0}>Do not change</option>
+              {[3, 4, 5, 7, 10].map((n) => (
+                <option key={n} value={n}>{n} seconds</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
         <Switch
           on={draft.recommended}
           busy={busy}

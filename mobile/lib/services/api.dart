@@ -21,7 +21,24 @@ class Api {
     return rows.map<String>((r) => r['name'] as String).toList();
   }
 
+  /// Frees any plate still held by a ticket nobody came for.
+  ///
+  /// Called before the menu is read, because that is the moment a stale hold
+  /// does its damage: a serving sitting in the platter while the app says sold
+  /// out. There is no pg_cron on this project, so nothing does it on a timer.
+  ///
+  /// Failure is ignored on purpose. A menu that loads with one plate still
+  /// wrongly held is worth far more than no menu at all.
+  static Future<void> releaseStaleTickets() async {
+    try {
+      await _db.rpc('release_stale_tickets');
+    } catch (_) {
+      /* the menu matters more */
+    }
+  }
+
   static Future<List<Dish>> menu() async {
+    await releaseStaleTickets();
     final rows = await _db.from('dishes').select().order('name');
     return rows.map<Dish>((r) => Dish.fromMap(r)).toList();
   }
@@ -151,6 +168,19 @@ class Api {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Turns a filled loyalty card into a discount code.
+  ///
+  /// The card could be read but never spent, so a diner who had earned a reward
+  /// on their phone had to find a laptop to claim it. The database decides
+  /// whether they have actually earned one; this only asks.
+  ///
+  /// Returns the code, or null if there was nothing to claim.
+  static Future<String?> claimLoyaltyReward() async {
+    if (!signedIn) return null;
+    final code = await _db.rpc('claim_loyalty_reward');
+    return code as String?;
   }
 
   /// Discount codes the owner is running now, so a diner with an account learns

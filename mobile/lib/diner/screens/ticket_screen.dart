@@ -54,7 +54,8 @@ class _TicketScreenState extends State<TicketScreen> {
         // Nothing more is coming once it is done with; stop asking.
         if (_ticket.status == 'completed' ||
             _ticket.status == 'cancelled' ||
-            _ticket.status == 'refunded') {
+            _ticket.status == 'refunded' ||
+            _ticket.status == 'expired') {
           _poll?.cancel();
           return;
         }

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { displayPhoto } from '../lib/photos';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
@@ -72,6 +73,7 @@ import { OrderHistory, OrderDetail } from './admin/OrderHistory';
 import { PriceSuggestions } from './admin/PriceSuggestions';
 import { BestsellerSuggestions } from './admin/BestsellerSuggestions';
 import { CogsPanel } from './admin/CogsPanel';
+import { KitchenInsights } from './admin/KitchenInsights';
 import { ReceiptRetention, StorageWarning } from './admin/ReceiptRetention';
 import { ConfirmProvider, useConfirm } from './shared/useConfirm';
 import {
@@ -1384,6 +1386,11 @@ function AnalyticsPanel({ orders }: { orders: Order[] }) {
           the week and the second to know whether the menu is priced right. */}
       <CogsPanel />
 
+      {/* What the money figures above cannot say: which dish is quietly sold at
+          a loss, what went in the bin at closing, and which supplier price ate
+          the difference. */}
+      <KitchenInsights />
+
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 flex-1 w-full">
           <Stat label="Today's gross" value={`₱${todayGross.toLocaleString()}`} />
@@ -1847,6 +1854,41 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
   );
 }
 
+/**
+ * How many photos one dish may carry.
+ *
+ * Enough for the plate, the platter and the meal with rice, which is what a
+ * karinderya actually wants to show. A cap at all because every one of these is
+ * fetched when a diner opens the dish, and because a gallery nobody curates
+ * stops being a gallery.
+ */
+const MAX_DISH_PHOTOS = 4;
+
+/**
+ * What the front page needs to look sharp.
+ *
+ * The hero stretches the first photo across the full width of the window, so a
+ * picture narrower than this is upscaled and goes soft. Both photos the shop
+ * had when this was written were around 450px wide and portrait, which is why
+ * the hero looked blurred and cropped on a laptop and fine on a phone.
+ */
+const HERO_MIN_WIDTH = 1200;
+
+/** Reads a picked file's real pixel size, or null if the browser cannot. */
+async function imageSize(file: File): Promise<{ w: number; h: number } | null> {
+  const url = URL.createObjectURL(file);
+  try {
+    return await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 const emptyDish: Omit<Dish, 'id'> = {
   name: '',
   tagalog: '',
@@ -1854,6 +1896,7 @@ const emptyDish: Omit<Dish, 'id'> = {
   category: 'Ulam',
   description: '',
   image: '',
+  images: [],
   available: true,
   soldToday: 0,
   stockCount: null,
@@ -1868,6 +1911,8 @@ function MenuControl() {
   const addDish = useKarinderyaStore((s) => s.addDish);
   const updateDish = useKarinderyaStore((s) => s.updateDish);
   const deleteDish = useKarinderyaStore((s) => s.deleteDish);
+  const uploadDishPhoto = useKarinderyaStore((s) => s.uploadDishPhoto);
+  const removeDishPhoto = useKarinderyaStore((s) => s.removeDishPhoto);
 
   const [newCat, setNewCat] = useState('');
   const [open, setOpen] = useState(false);
@@ -1875,7 +1920,8 @@ function MenuControl() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<Dish, 'id'>>(emptyDish);
   const [newCategoryName, setNewCategoryName] = useState('');
-  const [imageFileName, setImageFileName] = useState('');
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   // Which dish has its recipe open. Only one at a time keeps the list scannable.
   const [recipeFor, setRecipeFor] = useState<string | null>(null);
 
@@ -1883,7 +1929,6 @@ function MenuControl() {
     setEditingId(null);
     setForm({ ...emptyDish, category: categories[0] ?? 'Ulam' });
     setNewCategoryName('');
-    setImageFileName('');
     setOpen(true);
   };
 
@@ -1896,25 +1941,86 @@ function MenuControl() {
       category: d.category,
       description: d.description,
       image: d.image,
+      images: d.images ?? [],
       available: d.available,
       soldToday: d.soldToday,
       stockCount: d.stockCount ?? null,
     });
     setNewCategoryName('');
-    setImageFileName('');
     setOpen(true);
   };
 
-  const onPickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f || !f.type.startsWith('image/')) return;
-    setImageFileName(f.name);
-    const r = new FileReader();
-    r.onload = () => {
-      if (typeof r.result === 'string') setForm((p) => ({ ...p, image: r.result as string }));
-    };
-    r.readAsDataURL(f);
+  /**
+   * Adds photos to the dish being edited.
+   *
+   * They go to storage immediately rather than on save, because a photo is a
+   * file and the rest of this form is a handful of words: waiting to upload
+   * four megabytes until the Save button would make Save feel broken. The URLs
+   * are held in form state, so backing out of the dialog leaves the dish alone
+   * and only costs an orphaned object in the bucket.
+   */
+  const onPickImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files ?? []).filter((f) => f.type.startsWith('image/'));
+    // Reset the input so choosing the same file twice in a row still fires.
+    e.target.value = '';
+    if (picked.length === 0) return;
+
+    const room = MAX_DISH_PHOTOS - form.images.length;
+    if (room <= 0) {
+      setPhotoError(`A dish can hold ${MAX_DISH_PHOTOS} photos. Remove one first.`);
+      return;
+    }
+
+    setPhotoError(null);
+    setUploading(true);
+    try {
+      // The dish may not exist yet, so new ones get a provisional folder. The
+      // id only decides where the file sits, never which dish shows it.
+      const folder = editingId ?? `new-${Date.now()}`;
+      const urls: string[] = [];
+      const small: string[] = [];
+      for (const file of picked.slice(0, room)) {
+        // Measured before upload, because the front page stretches the first
+        // photo across the whole width of a laptop screen. A 450px picture is a
+        // three-times upscale there and looks badly out of focus, while seeming
+        // perfectly sharp on the phone it was chosen on.
+        const size = await imageSize(file);
+        if (size && size.w < HERO_MIN_WIDTH) small.push(`${file.name} (${size.w}×${size.h})`);
+        urls.push(await uploadDishPhoto(folder, file));
+      }
+      if (urls.length > 0) setForm((p) => ({ ...p, images: [...p.images, ...urls] }));
+      if (small.length > 0) {
+        setPhotoError(
+          `Uploaded, but ${small.join(', ')} ${small.length === 1 ? 'is' : 'are'} under ` +
+            `${HERO_MIN_WIDTH}px wide, so ${small.length === 1 ? 'it' : 'they'} will look blurry ` +
+            `across the top of the front page. A wide photo of ${HERO_MIN_WIDTH}px or more works best there.`,
+        );
+      }
+      if (picked.length > room) {
+        setPhotoError(`Only ${room} more would fit, so the rest were skipped.`);
+      }
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : 'That photo could not be uploaded.');
+    } finally {
+      setUploading(false);
+    }
   };
+
+  /** Drops a photo from the dish, and from the bucket if we put it there. */
+  const dropPhoto = async (url: string) => {
+    setForm((p) => ({ ...p, images: p.images.filter((u) => u !== url) }));
+    setPhotoError(null);
+    try {
+      await removeDishPhoto(url);
+    } catch {
+      // The row is what diners read. A file left behind in the bucket is
+      // untidy, not wrong, and is not worth failing the edit over.
+    }
+  };
+
+  /** Moves a photo to the front, which is the one shown on the menu card. */
+  const makeFirst = (url: string) =>
+    setForm((p) => ({ ...p, images: [url, ...p.images.filter((u) => u !== url)] }));
 
   const saveDish = async () => {
     if (!form.name.trim()) return;
@@ -1999,7 +2105,7 @@ function MenuControl() {
         {dishes.map((d) => (
           <Card key={d.id} className="p-5 flex flex-col gap-3">
             <div className="flex items-start gap-4">
-              <img src={d.image} alt={d.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
+              <img src={displayPhoto(d.image)} alt={d.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
               <div className="flex-1 min-w-0">
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }} className="truncate">
                   {d.name}
@@ -2189,18 +2295,78 @@ function MenuControl() {
             </div>
             <div>
               <Label className="text-[#e8dfc8]/70 flex items-center gap-2">
-                <Upload size={14} /> Meal photo
+                <Upload size={14} /> Meal photos
               </Label>
-              <div className="mt-1 flex items-center gap-3 flex-wrap">
-                <label className="cursor-pointer px-3 py-2 rounded-lg border border-[#e8dfc8]/20 text-sm hover:bg-[#e8dfc8]/5">
-                  Choose image
-                  <input type="file" accept="image/*" className="hidden" onChange={onPickImage} />
-                </label>
-                {imageFileName && <span className="text-xs opacity-50 truncate max-w-[200px]">{imageFileName}</span>}
-                {form.image && (
-                  <img src={form.image} alt="" className="h-12 w-12 rounded-lg object-cover border border-[#e8dfc8]/15" />
+
+              {form.images.length > 0 && (
+                <div className="mt-2 flex gap-2 flex-wrap">
+                  {form.images.map((url, i) => (
+                    <div
+                      key={url}
+                      className={`relative group rounded-lg overflow-hidden border ${
+                        i === 0 ? 'border-[#e8a84a]/70' : 'border-[#e8dfc8]/15'
+                      }`}
+                    >
+                      <img src={url} alt="" className="h-20 w-20 object-cover" />
+
+                      {/* The first photo is the one the menu card shows, so it
+                          is labelled rather than left to be guessed at. */}
+                      {i === 0 ? (
+                        <span className="absolute bottom-0 inset-x-0 bg-[#e8a84a] text-[#0a0d0a] text-[9px] text-center py-0.5">
+                          On the card
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => makeFirst(url)}
+                          className="absolute bottom-0 inset-x-0 bg-black/75 text-[9px] py-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          Use on card
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => dropPhoto(url)}
+                        aria-label="Remove photo"
+                        className="absolute top-1 right-1 p-1 rounded-full bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#c8442a]"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-2 flex items-center gap-3 flex-wrap">
+                {form.images.length < MAX_DISH_PHOTOS && (
+                  <label
+                    className={`cursor-pointer px-3 py-2 rounded-lg border border-[#e8dfc8]/20 text-sm hover:bg-[#e8dfc8]/5 ${
+                      uploading ? 'opacity-50 pointer-events-none' : ''
+                    }`}
+                  >
+                    {uploading
+                      ? 'Uploading…'
+                      : form.images.length === 0
+                        ? 'Choose photos'
+                        : 'Add another'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={onPickImages}
+                      disabled={uploading}
+                    />
+                  </label>
                 )}
+                <span className="text-[10px] opacity-45">
+                  {form.images.length} of {MAX_DISH_PHOTOS}
+                  {form.images.length > 1 && ' · diners can flip through these'}
+                </span>
               </div>
+
+              {photoError && <p className="mt-1.5 text-xs text-[#e87a5c]">{photoError}</p>}
             </div>
             <div className="flex items-center gap-2">
               <input

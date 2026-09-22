@@ -5,7 +5,10 @@ export type Dish = {
   price: number;
   category: string;
   description: string;
+  /** The photo shown wherever one image is wanted. Always equal to images[0]. */
   image: string;
+  /** Every photo, in the order the owner arranged them. */
+  images: string[];
   available: boolean;
   /** Owner chose to show this off on the storefront. */
   featured?: boolean;
@@ -14,7 +17,10 @@ export type Dish = {
   stockCount?: number | null;
 };
 
-export const DISHES: Dish[] = [
+// Seed data from before the shop had its own menu in the database. Kept as a
+// shape reference; nothing imports it. Each entry predates multiple photos, so
+// the list is derived from the single image rather than restated 25 times.
+const SEED_DISHES: Omit<Dish, 'images'>[] = [
   {
     id: 'adobo',
     name: 'Chicken Adobo',
@@ -115,6 +121,11 @@ export const DISHES: Dish[] = [
     soldToday: 88,
   },
 ];
+
+export const DISHES: Dish[] = SEED_DISHES.map((d) => ({
+  ...d,
+  images: d.image ? [d.image] : [],
+}));
 
 export type InventoryItem = {
   id: string;

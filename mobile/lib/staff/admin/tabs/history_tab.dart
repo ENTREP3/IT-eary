@@ -38,6 +38,7 @@ const _statuses = [
   'completed',
   'cancelled',
   'refunded',
+  'expired',
 ];
 
 class _HistoryTabState extends State<HistoryTab> {
@@ -187,8 +188,8 @@ class _HistoryTabState extends State<HistoryTab> {
           ),
           const SizedBox(height: 2),
           Text(
-            'Unpaid, cancelled and refunded orders are listed, but not '
-            'counted in the takings.',
+            'Unpaid, cancelled, refunded and expired orders are listed, but '
+            'not counted in the takings.',
             style: TextStyle(
                 fontSize: 11, color: Tokens.staffInk.withValues(alpha: 0.4)),
           ),
@@ -271,7 +272,7 @@ class StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (bg, fg) = switch (status) {
-      'cancelled' || 'refunded' => (
+      'cancelled' || 'refunded' || 'expired' => (
           Tokens.semanticCritical.withValues(alpha: 0.22),
           Tokens.semanticAlert
         ),
@@ -301,6 +302,13 @@ class MoneyPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (order.status == 'expired') {
+      return _Pill(
+        text: 'Never collected',
+        bg: Tokens.staffInk.withValues(alpha: 0.1),
+        fg: Tokens.staffInk.withValues(alpha: 0.7),
+      );
+    }
     if (order.status == 'refunded') {
       return _Pill(
         text: 'Money returned',
@@ -553,10 +561,20 @@ class OrderDetailSheet extends StatelessWidget {
             if (order.proofPath != null)
               line('Receipt', 'Uploaded, viewable from the dashboard'),
 
-            if (order.status == 'cancelled' || order.status == 'refunded') ...[
+            if (order.status == 'cancelled' ||
+                order.status == 'refunded' ||
+                order.status == 'expired') ...[
               const SizedBox(height: 10),
               Text(
-                '${order.status == 'refunded' ? '${peso(order.total)} was handed back and every serving went back on the menu. ' : 'Nothing was paid, so nothing went back. '}'
+                '${switch (order.status) {
+                  'refunded' =>
+                    '${peso(order.total)} was handed back and every serving '
+                        'went back on the menu. ',
+                  'expired' =>
+                    'Nobody came for it, so its servings went back on the '
+                        'menu. Nothing was ever paid. ',
+                  _ => 'Nothing was paid, so nothing went back. ',
+                }}'
                 'The order is kept rather than deleted, so the record of what '
                 'happened stays complete, and it is left out of every sales '
                 'and profit figure.',

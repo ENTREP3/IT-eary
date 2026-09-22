@@ -23,11 +23,11 @@ const RANGES = [
   { label: 'Everything', days: 0 },
 ] as const;
 
-const STATUSES = ['all', 'pending', 'paid', 'preparing', 'ready', 'completed', 'cancelled', 'refunded'] as const;
+const STATUSES = ['all', 'pending', 'paid', 'preparing', 'ready', 'completed', 'cancelled', 'refunded', 'expired'] as const;
 
 function StatusPill({ status }: { status: Order['status'] }) {
   const tone =
-    status === 'cancelled' || status === 'refunded'
+    status === 'cancelled' || status === 'refunded' || status === 'expired'
       ? 'bg-[#c8442a]/25 text-[#e87a5c]'
       : status === 'completed'
         ? 'bg-[#8cc07a]/20 text-[#8cc07a]'
@@ -39,6 +39,9 @@ function StatusPill({ status }: { status: Order['status'] }) {
 
 /** What the money did, which is not the same question as what the kitchen did. */
 function MoneyPill({ order }: { order: Order }) {
+  if (order.status === 'expired') {
+    return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#e8dfc8]/10 opacity-70">Never collected</span>;
+  }
   if (order.status === 'refunded') {
     return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#c8442a]/25 text-[#e87a5c]">Money returned</span>;
   }
@@ -128,10 +131,12 @@ export function OrderDetail({ order, onClose }: { order: Order; onClose: () => v
           {order.proof_path && line('Receipt', <span className="opacity-55">Uploaded, viewable from the dashboard</span>)}
         </div>
 
-        {(order.status === 'cancelled' || order.status === 'refunded') && (
+        {(order.status === 'cancelled' || order.status === 'refunded' || order.status === 'expired') && (
           <p className="mt-3 text-xs opacity-55 leading-relaxed">
             {order.status === 'refunded'
               ? `₱${Number(order.total).toFixed(2)} was handed back and every serving went back on the menu. `
+              : order.status === 'expired'
+                ? 'Nobody came for it, so its servings went back on the menu. Nothing was ever paid. '
               : 'Nothing was paid, so nothing went back. '}
             The order is kept rather than deleted, so the record of what happened stays complete, and it
             is left out of every sales and profit figure.
@@ -224,7 +229,7 @@ export function OrderHistory() {
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs opacity-60">
         <span>{shown.length} order{shown.length === 1 ? '' : 's'}</span>
         <span>Takings ₱{takings.toFixed(2)}</span>
-        <span className="opacity-70">Unpaid and cancelled orders are listed, but not counted in the takings.</span>
+        <span className="opacity-70">Unpaid, cancelled, refunded and expired orders are listed, but not counted in the takings.</span>
       </div>
 
       {error && <p className="text-sm text-[#e87a5c]">{error}</p>}

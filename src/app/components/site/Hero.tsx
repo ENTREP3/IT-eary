@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { displayPhoto } from '../../lib/photos';
 import { Link } from 'react-router';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { ArrowRight } from 'lucide-react';
@@ -72,7 +73,7 @@ export function Hero() {
               className="absolute inset-0"
             >
               <ImageWithFallback
-                src={current.image}
+                src={displayPhoto(current.image)}
                 alt=""
                 className="w-full h-full object-cover"
               />

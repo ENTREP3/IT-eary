@@ -62,6 +62,14 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
 
   loadRecent: async () => {
     set({ loading: true });
+    // Plates held by tickets nobody came for, given back before the board is
+    // drawn — otherwise staff read a dish as sold out while it sits in a
+    // platter. Ignored on failure: the board matters more than the sweep.
+    try {
+      await supabase.rpc('release_stale_tickets');
+    } catch {
+      /* the board matters more */
+    }
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabase
       .from('orders')
@@ -233,7 +241,12 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
  * that becomes a sale or an admission that it never was one.
  */
 export function countsAsSale(o: Order) {
-  return o.paid_at !== null && o.status !== 'cancelled' && o.status !== 'refunded';
+  return (
+    o.paid_at !== null &&
+    o.status !== 'cancelled' &&
+    o.status !== 'refunded' &&
+    o.status !== 'expired'
+  );
 }
 
 /** A ticket the shop can still hand money back on, per the shop's own rule. */
