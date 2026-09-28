@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Receipt, Search, X } from 'lucide-react';
 import { useOrdersStore, formatOrderTime, itemsSummary } from '../../store/ordersStore';
 import type { Order } from '../../lib/types';
+import { humanError } from '../../lib/errors';
 
 /**
  * Every order the shop has taken, not just the ones still on the board.
@@ -164,7 +165,7 @@ export function OrderHistory() {
     setError(null);
     loadHistory(days)
       .then((r) => live && setRows(r))
-      .catch((e) => live && setError(e instanceof Error ? e.message : 'Could not load the history.'))
+      .catch((e) => live && setError(humanError(e, 'Could not load the history.')))
       .finally(() => live && setLoading(false));
     return () => {
       live = false;

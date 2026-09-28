@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../errors.dart';
 
 import '../../models/models.dart';
 import '../../services/api.dart';
@@ -104,7 +105,7 @@ class _CartScreenState extends State<CartScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = '$e';
+        _error = humanError(e);
         _submitting = false;
       });
     }

@@ -569,15 +569,59 @@ class Loyalty {
   final int completed;
   final int untilNext;
 
-  const Loyalty({required this.completed, required this.untilNext});
+  /// Rewards already earned, newest first, each with the code to type at
+  /// checkout. These were being fetched and dropped, so a claimed reward lived
+  /// only in the screen's memory and was gone on the next load.
+  final List<LoyaltyReward> rewards;
+
+  const Loyalty({
+    required this.completed,
+    required this.untilNext,
+    this.rewards = const [],
+  });
 
   factory Loyalty.fromMap(Map<String, dynamic> m) => Loyalty(
     completed: (m['completed'] as num?)?.toInt() ?? 0,
     untilNext: (m['until_next'] as num?)?.toInt() ?? 5,
+    rewards: ((m['rewards'] as List?) ?? const [])
+        .map((r) => LoyaltyReward.fromMap(Map<String, dynamic>.from(r as Map)))
+        .toList(),
   );
 
   /// Filled stamps on the current card, 0 to 4.
   int get stamps => completed % 5;
+
+  /// Whether a reward has been earned and not yet taken.
+  ///
+  /// Measured against what has actually been claimed rather than a flag on the
+  /// screen, so the button does not reappear after a reload.
+  bool get canClaim => completed ~/ 5 > rewards.length;
+}
+
+/// One earned loyalty reward.
+class LoyaltyReward {
+  final String id;
+  final String code;
+  final String label;
+  final DateTime? redeemedAt;
+
+  const LoyaltyReward({
+    required this.id,
+    required this.code,
+    required this.label,
+    this.redeemedAt,
+  });
+
+  factory LoyaltyReward.fromMap(Map<String, dynamic> m) => LoyaltyReward(
+    id: m['id'] as String? ?? '',
+    code: m['code'] as String? ?? '',
+    label: m['label'] as String? ?? 'Loyalty reward',
+    redeemedAt: m['redeemed_at'] == null
+        ? null
+        : DateTime.tryParse(m['redeemed_at'] as String),
+  );
+
+  bool get used => redeemedAt != null;
 }
 
 /// A discount the owner is running now.

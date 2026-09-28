@@ -23,8 +23,10 @@ import { useOrdersStore, isRefundable } from '../store/ordersStore';
 import { Receipt } from './Receipt';
 import { KitchenBoard } from './shared/KitchenBoard';
 import { RefundDialog } from './shared/RefundDialog';
+import { AddToOrder } from './shared/AddToOrder';
 import type { Order, PaymentMethod, PaymentStatus } from '../lib/types';
 import { supabase } from '../lib/supabase';
+import { humanError } from '../lib/errors';
 
 type Stage = 'lookup' | 'review' | 'receipt';
 
@@ -134,7 +136,7 @@ function CashierCounter({ chrome }: { chrome: boolean }) {
         setStage(found.paid_at ? 'receipt' : 'review');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Lookup failed.');
+      setError(humanError(err, 'Lookup failed.'));
     } finally {
       setBusy(false);
     }
@@ -159,7 +161,7 @@ function CashierCounter({ chrome }: { chrome: boolean }) {
       setOrder(paid);
       setStage('receipt');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not record payment.');
+      setError(humanError(err, 'Could not record payment.'));
     } finally {
       setBusy(false);
     }
@@ -363,6 +365,8 @@ function CashierCounter({ chrome }: { chrome: boolean }) {
                   </span>
                 </div>
               </div>
+
+              <AddToOrder order={order} onChanged={setOrder} />
 
               {error && (
                 <div className="mt-4 flex items-center gap-2 text-sm text-[#e87a5c]">

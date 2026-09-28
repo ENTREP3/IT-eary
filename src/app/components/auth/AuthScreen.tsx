@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Loader2, ShieldCheck, Store } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import type { UserRole } from '../../lib/types';
+import { humanError } from '../../lib/errors';
 
 type Area = 'admin' | 'cashier';
 
@@ -42,7 +43,7 @@ export function AuthScreen({ area, allowed }: { area: Area; allowed: UserRole[] 
     try {
       await loginStaff(email.trim(), password, allowed);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
+      setError(humanError(err, 'Something went wrong.'));
     } finally {
       setBusy(false);
     }

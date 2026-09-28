@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Loader2, Plus, Tag, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useConfirm } from '../shared/useConfirm';
+import { humanError } from '../../lib/errors';
 
 /**
  * Where the owner runs a promotion without needing a developer.
@@ -76,7 +77,7 @@ export function PromotionsPanel() {
       usage_limit: form.usage_limit ? Number(form.usage_limit) : null,
     });
     setBusy(false);
-    if (err) return setError(err.message);
+    if (err) return setError(humanError(err));
     setForm(blank);
     load();
   };

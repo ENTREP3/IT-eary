@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Check, Eye, Loader2, Quote, Star } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useBusinessStore, STOREFRONT_DEFAULTS, type Storefront } from '../../store/businessStore';
+import { humanError } from '../../lib/errors';
 
 /**
  * What the storefront shows, decided by the owner.
@@ -77,7 +78,7 @@ export function StorefrontPanel() {
       // Put it back. A control that stays where you left it after a failed save
       // is lying about what customers are seeing.
       setDraft(before);
-      setError(e instanceof Error ? e.message : 'Could not save that.');
+      setError(humanError(e, 'Could not save that.'));
     } finally {
       setBusy(false);
     }

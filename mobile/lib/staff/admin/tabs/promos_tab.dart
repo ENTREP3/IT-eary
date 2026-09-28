@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../errors.dart';
 
 import '../../../tokens.dart';
 import '../admin_api.dart';
@@ -56,7 +57,7 @@ class _PromosTabState extends State<PromosTab> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = '$e';
+          _error = humanError(e);
           _rows = const [];
         });
       }

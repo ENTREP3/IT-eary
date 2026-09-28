@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../errors.dart';
 
 import '../../models/models.dart';
 import '../../tokens.dart';
@@ -84,7 +85,7 @@ class _RefundSheetState extends State<RefundSheet> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = '$e';
+          _error = humanError(e);
           _busy = false;
         });
       }

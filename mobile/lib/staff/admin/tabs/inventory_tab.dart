@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../errors.dart';
 
 import '../../../models/models.dart';
 import '../../../tokens.dart';
@@ -290,7 +291,7 @@ class _InventoryFormState extends State<_InventoryForm> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = '$e';
+          _error = humanError(e);
           _busy = false;
         });
       }
@@ -460,7 +461,7 @@ class _ReceiveFormState extends State<_ReceiveForm> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = '$e';
+          _error = humanError(e);
           _busy = false;
         });
       }

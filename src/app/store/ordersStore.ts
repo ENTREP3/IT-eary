@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Order, PaymentMethod, PaymentStatus } from '../lib/types';
+import { humanError } from '../lib/errors';
 
 type OrdersState = {
   /** Orders from roughly the last 7 days, newest first (admin view). */
@@ -198,7 +199,7 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
       p_method: method ?? null,
       p_note: note,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(humanError(error));
     const order = data as Order;
     set((s) => ({ orders: s.orders.map((o) => (o.id === order.id ? order : o)) }));
     return order;
@@ -209,7 +210,7 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
       p_ticket_code: ticketCode,
       p_status: status,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(humanError(error));
     set((s) => ({
       orders: s.orders.map((o) =>
         o.ticket_code === ticketCode

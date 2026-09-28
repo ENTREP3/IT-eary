@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { displayPhoto } from '../../lib/photos';
 import { Link } from 'react-router';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
@@ -45,21 +45,61 @@ export function Hero() {
 
   const [i, setI] = useState(0);
 
+  /**
+   * Set once somebody swipes or taps a dot.
+   *
+   * They have taken over, and a slideshow that carries on pulling away under
+   * their thumb is worse than one that never moved.
+   */
+  const [held, setHeld] = useState(false);
+
   useEffect(() => {
-    // No timer for a single slide, and none for somebody who has asked their
-    // system to stop moving things.
-    if (stillness || !show.hero_seconds || slides.length < 2) return;
+    // No timer for a single slide, none for somebody who has asked their
+    // system to stop moving things, and none once they are driving.
+    if (held || stillness || !show.hero_seconds || slides.length < 2) return;
     const id = setInterval(
       () => setI((n) => (n + 1) % slides.length),
       show.hero_seconds * 1000,
     );
     return () => clearInterval(id);
-  }, [stillness, show.hero_seconds, slides.length]);
+  }, [held, stillness, show.hero_seconds, slides.length]);
+
+  /** Moves the hero by hand, wrapping at either end. */
+  const step = (by: number) => {
+    if (slides.length < 2) return;
+    setHeld(true);
+    setI((n) => (n + by + slides.length) % slides.length);
+  };
+
+  // Where a touch started, so a flick can be told from a tap or a scroll.
+  const touch = useRef<{ x: number; y: number } | null>(null);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY };
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const from = touch.current;
+    touch.current = null;
+    if (!from) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - from.x;
+    const dy = t.clientY - from.y;
+    // Horizontal, and far enough to be deliberate. Anything more vertical than
+    // sideways is the diner scrolling the page, not changing the picture.
+    if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy)) return;
+    step(dx < 0 ? 1 : -1);
+  };
 
   const current = slides[i % Math.max(1, slides.length)];
 
   return (
-    <section className="relative isolate min-h-[78vh] flex items-end overflow-hidden">
+    <section
+      className="relative isolate min-h-[78vh] flex items-end overflow-hidden"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
       {/* the photograph */}
       <div className="absolute inset-0 -z-20 bg-diner-ink">
         <AnimatePresence mode="sync">
@@ -159,7 +199,7 @@ export function Hero() {
                   {slides.map((d, n) => (
                     <button
                       key={d.id}
-                      onClick={() => setI(n)}
+                      onClick={() => { setHeld(true); setI(n); }}
                       aria-label={`Show ${d.name}`}
                       aria-current={n === i}
                       className={`h-1 rounded-full transition-all ${

@@ -256,9 +256,14 @@ class Api {
   /// The quotes for the showcase band, chosen by the owner's own rules.
   ///
   /// The same query the website runs, so the two cannot end up quoting
-  /// different diners. With comments switched off the wordless ratings are kept
-  /// rather than filtered out: the band becomes nothing but scores, and those
-  /// scores are exactly what it has to show.
+  /// different diners.
+  ///
+  /// Every rating above the bar comes back, whatever the two switches say. The
+  /// comments switch used to filter this query — with it on, a review with no
+  /// words was dropped entirely, so a shop whose diners rated without writing
+  /// anything had a band that showed nothing at all. It now decides only
+  /// whether the words are printed; the stars are the owner's other switch,
+  /// and neither hides a rating the other would have shown.
   static Future<List<Review>> showcaseReviews(Storefront show) async {
     try {
       var q = _db
@@ -266,11 +271,22 @@ class Api {
           .select('id, dish_id, rating, comment, author_name, featured')
           .gte('rating', show.reviewsMinStars);
 
-      if (show.comments) q = q.neq('comment', '');
       if (show.reviewsSource == 'picked') q = q.eq('featured', true);
 
       final rows = await q.order('created_at', ascending: false).limit(40);
-      return rows.map<Review>((r) => Review.fromMap(r)).toList();
+      final reviews = rows.map<Review>((r) => Review.fromMap(r)).toList();
+
+      // With the words on, the ones that have words lead — a band that opens
+      // on three bare scores wastes the best thing the shop has. Nothing is
+      // dropped, so a wordless five stars still gets its turn further along.
+      if (show.comments) {
+        reviews.sort((a, b) {
+          final ac = a.comment.isNotEmpty ? 0 : 1;
+          final bc = b.comment.isNotEmpty ? 0 : 1;
+          return ac - bc;
+        });
+      }
+      return reviews;
     } catch (_) {
       return const [];
     }

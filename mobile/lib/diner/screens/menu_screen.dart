@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../errors.dart';
 
 import '../../models/models.dart';
 import '../../widgets/photo_sizes.dart';
 import '../../services/api.dart';
 import '../../widgets/dish_image.dart';
 import '../widgets/dish_photos.dart';
+import '../widgets/rice_sheet.dart';
 import '../state/cart.dart';
 import '../state/favourites.dart';
 import '../widgets/review_band.dart' show Stars;
@@ -13,7 +15,26 @@ import '../../theme.dart';
 import 'about_screen.dart';
 import 'account_screen.dart';
 import 'cart_screen.dart';
-import 'ticket_screen.dart';
+
+/// The chip that means no category at all.
+///
+/// A label rather than null, because it is both the value held in state and
+/// the word on the button, and two names for one thing is how they drift.
+const kAllDishes = 'All dishes';
+
+/// The chip that shows only what this diner has hearted.
+///
+/// The heart had nowhere to lead: it marked a card and that was the end of it,
+/// so the only way back to a saved dish was to scroll looking for a filled-in
+/// icon. Favourites stay on the device rather than in the database, which is
+/// what makes them work without an account at all.
+const kFavourites = 'Favourites';
+
+/// The chip that shows only what the owner marked.
+///
+/// The same dishes the storefront leads with, reachable from inside the menu.
+/// Owner-marked, never calculated: the shop decides what it is proud of.
+const kBestSellers = 'Best sellers';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -39,6 +60,20 @@ class _MenuScreenState extends State<MenuScreen> {
 
   /// Star ratings by dish id, from diners who actually bought the dish.
   Map<String, DishRating> _ratings = const {};
+
+  /// The rice on the menu, cheapest first.
+  ///
+  /// Read from the menu rather than hardcoded, because rice is a dish like any
+  /// other: the owner sets its price, can take it off when the pot runs out,
+  /// and it shows on the ticket at the counter. Sold-out rice simply stops
+  /// being offered.
+  List<Dish> get _riceServings {
+    final rice = _dishes
+        .where((d) => d.category == 'Kanin' && d.available)
+        .toList()
+      ..sort((a, b) => a.price.compareTo(b.price));
+    return rice;
+  }
 
   /// What the diner has typed. Empty means browse by category as before.
   String _query = '';
@@ -73,20 +108,16 @@ class _MenuScreenState extends State<MenuScreen> {
         _tagline = shop?.tagline;
         _show = shop?.storefront ?? Storefront.defaults;
         _ratings = ratings;
-        // Open on a category that actually has food today — landing on one
-        // where everything is sold out reads as though the shop is closed.
-        _category ??= cats.isEmpty
-            ? null
-            : cats.firstWhere(
-                (c) => dishes.any((d) => d.category == c && d.available),
-                orElse: () => cats.first,
-              );
+        // Opens on the whole menu. Starting inside one group meant a diner
+        // who did not know which group a dish lived in had to guess, and a
+        // group that happened to be sold out read as a closed shop.
+        _category ??= kAllDishes;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = '$e';
+        _error = humanError(e);
         _loading = false;
       });
     }
@@ -95,13 +126,47 @@ class _MenuScreenState extends State<MenuScreen> {
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<Cart>();
+    // Watched, not read: un-hearting the last saved dish has to redraw the
+    // chips and the list in the same frame, or the filter keeps showing food
+    // that is no longer in it.
+    final favourites = context.watch<Favourites>();
+    // Only when the owner has marked something and has the badge switched
+    // on: a chip promising bestsellers on a menu that shows no such badge
+    // would be the shop contradicting itself.
+    final hasPicks = _show.bestseller && _dishes.any((d) => d.featured);
+
+    final chips = <String>[
+      kAllDishes,
+      if (hasPicks) kBestSellers,
+      if (!favourites.isEmpty) kFavourites,
+      ..._categories,
+    ];
+
+    // Un-hearting the last saved dish takes the chip away with it, which would
+    // otherwise leave the diner on a filter that no longer exists, staring at
+    // an empty menu with nothing selected.
+    if (_category == kFavourites && favourites.isEmpty) {
+      _category = kAllDishes;
+    }
+    // The owner un-marking their last bestseller takes the chip away, which
+    // would otherwise leave the diner on a filter that no longer exists.
+    if (_category == kBestSellers && !hasPicks) {
+      _category = kAllDishes;
+    }
+
     // Searching looks across the whole menu, not inside the chosen category.
     // Narrowing to the category first would mean a diner searching "adobo"
     // while Merienda happens to be selected finds nothing, and concludes the
     // shop does not serve it.
     final q = _query.trim().toLowerCase();
     var visible = q.isEmpty
-        ? _dishes.where((d) => d.category == _category).toList()
+        ? (_category == kAllDishes
+              ? List<Dish>.from(_dishes)
+              : _category == kFavourites
+              ? _dishes.where((d) => favourites.contains(d.id)).toList()
+              : _category == kBestSellers
+              ? _dishes.where((d) => d.featured).toList()
+              : _dishes.where((d) => d.category == _category).toList())
         : _dishes
             .where(
               (d) =>
@@ -156,13 +221,6 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
             ),
           ),
-          IconButton(
-            tooltip: 'Find my ticket',
-            icon: const Icon(Icons.confirmation_number_outlined),
-            onPressed: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const FindTicketScreen())),
-          ),
           // The account was reachable only from the storefront, so a diner
           // already browsing had to go backwards to sign in or to check an
           // order they were waiting on. The menu is where people actually
@@ -196,7 +254,7 @@ class _MenuScreenState extends State<MenuScreen> {
         ],
       ),
       body: PageBody(
-        child: RefreshIndicator(onRefresh: _load, child: _buildBody(visible)),
+        child: RefreshIndicator(onRefresh: _load, child: _buildBody(visible, chips)),
       ),
       bottomNavigationBar: cart.isEmpty
           ? null
@@ -240,7 +298,7 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  Widget _buildBody(List<Dish> visible) {
+  Widget _buildBody(List<Dish> visible, List<String> chips) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator(color: Palette.red));
     }
@@ -340,10 +398,10 @@ class _MenuScreenState extends State<MenuScreen> {
                   height: 40,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    itemCount: _categories.length,
+                    itemCount: chips.length,
                     separatorBuilder: (_, _) => const SizedBox(width: 8),
                     itemBuilder: (_, i) {
-                      final c = _categories[i];
+                      final c = chips[i];
                       final selected = c == _category;
                       return ChoiceChip(
                         label: Text(c),
@@ -382,6 +440,7 @@ class _MenuScreenState extends State<MenuScreen> {
                 dish: visible[i],
                 rating: _ratings[visible[i].id],
                 show: _show,
+                rice: _riceServings,
               ),
             ),
           ),
@@ -391,7 +450,12 @@ class _MenuScreenState extends State<MenuScreen> {
 }
 
 class _DishCard extends StatelessWidget {
-  const _DishCard({required this.dish, this.rating, required this.show});
+  const _DishCard({
+    required this.dish,
+    this.rating,
+    required this.show,
+    this.rice = const [],
+  });
 
   final Dish dish;
   final DishRating? rating;
@@ -399,6 +463,9 @@ class _DishCard extends StatelessWidget {
   /// What the owner has chosen to show. Passed in rather than read here so one
   /// card cannot disagree with the next about what the shop is displaying.
   final Storefront show;
+
+  /// The rice servings on the menu, so the card can offer them with the ulam.
+  final List<Dish> rice;
 
   @override
   Widget build(BuildContext context) {
@@ -462,7 +529,12 @@ class _DishCard extends StatelessWidget {
               ),
             Padding(
               padding: const EdgeInsets.all(16),
-              child: _DishBody(dish: dish, rating: rating, show: show),
+              child: _DishBody(
+                dish: dish,
+                rating: rating,
+                show: show,
+                rice: rice,
+              ),
             ),
           ],
         ),
@@ -560,11 +632,36 @@ class _DishBody extends StatelessWidget {
     required this.dish,
     required this.rating,
     required this.show,
+    this.rice = const [],
   });
 
   final Dish dish;
   final DishRating? rating;
   final Storefront show;
+  final List<Dish> rice;
+
+  /// Adds the ulam, having asked what rice goes with it.
+  ///
+  /// Rice is skipped for rice itself, and for a menu where none is cooking, so
+  /// the sheet never opens to ask a question with one possible answer.
+  Future<void> _addWithRice(BuildContext context) async {
+    final cart = context.read<Cart>();
+    if (rice.isEmpty || dish.category == 'Kanin') {
+      cart.add(dish);
+      return;
+    }
+
+    final choice = await RiceSheet.open(context, dish, rice);
+    // Backed out of the sheet: they have not ordered anything.
+    if (choice == null) return;
+
+    cart.add(dish);
+    if (choice.rice != null) {
+      for (var i = 0; i < choice.servings; i++) {
+        cart.add(choice.rice!);
+      }
+    }
+  }
 
   /// What diners wrote about this dish, in a sheet.
   ///
@@ -735,7 +832,7 @@ class _DishBody extends StatelessWidget {
           )
         else if (qty == 0)
           OutlinedButton.icon(
-            onPressed: () => context.read<Cart>().add(dish),
+            onPressed: () => _addWithRice(context),
             icon: const Icon(Icons.add, size: 18),
             label: const Text('Add to order'),
             style: OutlinedButton.styleFrom(

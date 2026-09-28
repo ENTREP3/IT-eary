@@ -121,8 +121,9 @@ export function FaqPage() {
     [
       'What if I lose the code?',
       <>
-        Use <Link to="/menu" className="text-diner-accent hover:underline">Find my ticket</Link> on
-        the menu page and type the code, or ask at the counter with the name you used.
+        Open <Link to="/account" className="text-diner-accent hover:underline">My orders</Link>.
+        Your order is there whether or not you made an account, because this device remembers what
+        it ordered. If you are on a different phone, ask at the counter with the name you used.
       </>,
     ],
     [

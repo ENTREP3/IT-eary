@@ -14,7 +14,6 @@ import {
   Copy,
   Upload,
   RefreshCw,
-  Ticket as TicketIcon,
   ImageIcon,
   ArrowLeft,
   Search,
@@ -53,6 +52,7 @@ import {
 } from '../../lib/localPrefs';
 import type { Dish } from '../data';
 import type { Order, PaymentMethod } from '../../lib/types';
+import { humanError } from '../../lib/errors';
 
 /** Re-renders whatever reads it whenever the device's own preferences change. */
 function usePrefs<T>(read: () => T): T {
@@ -85,6 +85,36 @@ const PICKUP_CHOICES: { label: string; minutes: number | null }[] = [
  * so ordering never requires signing up. Signing in only adds what needs memory
  * across visits, such as history and live order tracking.
  */
+/**
+ * The chip that means no category at all.
+ *
+ * A label rather than an empty string, because it is both the value held in
+ * state and the word on the button, and two names for one thing is how they
+ * drift apart.
+ */
+const ALL_DISHES = 'All dishes';
+
+/**
+ * The chip that shows only what this diner has hearted.
+ *
+ * The heart had nowhere to lead: it marked a card and that was the end of it,
+ * so the only way back to a saved dish was to scroll the menu looking for a
+ * filled-in icon. Favourites stay on the device rather than in the database —
+ * a usual order is a private convenience, not something the shop needs to know,
+ * and keeping it local is what makes it work without an account at all.
+ */
+const FAVOURITES = 'Favourites';
+
+/**
+ * The chip that shows only what the owner marked.
+ *
+ * The same dishes the front page leads with, reachable from inside the menu —
+ * a diner who scrolled past the storefront had no way back to them without
+ * going home. Owner-marked, never calculated: the shop decides what it is
+ * proud of.
+ */
+const BEST_SELLERS = 'Best sellers';
+
 export function StorefrontApp() {
   const user = useAuthStore((s) => s.user);
   const show = useBusinessStore((s) => s.profile.storefront);
@@ -93,10 +123,9 @@ export function StorefrontApp() {
   const menuLoaded = useKarinderyaStore((s) => s.loaded);
 
   const [stage, setStage] = useState<Stage>('menu');
-  const [cat, setCat] = useState<string>('');
+  const [cat, setCat] = useState<string>(ALL_DISHES);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [order, setOrder] = useState<Order | null>(null);
-  const [lookupOpen, setLookupOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -135,12 +164,26 @@ export function StorefrontApp() {
   // Open on a category that actually has food today. Landing on one where
   // everything is sold out reads as though the karinderya is closed.
   useEffect(() => {
-    if (!categories.length || categories.includes(cat)) return;
-    const stocked = categories.find((c) =>
-      dishes.some((d) => d.category === c && d.available),
-    );
-    setCat(stocked ?? categories[0]);
-  }, [categories, dishes, cat]);
+    if (cat === FAVOURITES && favourites.length === 0) {
+      setCat(ALL_DISHES);
+      return;
+    }
+    if (cat === BEST_SELLERS && !dishes.some((d) => d.featured)) {
+      setCat(ALL_DISHES);
+      return;
+    }
+    if (
+      !categories.length ||
+      cat === ALL_DISHES ||
+      cat === FAVOURITES ||
+      cat === BEST_SELLERS ||
+      categories.includes(cat)
+    )
+      return;
+    // A category that has gone away falls back to the whole menu rather than
+    // to some other group the diner never picked.
+    setCat(ALL_DISHES);
+  }, [categories, dishes, cat, favourites]);
 
   // A search looks across the whole menu; the category chips only apply when
   // nobody is searching, otherwise a hit in another category would be hidden.
@@ -152,11 +195,19 @@ export function StorefrontApp() {
         [d.name, d.tagalog, d.description, d.category].some((f) => f?.toLowerCase().includes(q)),
       );
     }
-    const inCategory = dishes.filter((d) => d.category === cat);
+    // An empty category means everything, which is what ALL_DISHES selects.
+    const inCategory =
+      cat === ALL_DISHES
+        ? dishes
+        : cat === FAVOURITES
+          ? dishes.filter((d) => favourites.includes(d.id))
+          : cat === BEST_SELLERS
+            ? dishes.filter((d) => d.featured)
+            : dishes.filter((d) => d.category === cat);
     // Hiding sold-out dishes is the owner's call. Left on, a diner sees what to
     // come back for; switched off, a thin day simply looks shorter.
     return show.sold_out ? inCategory : inCategory.filter((d) => d.available);
-  }, [dishes, cat, query, searching, show.sold_out]);
+  }, [dishes, cat, query, searching, show.sold_out, favourites]);
 
   const count = cart.reduce((a, c) => a + c.qty, 0);
   const total = cart.reduce((a, c) => a + c.qty * c.dish.price, 0);
@@ -215,13 +266,6 @@ export function StorefrontApp() {
                 <span className="hidden sm:inline">Order again</span>
               </button>
             )}
-            <button
-              onClick={() => setLookupOpen(true)}
-              className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-full border border-diner-ink/20 hover:bg-diner-ink hover:text-diner-ground transition-colors"
-            >
-              <TicketIcon size={14} />
-              <span className="hidden sm:inline">Find my ticket</span>
-            </button>
 
             {/* The account was reachable only from the landing page, so a diner
                 already on the menu had to navigate backwards to sign in or to
@@ -284,7 +328,12 @@ export function StorefrontApp() {
 
             {!searching && (
               <nav className="mt-4 flex gap-2 flex-wrap">
-                {categories.map((c) => (
+                {[
+                  ALL_DISHES,
+                  ...(show.bestseller && dishes.some((d) => d.featured) ? [BEST_SELLERS] : []),
+                  ...(favourites.length > 0 ? [FAVOURITES] : []),
+                  ...categories,
+                ].map((c) => (
                   <button
                     key={c}
                     onClick={() => setCat(c)}
@@ -294,7 +343,17 @@ export function StorefrontApp() {
                         : 'bg-diner-card border border-diner-ink/15 hover:border-diner-ink/40'
                     }`}
                   >
-                    {c}
+                    {c === BEST_SELLERS ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Flame size={13} /> {c}
+                      </span>
+                    ) : c === FAVOURITES ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Heart size={13} className="fill-current" /> {c}
+                      </span>
+                    ) : (
+                      c
+                    )}
                   </button>
                 ))}
               </nav>
@@ -394,17 +453,6 @@ export function StorefrontApp() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {lookupOpen && (
-          <LookupSheet
-            onClose={() => setLookupOpen(false)}
-            onFound={(o) => {
-              setLookupOpen(false);
-              onPlaced(o);
-            }}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
@@ -1054,7 +1102,7 @@ function RateSheet({
       saveRating({ dishId: dish.id, stars, comment: comment.trim(), at: new Date().toISOString(), ticket });
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not post that rating.');
+      setError(humanError(e, 'Could not post that rating.'));
       setBusy(false);
     }
   };
@@ -1279,7 +1327,7 @@ function CartSheet({
       if (rpcErr) throw rpcErr;
       onPlaced(data as Order);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not place the order.');
+      setError(humanError(e, 'Could not place the order.'));
       setBusy(false);
     }
   };
@@ -1669,7 +1717,7 @@ function TicketView({
       if (rpcErr) throw rpcErr;
       onUpdate(data as Order);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload failed.');
+      setError(humanError(e, 'Upload failed.'));
     } finally {
       setUploading(false);
     }
@@ -1859,7 +1907,7 @@ function CancelOrder({ order, onCancelled }: { order: Order; onCancelled: () => 
     if (err) {
       // Most likely the counter settled it, or the kitchen started, in the
       // seconds since this screen last heard about it.
-      setError(err.message);
+      setError(humanError(err));
       return;
     }
     // Out of this device's own list too, so "Order again" cannot offer back
@@ -1919,80 +1967,3 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
   );
 }
 
-/** Pull a ticket back up on another device, or after closing the tab. */
-function LookupSheet({
-  onClose,
-  onFound,
-}: {
-  onClose: () => void;
-  onFound: (o: Order) => void;
-}) {
-  const [code, setCode] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const find = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = code.trim().toUpperCase();
-    if (!trimmed) return;
-    setBusy(true);
-    setError(null);
-    // Through the function, not the table. A plain select used to work for
-    // anybody because the read policy allowed any recent order; it no longer
-    // does, and this is where the device says which tickets are its own.
-    const { data } = await supabase.rpc('find_my_ticket', {
-      p_ticket_code: trimmed,
-      p_device_token: deviceToken(),
-    });
-    setBusy(false);
-
-    const found = Array.isArray(data) ? data[0] : data;
-    if (!found) {
-      setError(
-        `No ticket "${trimmed}" on this device. If you ordered on another phone, ask at the counter.`,
-      );
-    } else {
-      onFound(found as Order);
-    }
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-diner-ink/60 backdrop-blur-sm grid place-items-center p-4"
-    >
-      <form
-        onSubmit={find}
-        className="w-full max-w-sm bg-diner-ground rounded-3xl p-6 border border-diner-ink/10"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }} className="text-2xl">
-            Find my ticket
-          </h2>
-          <button type="button" onClick={onClose} aria-label="Close">
-            <X size={18} />
-          </button>
-        </div>
-        <input
-          autoFocus
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          maxLength={12}
-          placeholder="K7M2Q9"
-          className="w-full h-14 rounded-2xl bg-diner-card border border-diner-ink/15 text-center text-2xl font-mono tracking-[0.3em] outline-none focus:border-diner-ink/40"
-        />
-        {error && <p className="mt-2 text-sm text-diner-accent text-center">{error}</p>}
-        <button
-          type="submit"
-          disabled={busy}
-          className="mt-4 w-full py-3 rounded-full bg-diner-ink text-diner-ground flex items-center justify-center gap-2 disabled:opacity-50"
-        >
-          {busy && <Loader2 size={16} className="animate-spin" />}
-          Find ticket
-        </button>
-      </form>
-    </motion.div>
-  );
-}

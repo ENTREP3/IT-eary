@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { Loader2, Printer, QrCode } from 'lucide-react';
 import { useBusinessStore } from '../../store/businessStore';
+import { humanError } from '../../lib/errors';
 
 /**
  * The printed poster that gets the app onto a diner's phone.
@@ -70,7 +71,7 @@ export function AppPosterSection() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save that.');
+      setError(humanError(e, 'Could not save that.'));
     } finally {
       setSaving(false);
     }

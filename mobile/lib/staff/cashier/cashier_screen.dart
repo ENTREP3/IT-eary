@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../errors.dart';
 
 import '../../models/models.dart';
 import '../../tokens.dart';
 import '../admin/tabs/kitchen_tab.dart';
 import '../widgets/refund_sheet.dart';
+import 'add_to_order_sheet.dart';
+import '../live_refresh.dart';
 import '../staff_api.dart';
 
 enum _CounterView { counter, kitchen }
@@ -29,8 +32,37 @@ class _CashierScreenState extends State<CashierScreen> {
   String? _error;
   _CounterView _view = _CounterView.counter;
 
+  LiveRefresh? _live;
+
+  @override
+  void initState() {
+    super.initState();
+    // The ticket on screen is the one thing at the counter that moves on its
+    // own: the kitchen marks it ready, the owner refunds it, a stale ticket
+    // expires. Watching orders means the cashier is never looking at a state
+    // the shop has already left behind.
+    _live = LiveRefresh.watch(
+      name: 'counter-ticket',
+      tables: const ['orders'],
+      onChange: _refreshShownTicket,
+    );
+  }
+
+  /// Re-reads whatever ticket is on screen. Silent when there is none.
+  Future<void> _refreshShownTicket() async {
+    final shown = _ticket;
+    if (shown == null) return;
+    try {
+      final fresh = await StaffApi.findTicket(shown.ticketCode);
+      if (fresh != null && mounted) setState(() => _ticket = fresh);
+    } catch (_) {
+      // A dropped read is not worth interrupting somebody mid-transaction.
+    }
+  }
+
   @override
   void dispose() {
+    _live?.dispose();
     _codeCtrl.dispose();
     super.dispose();
   }
@@ -60,7 +92,7 @@ class _CashierScreenState extends State<CashierScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = '$e';
+        _error = humanError(e);
         _busy = false;
       });
     }
@@ -109,7 +141,7 @@ class _CashierScreenState extends State<CashierScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = '$e';
+        _error = humanError(e);
         _busy = false;
       });
     }
@@ -446,9 +478,32 @@ class _CashierScreenState extends State<CashierScreen> {
               ),
             ),
           ],
+
+          // Offered on any unpaid ticket, whichever way they mean to pay, so a
+          // diner who reaches the till and asks for one more ulam can be served
+          // rather than refused. Past payment it is a second sale, and the
+          // database refuses it, so it is not shown at all.
+          if (!paid) ...[
+            const SizedBox(height: 10),
+            TextButton.icon(
+              onPressed: _busy ? null : () => _addItems(t),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Add something to this order'),
+              style: TextButton.styleFrom(
+                foregroundColor: Tokens.staffInk.withValues(alpha: 0.75),
+                minimumSize: const Size.fromHeight(44),
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  /// Opens the menu so the cashier can add to a ticket still being built.
+  Future<void> _addItems(Ticket t) async {
+    final updated = await AddToOrderSheet.open(context, t.ticketCode);
+    if (updated != null && mounted) setState(() => _ticket = updated);
   }
 
   Widget _card({required Widget child}) => Container(

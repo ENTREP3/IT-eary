@@ -52,11 +52,15 @@ export function ReviewShowcase() {
         .order('created_at', { ascending: false })
         .limit(40);
 
-      // A quote with no words is not a quote, so while comments are on the
-      // wordless ratings are left out. With comments off the band is nothing
-      // but scores, and those same ratings are exactly what it has to show.
-      if (show.comments) q = q.neq('comment', '');
-
+      // Every rating above the bar, whatever the two switches say.
+      //
+      // The comments switch used to filter the query — with it on, a review
+      // with no words was dropped entirely, so a shop whose diners rated
+      // without writing anything had a band that showed nothing at all. That
+      // made one switch quietly decide which ratings existed, which is not
+      // what it claims to do. It now decides only whether the words are
+      // printed; the stars are the owner's other switch, and neither hides a
+      // rating the other would have shown.
       if (show.reviews_source === 'picked') q = q.eq('featured', true);
 
       const { data, error } = await q;
@@ -66,15 +70,22 @@ export function ReviewShowcase() {
       const names = new Map((dishes ?? []).map((d) => [d.id, d.name as string]));
 
       if (cancelled) return;
-      setQuotes(
-        (data ?? []).map((r) => ({
-          id: r.id as string,
-          dish: names.get(r.dish_id as string) ?? '',
-          rating: r.rating as number,
-          comment: r.comment as string,
-          author: (r.author_name as string) ?? null,
-        })),
-      );
+      const rows = (data ?? []).map((r) => ({
+        id: r.id as string,
+        dish: names.get(r.dish_id as string) ?? '',
+        rating: r.rating as number,
+        comment: (r.comment as string) ?? '',
+        author: (r.author_name as string) ?? null,
+      }));
+
+      // With the words on, the ones that have words lead — a band that opens
+      // on three bare scores wastes the best thing the shop has. Nothing is
+      // dropped, so a wordless five stars still gets its turn further along.
+      if (show.comments) {
+        rows.sort((a, b) => Number(!!b.comment) - Number(!!a.comment));
+      }
+
+      setQuotes(rows);
       setPage(0);
     })();
 
@@ -111,7 +122,12 @@ export function ReviewShowcase() {
   return (
     <section className="shell py-8 border-t border-diner-ink/10">
       <h2 className="text-[11px] tracking-[0.25em] uppercase opacity-55 mb-4">
-        {show.comments ? 'What diners said' : 'How diners rated us'}
+        {/* Promising words on a band that turned out to have none reads as a
+            page that failed to load, so the heading follows what is actually
+            there rather than what the switch asked for. */}
+        {show.comments && quotes.some((q) => q.comment)
+          ? 'What diners said'
+          : 'How diners rated us'}
       </h2>
 
       <div className={`grid gap-3 ${BAND_COLUMNS}`}>

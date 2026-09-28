@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../errors.dart';
 
 import '../../../models/models.dart';
 import '../../../tokens.dart';
@@ -71,7 +72,7 @@ class _HistoryTabState extends State<HistoryTab> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = '$e';
+          _error = humanError(e);
           _rows = const [];
         });
       }

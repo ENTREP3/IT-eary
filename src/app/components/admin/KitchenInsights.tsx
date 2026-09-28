@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Loader2, RefreshCw, Trash2, TrendingDown, TrendingUp, Users } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { humanError } from '../../lib/errors';
 
 /**
  * The questions a kitchen asks, which the sales chart cannot answer.
@@ -96,7 +97,7 @@ export function KitchenInsights() {
       setWaste((w.data as Waste[]) ?? []);
       setReasons((r.data as Reason[]) ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not read the figures.');
+      setError(humanError(e, 'Could not read the figures.'));
     } finally {
       setLoading(false);
     }

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Download, Loader2, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useConfirm } from '../shared/useConfirm';
+import { humanError } from '../../lib/errors';
 
 /**
  * Keeping GCash receipts for as long as they are useful, and no longer.
@@ -61,7 +62,7 @@ export function ReceiptRetention() {
 
     const { data, error } = await q;
     if (error) {
-      setError(error.message);
+      setError(humanError(error));
       setRows([]);
       return;
     }
@@ -116,7 +117,7 @@ export function ReceiptRetention() {
 
       setDownloaded(days);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not download them all. Nothing has been deleted.');
+      setError(humanError(e, 'Could not download them all. Nothing has been deleted.'));
     } finally {
       setBusy(null);
     }
@@ -144,7 +145,7 @@ export function ReceiptRetention() {
       setDownloaded(null);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not delete them.');
+      setError(humanError(e, 'Could not delete them.'));
     } finally {
       setBusy(null);
     }

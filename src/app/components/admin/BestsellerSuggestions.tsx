@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Flame, Loader2, Star, StarOff, X } from 'lucide-react';
 import { useKarinderyaStore } from '../../store/karinderyaStore';
 import { useBusinessStore, STOREFRONT_DEFAULTS } from '../../store/businessStore';
+import { humanError } from '../../lib/errors';
 
 /**
  * What the sales say, offered as a question rather than acted on.
@@ -163,7 +164,7 @@ export function BestsellerSuggestions() {
         await save({ storefront: { ...show, bestseller_dismissed: rest } });
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'That did not save.');
+      setError(humanError(e, 'That did not save.'));
     } finally {
       setBusy(null);
     }
@@ -175,7 +176,7 @@ export function BestsellerSuggestions() {
     try {
       await save({ storefront: { ...show, bestseller_dismissed: { ...dismissed, [key]: sold } } });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'That did not save.');
+      setError(humanError(e, 'That did not save.'));
     } finally {
       setBusy(null);
     }
@@ -193,7 +194,7 @@ export function BestsellerSuggestions() {
       delete rest[UNMARK + id];
       await save({ storefront: { ...show, bestseller_dismissed: rest } });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'That did not save.');
+      setError(humanError(e, 'That did not save.'));
     } finally {
       setBusy(null);
     }

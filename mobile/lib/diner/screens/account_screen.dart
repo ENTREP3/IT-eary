@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../errors.dart';
 
 import 'package:flutter/material.dart';
 
@@ -83,7 +84,7 @@ class _SignedOutState extends State<_SignedOut> {
     } catch (e) {
       // Supabase messages are already diner-readable ("Invalid login
       // credentials"), and rewriting them tends to lose the useful ones.
-      if (mounted) setState(() => _error = '$e'.replaceFirst('AuthApiException: ', ''));
+      if (mounted) setState(() => _error = humanError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -276,13 +277,15 @@ class _LoyaltyCard extends StatefulWidget {
 
 class _LoyaltyCardState extends State<_LoyaltyCard> {
   bool _claiming = false;
-  String? _code;
   String? _error;
 
   Loyalty get loyalty => widget.loyalty;
 
-  /// A full card is five completed orders with nothing yet taken off it.
-  bool get _earned => loyalty.completed > 0 && loyalty.stamps == 0;
+  /// Rewards earned so far, refreshed after a claim so a new code joins the
+  /// list rather than living only in this widget.
+  late List<LoyaltyReward> _rewards = loyalty.rewards;
+
+  bool get _earned => loyalty.completed ~/ 5 > _rewards.length;
 
   Future<void> _claim() async {
     setState(() {
@@ -291,16 +294,17 @@ class _LoyaltyCardState extends State<_LoyaltyCard> {
     });
     try {
       final code = await Api.claimLoyaltyReward();
+      final fresh = await Api.loyalty();
       if (!mounted) return;
       setState(() {
-        _code = code;
+        if (fresh != null) _rewards = fresh.rewards;
         _claiming = false;
         if (code == null) _error = 'There is nothing to claim yet.';
       });
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = '$e';
+          _error = humanError(e);
           _claiming = false;
         });
       }
@@ -357,38 +361,7 @@ class _LoyaltyCardState extends State<_LoyaltyCard> {
             style: TextStyle(fontSize: 12, color: Palette.ink.withValues(alpha: 0.65)),
           ),
 
-          if (_code != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Palette.red.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Palette.red.withValues(alpha: 0.35)),
-              ),
-              child: Column(children: [
-                Text('Your code',
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: Palette.ink.withValues(alpha: 0.6))),
-                const SizedBox(height: 4),
-                SelectableText(
-                  _code!,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    letterSpacing: 3,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text('Type it in at checkout.',
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: Palette.ink.withValues(alpha: 0.6))),
-              ]),
-            ),
-          ] else if (_earned) ...[
+          if (_earned) ...[
             const SizedBox(height: 12),
             FilledButton(
               onPressed: _claiming ? null : _claim,
@@ -400,6 +373,46 @@ class _LoyaltyCardState extends State<_LoyaltyCard> {
               ),
               child: Text(_claiming ? 'Claiming…' : 'Claim 20 pesos off'),
             ),
+          ],
+
+          // Every reward earned, not just the one claimed a moment ago. The
+          // code is the whole point: it is what gets typed at checkout.
+          if (_rewards.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Divider(color: Palette.ink.withValues(alpha: 0.1)),
+            const SizedBox(height: 8),
+            Text('YOUR REWARDS',
+                style: TextStyle(
+                    fontSize: 10,
+                    letterSpacing: 2,
+                    color: Palette.ink.withValues(alpha: 0.55))),
+            const SizedBox(height: 8),
+            for (final r in _rewards)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(children: [
+                  Expanded(
+                    child: SelectableText(
+                      r.code,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 15,
+                        letterSpacing: 2,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    r.used ? 'Used' : 'Type it in at checkout',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: r.used
+                          ? Palette.ink.withValues(alpha: 0.4)
+                          : Tokens.semanticGood,
+                    ),
+                  ),
+                ]),
+              ),
           ],
 
           if (_error != null) ...[

@@ -5,6 +5,7 @@ import { useBusinessStore, type Hours } from '../../store/businessStore';
 import { AppPosterSection } from './AppPosterSection';
 import { StorefrontPanel } from './StorefrontPanel';
 import { useConfirm } from '../shared/useConfirm';
+import { humanError } from '../../lib/errors';
 
 /**
  * Everything about the shop itself that only the owner may change.
@@ -60,7 +61,7 @@ function ProfileSection() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save.');
+      setError(humanError(e, 'Could not save.'));
     } finally {
       setBusy(false);
     }

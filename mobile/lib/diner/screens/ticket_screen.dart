@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import '../../errors.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -100,7 +101,7 @@ class _TicketScreenState extends State<TicketScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _uploadError = 'Could not upload that image. $e';
+        _uploadError = humanError(e, 'Could not upload that image.');
         _uploading = false;
       });
     }
@@ -761,7 +762,7 @@ class _FindTicketScreenState extends State<FindTicketScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = '$e';
+        _error = humanError(e);
         _busy = false;
       });
     }

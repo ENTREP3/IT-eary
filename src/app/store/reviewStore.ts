@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { humanError } from '../lib/errors';
 
 /**
  * Dish ratings, shared by everyone.
@@ -81,7 +82,7 @@ export const useReviewStore = create<State>((set, get) => ({
       p_comment: comment,
       p_author_name: authorName ?? null,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(humanError(error));
     await Promise.all([get().load(), get().loadFor(dishId)]);
   },
 }));

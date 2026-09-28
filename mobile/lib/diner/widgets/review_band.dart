@@ -97,7 +97,12 @@ class _ReviewBandState extends State<ReviewBand> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          widget.show.comments ? 'WHAT DINERS SAID' : 'HOW DINERS RATED US',
+          // Promising words on a band that turned out to have none reads as a
+          // page that failed to load, so the heading follows what is actually
+          // there rather than what the switch asked for.
+          widget.show.comments && _quotes.any((q) => q.comment.isNotEmpty)
+              ? 'WHAT DINERS SAID'
+              : 'HOW DINERS RATED US',
           style: TextStyle(
             fontSize: 10,
             letterSpacing: 3,

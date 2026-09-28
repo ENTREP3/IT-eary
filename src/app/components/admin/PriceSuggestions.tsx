@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Check, Loader2, TrendingUp, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { humanError } from '../../lib/errors';
 
 /**
  * Tells the owner when an ingredient price has quietly eaten their margin.
@@ -62,7 +63,7 @@ export function PriceSuggestions() {
     });
     setBusy(null);
     if (error) {
-      setError(error.message);
+      setError(humanError(error));
       return;
     }
     await load();

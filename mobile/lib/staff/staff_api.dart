@@ -11,6 +11,33 @@ import '../services/api.dart';
 class StaffApi {
   static SupabaseClient get _db => Supabase.instance.client;
 
+  /// What is on the menu right now, for adding to an order at the counter.
+  static Future<List<Dish>> availableDishes() async {
+    final rows = await _db
+        .from('dishes')
+        .select()
+        .eq('available', true)
+        .order('name');
+    return rows.map<Dish>((r) => Dish.fromMap(r)).toList();
+  }
+
+  /// Adds to a ticket that has not been paid for yet.
+  ///
+  /// A diner who gets to the till and wants one more ulam used to have to be
+  /// refused, or served off the books. Past payment the database refuses it —
+  /// taking more money against a settled ticket is a second sale — so the
+  /// error is shown as written rather than reworded.
+  static Future<Ticket> addItems(String ticketCode, String dishId,
+      {int qty = 1}) async {
+    final row = await _db.rpc('add_order_items', params: {
+      'p_ticket_code': ticketCode.trim().toUpperCase(),
+      'p_items': [
+        {'id': dishId, 'qty': qty},
+      ],
+    });
+    return Ticket.fromMap(Map<String, dynamic>.from(row as Map));
+  }
+
   static Session? get session => _db.auth.currentSession;
 
   static Stream<AuthState> get authChanges => _db.auth.onAuthStateChange;

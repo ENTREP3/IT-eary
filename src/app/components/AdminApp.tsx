@@ -96,6 +96,7 @@ import {
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
+import { humanError } from '../lib/errors';
 
 type Tab =
   | 'dashboard'
@@ -589,7 +590,7 @@ function ReconciliationPanel({ orders }: { orders: Order[] }) {
         verified ? 'Confirmed against GCash history' : 'Not found in GCash history',
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not resolve.');
+      setError(humanError(err, 'Could not resolve.'));
     } finally {
       setBusy(null);
     }
@@ -1543,7 +1544,7 @@ function ExpensesManager() {
       setLabel('');
       setAmount('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add expense.');
+      setError(humanError(err, 'Failed to add expense.'));
     } finally {
       setBusy(false);
     }
@@ -1737,7 +1738,7 @@ function PaymentsPanel() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save.');
+      setError(humanError(err, 'Failed to save.'));
     } finally {
       setSaving(false);
     }
@@ -1751,7 +1752,7 @@ function PaymentsPanel() {
     try {
       await uploadQr(file);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed.');
+      setError(humanError(err, 'Upload failed.'));
     } finally {
       setUploading(false);
     }
@@ -2000,7 +2001,7 @@ function MenuControl() {
         setPhotoError(`Only ${room} more would fit, so the rest were skipped.`);
       }
     } catch (err) {
-      setPhotoError(err instanceof Error ? err.message : 'That photo could not be uploaded.');
+      setPhotoError(humanError(err, 'That photo could not be uploaded.'));
     } finally {
       setUploading(false);
     }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../errors.dart';
 
 import '../tokens.dart';
 import 'staff_api.dart';
@@ -92,7 +93,7 @@ class _SignInScreenState extends State<SignInScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = '$e'.replaceFirst('Exception: ', '');
+        _error = humanError(e);
         _busy = false;
       });
     }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../errors.dart';
 
 import '../../models/models.dart';
 import '../../tokens.dart';
+import '../live_refresh.dart';
 import 'admin_api.dart';
 import 'tabs/analytics_tab.dart';
 import 'tabs/dashboard_tab.dart';
@@ -45,10 +47,27 @@ class _AdminScreenState extends State<AdminScreen> {
     ('Shop', 'Your details, and what diners see'),
   ];
 
+  LiveRefresh? _live;
+
   @override
   void initState() {
     super.initState();
     _loadAll();
+
+    // The dashboard used to fetch once at sign-in and then sit there, which is
+    // the only reason it ever had a Refresh button. A ticket settled at the
+    // counter now reaches the kitchen without anybody pressing anything.
+    _live = LiveRefresh.watch(
+      name: 'staff-dashboard',
+      tables: const ['orders', 'dishes', 'inventory', 'expenses'],
+      onChange: _loadAll,
+    );
+  }
+
+  @override
+  void dispose() {
+    _live?.dispose();
+    super.dispose();
   }
 
   /// Loads every owner-only dataset.
@@ -79,7 +98,7 @@ class _AdminScreenState extends State<AdminScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = '$e';
+        _error = humanError(e);
         _loading = false;
       });
     }
@@ -120,11 +139,6 @@ class _AdminScreenState extends State<AdminScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            onPressed: _loadAll,
-            icon: const Icon(Icons.refresh, size: 20),
-            tooltip: 'Refresh',
-          ),
           if (widget.onSignOut != null)
             IconButton(
               onPressed: widget.onSignOut,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../../errors.dart';
 
 import 'package:flutter/material.dart';
 
@@ -1017,7 +1018,7 @@ class _DishFormState extends State<_DishForm> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = '$e';
+          _error = humanError(e);
           _busy = false;
         });
       }
@@ -1259,7 +1260,7 @@ class _RecipeSheetState extends State<_RecipeSheet> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _message = '$e';
+          _message = humanError(e);
           _failed = true;
         });
       }
@@ -1285,7 +1286,7 @@ class _RecipeSheetState extends State<_RecipeSheet> {
       if (mounted) {
         setState(() {
           _rows = const [];
-          _message = '$e';
+          _message = humanError(e);
           _failed = true;
         });
       }
@@ -1313,7 +1314,7 @@ class _RecipeSheetState extends State<_RecipeSheet> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _message = '$e';
+          _message = humanError(e);
           _failed = true;
         });
       }
@@ -1342,7 +1343,7 @@ class _RecipeSheetState extends State<_RecipeSheet> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _message = '$e';
+          _message = humanError(e);
           _failed = true;
         });
       }

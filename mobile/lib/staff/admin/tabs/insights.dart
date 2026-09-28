@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../errors.dart';
 
 import '../../../tokens.dart';
+import '../../live_refresh.dart';
 import '../admin_api.dart';
 import 'widgets.dart';
 
@@ -32,10 +34,27 @@ class _KitchenInsightsState extends State<KitchenInsights> {
   List<Map<String, dynamic>> _waste = const [];
   List<Map<String, dynamic>> _reasons = const [];
 
+  LiveRefresh? _live;
+
   @override
   void initState() {
     super.initState();
     _load();
+
+    // These figures come from functions rather than tables, so nothing about
+    // them arrives on its own. Watching what feeds them is the next best thing.
+    _live = LiveRefresh.watch(
+      name: 'kitchen-insights',
+      tables: const ['orders', 'cook_log', 'refunds', 'inventory'],
+      onChange: _load,
+      settle: const Duration(seconds: 1),
+    );
+  }
+
+  @override
+  void dispose() {
+    _live?.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -65,7 +84,7 @@ class _KitchenInsightsState extends State<KitchenInsights> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = '$e';
+        _error = humanError(e);
         _loading = false;
       });
     }
@@ -105,12 +124,7 @@ class _KitchenInsightsState extends State<KitchenInsights> {
           const SectionHeader(
               eyebrow: 'The kitchen', title: 'In numbers'),
           const Spacer(),
-          IconButton(
-            onPressed: _load,
-            icon: const Icon(Icons.refresh, size: 18),
-            color: faint,
-            tooltip: 'Refresh',
-          ),
+
         ]),
         const SizedBox(height: 8),
 

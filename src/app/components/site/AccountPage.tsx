@@ -17,6 +17,7 @@ import { useAuthStore } from '../../store/authStore';
 import { SiteHeader, SiteFooter } from './SiteChrome';
 import { deviceToken } from '../../lib/localPrefs';
 import type { Order } from '../../lib/types';
+import { humanError } from '../../lib/errors';
 
 /**
  * The diner's own page: sign in or sign up, then follow every order they have
@@ -234,7 +235,7 @@ function AuthPanel() {
         await login(email.trim(), password);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
+      setError(humanError(err, 'Something went wrong.'));
     } finally {
       setBusy(false);
     }
@@ -327,9 +328,20 @@ function AuthPanel() {
 function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }) {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [loyalty, setLoyalty] = useState<{ completed: number; until_next: number } | null>(null);
+  /**
+   * Rewards already earned, with the code the diner types at checkout.
+   *
+   * These were being fetched and dropped, so a claimed reward lived only in
+   * this component's memory — reload the page and the code was gone, with no
+   * way to get it back.
+   */
+  const [rewards, setRewards] = useState<
+    { id: string; code: string; label: string; earned_at: string; redeemed_at: string | null }[]
+  >([]);
   const [promos, setPromos] = useState<{ code: string; label: string }[]>([]);
   const [alerts, setAlerts] = useState<{ dish_id: string; notified_at: string | null }[]>([]);
   const [claiming, setClaiming] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
   const [claimed, setClaimed] = useState<string | null>(null);
 
   const role = useAuthStore((s) => s.profile?.role);
@@ -346,6 +358,25 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
    * while the loyalty count, which does filter by customer, disagreed with it.
    * Access rules decide what you MAY read, not what this screen MEANS.
    */
+  /**
+   * Reads the card, errors included.
+   *
+   * The `.then()` this replaces ignored the error entirely, so when the
+   * function was throwing — it referenced a column that does not exist — the
+   * whole section simply never rendered, with nothing said anywhere about why.
+   */
+  const loadLoyalty = async () => {
+    const { data, error } = await supabase.rpc('my_loyalty');
+    if (error) {
+      console.error('[loyalty] could not be read', error);
+      return;
+    }
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return;
+    setLoyalty({ completed: row.completed, until_next: row.until_next });
+    setRewards(row.rewards ?? []);
+  };
+
   const loadOrders = async () => {
     const uid = (await supabase.auth.getUser()).data.user?.id;
     if (!uid) {
@@ -364,10 +395,7 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
   useEffect(() => {
     loadOrders();
 
-    supabase.rpc('my_loyalty').then(({ data }) => {
-      const row = Array.isArray(data) ? data[0] : data;
-      if (row) setLoyalty({ completed: row.completed, until_next: row.until_next });
-    });
+    loadLoyalty();
 
     /**
      * The codes still worth something to this diner.
@@ -409,7 +437,16 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
     setClaiming(true);
     const { data, error } = await supabase.rpc('claim_loyalty_reward');
     setClaiming(false);
-    if (!error && data) setClaimed(data as string);
+    if (error) {
+      setClaimError(humanError(error));
+      return;
+    }
+    if (data) {
+      setClaimed(data as string);
+      // Re-read the card, so the new reward joins the list that survives a
+      // reload rather than living only in this component.
+      await loadLoyalty();
+    }
   };
 
   const restocked = alerts.filter((a) => a.notified_at);
@@ -480,7 +517,11 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
               ? 'You have earned a reward.'
               : `${loyalty.until_next} more and you earn 20 pesos off.`}
           </p>
-          {loyalty.completed >= 5 && !claimed && (
+          {/* Offered against what is actually still owed: five completed
+              orders earn one reward, and the button goes once every reward
+              earned has been taken. It used to hide on a local flag, so it
+              came back on the next reload. */}
+          {Math.floor(loyalty.completed / 5) > rewards.length && (
             <button
               onClick={claim}
               disabled={claiming}
@@ -489,10 +530,27 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
               {claiming && <Loader2 size={14} className="animate-spin" />} Claim my reward
             </button>
           )}
-          {claimed && (
-            <p className="mt-3 text-sm text-semantic-cash">
-              Your code is <strong className="font-mono tracking-wider">{claimed}</strong>. Use it at checkout.
-            </p>
+          {claimError && <p className="mt-3 text-sm text-diner-accent">{claimError}</p>}
+
+          {rewards.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-diner-ink/10">
+              <h3 className="text-xs tracking-[0.2em] uppercase opacity-55">Your rewards</h3>
+              <ul className="mt-2 space-y-2">
+                {rewards.map((r) => (
+                  <li key={r.id} className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
+                    <span>
+                      <strong className="font-mono tracking-wider">{r.code}</strong>
+                      <span className="opacity-60"> · {r.label}</span>
+                    </span>
+                    {r.redeemed_at ? (
+                      <span className="text-xs opacity-45">Used</span>
+                    ) : (
+                      <span className="text-xs text-semantic-cash">Type it in at checkout</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </section>
       )}

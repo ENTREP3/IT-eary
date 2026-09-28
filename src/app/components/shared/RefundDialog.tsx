@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Loader2, Undo2, X } from 'lucide-react';
 import { useOrdersStore } from '../../store/ordersStore';
 import type { Order, PaymentMethod } from '../../lib/types';
+import { humanError } from '../../lib/errors';
 
 /**
  * Handing money back over the counter.
@@ -48,7 +49,7 @@ export function RefundDialog({ order, onClose }: { order: Order; onClose: () => 
       await refund({ ticketCode: order.ticket_code, reason: finalReason, method, note: note.trim() || null });
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'The refund could not be recorded.');
+      setError(humanError(e, 'The refund could not be recorded.'));
       setBusy(false);
     }
   };

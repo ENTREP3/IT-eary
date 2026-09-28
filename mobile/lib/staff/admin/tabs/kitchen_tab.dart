@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../errors.dart';
 
 import '../../../models/models.dart';
 import '../../../tokens.dart';
@@ -43,7 +44,7 @@ class _KitchenTabState extends State<KitchenTab> {
       // written, because the refusal is the rule speaking.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e')),
+          SnackBar(content: Text(humanError(e))),
         );
       }
     } finally {
@@ -223,7 +224,7 @@ class _SelfLoadingKitchenQueueState extends State<SelfLoadingKitchenQueue> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = '$e';
+          _error = humanError(e);
           _orders = const [];
         });
       }

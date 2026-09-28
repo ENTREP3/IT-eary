@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import '../../../errors.dart';
 
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
@@ -366,7 +367,7 @@ class _ReceiptRetentionState extends State<ReceiptRetention> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = '$e';
+          _error = humanError(e);
           _rows = const [];
         });
       }

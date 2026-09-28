@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { BUSINESS } from '../lib/business';
+import { humanError } from '../lib/errors';
 
 /**
  * The shop's own details, read from the database so the owner can change them.
@@ -162,7 +163,7 @@ export const useBusinessStore = create<State>((set, get) => ({
       .from('business_settings')
       .update({ ...patch, updated_at: new Date().toISOString() })
       .eq('id', 1);
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(humanError(error));
   },
 }));
 

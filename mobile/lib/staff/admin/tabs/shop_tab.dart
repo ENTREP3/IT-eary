@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+import '../../../errors.dart';
 
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
@@ -108,7 +109,7 @@ class _ShopTabState extends State<ShopTab> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = '$e';
+        _error = humanError(e);
         _loading = false;
       });
     }
@@ -196,7 +197,7 @@ class _ShopTabState extends State<ShopTab> {
       if (mounted) {
         setState(() {
           _show = before;
-          _error = '$e';
+          _error = humanError(e);
         });
       }
     } finally {
@@ -781,7 +782,7 @@ class _ReviewPickerState extends State<_ReviewPicker> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = '$e';
+          _error = humanError(e);
           _rows = const [];
         });
       }
@@ -1073,7 +1074,7 @@ class _StaffLoginsState extends State<_StaffLogins> {
       // possible way for this screen to fail.
       if (mounted) {
         setState(() {
-          _error = '$e';
+          _error = humanError(e);
           _rows = const [];
         });
       }
@@ -1420,7 +1421,7 @@ class _AppPosterState extends State<_AppPoster> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _note = '$e';
+          _note = humanError(e);
           _failed = true;
         });
       }
@@ -1457,7 +1458,7 @@ class _AppPosterState extends State<_AppPoster> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _note = '$e';
+          _note = humanError(e);
           _failed = true;
         });
       }
