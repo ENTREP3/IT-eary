@@ -50,6 +50,7 @@ import { useKarinderyaStore } from './store/karinderyaStore';
 import { useReviewStore } from './store/reviewStore';
 import { useBusinessStore } from './store/businessStore';
 import type { UserRole } from './lib/types';
+import { SURFACE } from './lib/surface';
 
 /**
  * All three audiences on the web, mirroring the Flutter apps:
@@ -81,6 +82,41 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* The address decides which app this is.
+
+            A cashier opening bencris-cashier.iteary.site lands at the till
+            rather than at the menu with a path to remember, and the owner
+            dashboard is not a guessable path off the shop front page.
+
+            Presentation, not protection: RequireRole and RLS are unchanged,
+            so a diner typing the admin address meets the same sign-in wall
+            they would at /admin. Hiding a door is not locking it, and the
+            lock is elsewhere. */}
+        {SURFACE === 'admin' && (
+          <Route
+            path="*"
+            element={
+              <RequireRole allowed={['admin']} area="admin">
+                <Suspense fallback={<StaffLoading />}>
+                  <AdminApp />
+                </Suspense>
+              </RequireRole>
+            }
+          />
+        )}
+        {SURFACE === 'cashier' && (
+          <Route
+            path="*"
+            element={
+              <RequireRole allowed={['cashier', 'admin']} area="cashier">
+                <Suspense fallback={<StaffLoading />}>
+                  <CashierApp />
+                </Suspense>
+              </RequireRole>
+            }
+          />
+        )}
+
         <Route path="/" element={<Landing />} />
         <Route path="/menu" element={<StorefrontApp />} />
         <Route path="/about" element={<Page><AboutPage /></Page>} />

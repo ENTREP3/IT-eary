@@ -43,6 +43,14 @@ type AuthState = {
    */
   signUpCustomer: (email: string, password: string) => Promise<{ needsConfirmation: boolean }>;
   loginCustomer: (email: string, password: string) => Promise<void>;
+  /**
+   * Sends the email that lets somebody back into an account they are locked
+   * out of. The link lands on /reset-password, which is the only page that can
+   * set a new one.
+   */
+  sendPasswordReset: (email: string) => Promise<void>;
+  /** Sets a new password for whoever the reset link signed in. */
+  setNewPassword: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -161,6 +169,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (error) throw error;
     const profile = data.user ? await fetchProfile(data.user.id) : null;
     set({ session: data.session, user: data.user, profile, loading: false });
+  },
+
+  sendPasswordReset: async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      // Supabase will only send somebody to an address on its own allow list,
+      // so this has to match the Redirect URLs in the dashboard exactly.
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) throw error;
+  },
+
+  setNewPassword: async (password) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
   },
 
   signOut: async () => {
