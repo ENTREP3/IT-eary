@@ -1,0 +1,22 @@
+{
+  "//": [
+    "Marks everything under supabase/functions as a Deno project.",
+    "",
+    "These files run on Deno inside Supabase, not on Node and not in a browser.",
+    "The project's tsconfig only covers src/, so `npm run typecheck` already",
+    "ignores them — but an editor opening one falls back to the browser settings,",
+    "finds no Deno global, and underlines every line that touches it.",
+    "",
+    "With the Deno extension installed this file makes it take over here and",
+    "nowhere else, so the React app keeps its own tooling. Without it, deno.d.ts",
+    "beside this file declares the handful of Deno APIs these functions use."
+  ],
+  "compilerOptions": {
+    "lib": ["deno.window", "dom"]
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  }
+}

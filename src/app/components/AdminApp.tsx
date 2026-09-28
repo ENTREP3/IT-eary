@@ -97,6 +97,7 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { humanError } from '../lib/errors';
+import { StaffAnnouncement } from './shared/StaffAnnouncement';
 
 type Tab =
   | 'dashboard'
@@ -376,6 +377,10 @@ function AdminDashboard() {
         </div>
 
         <div className="p-4 md:p-8">
+          {/* Above whatever tab is open, because a message from the owner
+              applies to all of them. */}
+          <StaffAnnouncement />
+
           {tab === 'dashboard' && <Dashboard orders={orders} onSeeHistory={() => setTab('history')} />}
           {tab === 'kitchen' && <KitchenPage orders={orders} />}
           {tab === 'history' && <OrderHistory />}

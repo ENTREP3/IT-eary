@@ -80,7 +80,14 @@ String humanError(
     if (low.contains('invalid login credentials')) {
       return 'That email and password do not match.';
     }
-    if (low.contains('already registered')) {
+    // Supabase phrases this at least four ways depending on which endpoint
+    // refused — signup, an email change, or an anonymous guest claiming an
+    // address. They all mean the same thing to the person typing.
+    if (low.contains('already registered') ||
+        low.contains('already been registered') ||
+        low.contains('already exists') ||
+        low.contains('email_exists') ||
+        low.contains('user_already_exists')) {
       return 'There is already an account with that email. Try signing in instead.';
     }
     if (low.contains('email not confirmed')) {

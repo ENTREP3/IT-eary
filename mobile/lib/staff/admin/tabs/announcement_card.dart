@@ -1,0 +1,313 @@
+import 'package:flutter/material.dart';
+
+import '../../../errors.dart';
+import '../../../models/models.dart';
+import '../../../services/api.dart';
+import '../../../tokens.dart';
+import 'widgets.dart';
+
+/// Saying one thing to every diner at once, from behind the counter.
+///
+/// The shop's permanent description is a section above and is not this: that
+/// says what Bencris is, and this says what is true today. Closing early for a
+/// fiesta, a brownout at the palengke, kambing that will be gone by two.
+///
+/// Every announcement expires, and the form offers no way around it. An
+/// open-ended notice is the one that gets forgotten, and a sign still reading
+/// "closing early today" on Thursday teaches customers to stop believing the
+/// banner — which costs more than never having posted it. Anything genuinely
+/// permanent belongs in the shop blurb.
+///
+/// On the phone deliberately, not only the laptop. The owner is usually at the
+/// counter when the reason to announce something happens, and a notice that
+/// has to wait until they get home is a notice nobody needed by then.
+class AnnouncementCard extends StatefulWidget {
+  const AnnouncementCard({super.key});
+
+  @override
+  State<AnnouncementCard> createState() => _AnnouncementCardState();
+}
+
+/// How long it runs, in wording the owner thinks in.
+///
+/// "Rest of today" is what almost every announcement wants, so it leads. It
+/// ends at midnight rather than N hours from now, because "closing early
+/// today" should stop being true when today does, whether it was written at
+/// seven in the morning or at four in the afternoon.
+final _runs = <String, DateTime Function()>{
+  'Rest of today': () {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day, 23, 59, 59);
+  },
+  '2 hours': () => DateTime.now().add(const Duration(hours: 2)),
+  '3 days': () => DateTime.now().add(const Duration(days: 3)),
+  '7 days': () => DateTime.now().add(const Duration(days: 7)),
+};
+
+const _limit = 280;
+
+class _AnnouncementCardState extends State<AnnouncementCard> {
+  final _message = TextEditingController();
+
+  List<Announcement> _rows = const [];
+  String _tone = 'notice';
+  String _run = 'Rest of today';
+  bool _busy = false;
+  String? _error;
+  String? _saved;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _message.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final rows = await Api.allAnnouncements();
+      if (mounted) setState(() => _rows = rows);
+    } catch (e) {
+      if (mounted) setState(() => _error = humanError(e));
+    }
+  }
+
+  Future<void> _post() async {
+    final text = _message.text.trim();
+    if (text.isEmpty) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+      _saved = null;
+    });
+    try {
+      await Api.postAnnouncement(
+        message: text,
+        tone: _tone,
+        endsAt: _runs[_run]!(),
+      );
+      _message.clear();
+      if (mounted) {
+        setState(() {
+          _tone = 'notice';
+          _saved = 'Posted. Every customer screen has it now.';
+        });
+      }
+      await _load();
+    } catch (e) {
+      if (mounted) setState(() => _error = humanError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _remove(Announcement a) async {
+    try {
+      await Api.removeAnnouncement(a.id);
+      await _load();
+    } catch (e) {
+      if (mounted) setState(() => _error = humanError(e));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AdminCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.campaign_outlined,
+                size: 17,
+                color: Tokens.staffAccent,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Announcement',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  color: Tokens.staffInk,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Shows at the top of the menu for every customer, account or not. '
+            'Use it for today. Every announcement ends by itself.',
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.45,
+              color: Tokens.staffInk.withValues(alpha: 0.55),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          TextField(
+            controller: _message,
+            maxLines: 3,
+            maxLength: _limit,
+            style: const TextStyle(fontSize: 14, color: Tokens.staffInk),
+            decoration: const InputDecoration(
+              hintText:
+                  'Sarado kami ngayong hapon, may brownout sa palengke. '
+                  'Bukas po ulit 6AM.',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: _tone,
+                  isDense: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Kind',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'notice', child: Text('Notice')),
+                    DropdownMenuItem(
+                      value: 'warning',
+                      child: Text('Important'),
+                    ),
+                  ],
+                  onChanged: (v) => setState(() => _tone = v ?? 'notice'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: _run,
+                  isDense: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Show for',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  items: _runs.keys
+                      .map((k) => DropdownMenuItem(value: k, child: Text(k)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _run = v ?? 'Rest of today'),
+                ),
+              ),
+            ],
+          ),
+
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              _error!,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Tokens.semanticAlert,
+              ),
+            ),
+          ],
+          if (_saved != null && _error == null) ...[
+            const SizedBox(height: 10),
+            Text(
+              _saved!,
+              style: const TextStyle(fontSize: 12, color: Tokens.semanticGood),
+            ),
+          ],
+
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _busy || _message.text.trim().isEmpty ? null : _post,
+              child: _busy
+                  ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Post announcement'),
+            ),
+          ),
+
+          if (_rows.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            for (final a in _rows) _Row(item: a, onRemove: () => _remove(a)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// One past or present announcement.
+///
+/// Finished ones stay listed. A screen that hid them would give no way to tell
+/// a message that ran its course from one that was never saved at all.
+class _Row extends StatelessWidget {
+  const _Row({required this.item, required this.onRemove});
+
+  final Announcement item;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final live = item.endsAt.isAfter(DateTime.now());
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: live
+                    ? Tokens.semanticGood.withValues(alpha: 0.5)
+                    : Tokens.staffInk.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Text(
+              live ? 'Showing now' : 'Finished',
+              style: TextStyle(
+                fontSize: 10,
+                color: live
+                    ? Tokens.semanticGood
+                    : Tokens.staffInk.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              item.message,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                color: Tokens.staffInk.withValues(alpha: live ? 1 : 0.5),
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: onRemove,
+            icon: const Icon(Icons.delete_outline, size: 17),
+            color: Tokens.staffInk.withValues(alpha: 0.45),
+            tooltip: live ? 'Take it down' : 'Delete',
+          ),
+        ],
+      ),
+    );
+  }
+}

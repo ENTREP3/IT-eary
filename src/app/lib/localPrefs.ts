@@ -78,6 +78,17 @@ export function isFavourite(dishId: string): boolean {
   return getFavourites().includes(dishId);
 }
 
+/**
+ * Replaces the whole list, used when the account and the device are merged.
+ *
+ * Separate from toggleFavourite because it is a different operation: that
+ * one is a diner's decision, this one is two lists being reconciled.
+ */
+export function setFavourites(dishIds: string[]) {
+  write(KEY.favourites, [...new Set(dishIds)]);
+  announce();
+}
+
 export function toggleFavourite(dishId: string): boolean {
   const next = new Set(getFavourites());
   const nowFavourite = !next.has(dishId);

@@ -687,3 +687,36 @@ class DishReview {
     comment: m['comment'] as String? ?? '',
   );
 }
+
+/// Something the shop needs to tell every diner today.
+///
+/// Always has an end: the database refuses a row without one. An announcement
+/// is news, and a sign still reading "closing early today" on Thursday teaches
+/// people to stop believing the banner.
+class Announcement {
+  final String id;
+  final String message;
+
+  /// 'notice' is ordinary news; 'warning' is something that costs the diner a
+  /// wasted trip if they miss it.
+  final String tone;
+  final DateTime endsAt;
+
+  const Announcement({
+    required this.id,
+    required this.message,
+    required this.tone,
+    required this.endsAt,
+  });
+
+  bool get isWarning => tone == 'warning';
+
+  factory Announcement.fromMap(Map<String, dynamic> m) => Announcement(
+    id: m['id'] as String? ?? '',
+    message: m['message'] as String? ?? '',
+    tone: m['tone'] as String? ?? 'notice',
+    endsAt:
+        DateTime.tryParse(m['ends_at'] as String? ?? '')?.toLocal() ??
+        DateTime.now(),
+  );
+}

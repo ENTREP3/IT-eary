@@ -17,14 +17,29 @@
  */
 export type Surface = 'diner' | 'admin' | 'cashier';
 
-/** Subdomain prefixes, matched before the first dot. */
-const ADMIN = 'bencris-admin';
-const CASHIER = 'bencris-cashier';
+/**
+ * Matched on the end of the label before the first dot, not the whole of it.
+ *
+ * The shop's addresses are bencris-admin.iteary.site and its cashier twin, but
+ * those are not the only names these sites answer to. Firebase gives every site
+ * a default address of its own — iteary-admin.web.app — and serves it there for
+ * as long as the custom domain takes to clear DNS and be issued a certificate,
+ * which is hours, not minutes.
+ *
+ * Matching the label exactly meant that during that window every one of the
+ * three addresses fell through to the storefront, so the counter and the
+ * dashboard appeared not to have deployed at all. Matching the suffix covers
+ * both names, and any later rename of the sites, without widening this to
+ * anything a stranger could aim at the dashboard: the address still has to be
+ * one Firebase serves for this project.
+ */
+const ADMIN = '-admin';
+const CASHIER = '-cashier';
 
 export function surfaceFor(hostname: string): Surface {
   const first = hostname.toLowerCase().split('.')[0];
-  if (first === ADMIN) return 'admin';
-  if (first === CASHIER) return 'cashier';
+  if (first.endsWith(ADMIN)) return 'admin';
+  if (first.endsWith(CASHIER)) return 'cashier';
   return 'diner';
 }
 

@@ -154,6 +154,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
 
+    /**
+     * Signing up with an address that already has an account does not fail.
+     *
+     * Supabase answers as though it worked, because telling a stranger which
+     * emails are registered hands them a list of this shop's customers. What
+     * it returns instead is a user with no identities attached, and that is
+     * the tell.
+     *
+     * Left alone it reads as success: the diner is sent to wait for an email
+     * that never arrives, and blames the site rather than remembering they
+     * already have an account. Saying so costs nothing here — the sign-in
+     * form below reveals exactly the same thing to anyone who asks it.
+     */
+    if (!data.session && data.user?.identities?.length === 0) {
+      throw new Error('User already registered');
+    }
+
     // With email confirmation switched on there is no session yet, so the
     // caller has to tell the diner to check their inbox rather than silently
     // appearing to do nothing.

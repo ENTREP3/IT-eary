@@ -27,6 +27,7 @@ import { AddToOrder } from './shared/AddToOrder';
 import type { Order, PaymentMethod, PaymentStatus } from '../lib/types';
 import { supabase } from '../lib/supabase';
 import { humanError } from '../lib/errors';
+import { StaffAnnouncement } from './shared/StaffAnnouncement';
 
 type Stage = 'lookup' | 'review' | 'receipt';
 
@@ -234,11 +235,18 @@ function CashierCounter({ chrome }: { chrome: boolean }) {
 
       {chrome && view === 'kitchen' ? (
         <main className="flex-1 p-6 overflow-auto">
+          <StaffAnnouncement />
           <h2 className="text-[11px] tracking-[0.25em] uppercase opacity-45 mb-4">Order queue</h2>
           <KitchenOrders />
         </main>
       ) : (
-      <main className={chrome ? "flex-1 grid place-items-center p-6" : "grid place-items-center py-6"}>
+      <main className={chrome ? "flex-1 p-6" : "py-6"}>
+        {/* Full width above the till, which is otherwise centred: a
+            notice squeezed to the width of the payment card would be
+            easy to take for part of the form. */}
+        <StaffAnnouncement />
+
+        <div className="grid place-items-center">
         <AnimatePresence mode="wait">
           {stage === 'lookup' && (
             <motion.form
@@ -565,6 +573,7 @@ function CashierCounter({ chrome }: { chrome: boolean }) {
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       </main>
       )}
 

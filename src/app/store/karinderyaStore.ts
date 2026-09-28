@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { notifyDishBack } from '../lib/notify';
 import { supabase } from '../lib/supabase';
 import type { Dish, InventoryItem } from '../components/data';
 import { displayPath, makeDisplayCopy } from '../lib/photos';
@@ -251,6 +252,9 @@ export const useKarinderyaStore = create<KarinderyaState>((set, get) => ({
   },
 
   updateDish: async (id, patch) => {
+    // Read before writing, so 'came back' can be told from 'was already on'.
+    const before = get().dishes.find((d) => d.id === id);
+
     const { data, error } = await supabase
       .from('dishes')
       .update(dishPatchToRow(patch))
@@ -258,7 +262,25 @@ export const useKarinderyaStore = create<KarinderyaState>((set, get) => ({
       .select('*')
       .single();
     if (error) throw error;
-    set((s) => ({ dishes: s.dishes.map((d) => (d.id === id ? toDish(data as DishRow) : d)) }));
+
+    const after = toDish(data as DishRow);
+
+    /*
+     * Only on the edge from unavailable to available.
+     *
+     * Every sold-out dish has a 'Tell me when this is back' button, and
+     * pressing it promises exactly that. Until now the shop recorded the
+     * request and waited for the diner to happen to look again, which is
+     * not what the button says.
+     *
+     * Edge, not state: saving the price of a dish that is already on the
+     * menu must not tell everyone it has returned.
+     */
+    if (before && !before.available && after.available) {
+      notifyDishBack(id, after.name);
+    }
+
+    set((s) => ({ dishes: s.dishes.map((d) => (d.id === id ? after : d)) }));
   },
 
   deleteDish: async (id) => {

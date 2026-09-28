@@ -80,44 +80,58 @@ export default function App() {
     return subscribeMenu();
   }, [initAuth, loadPayments, loadMenu, loadRatings, loadBusiness, subscribeMenu]);
 
+  /* The address decides which app this is.
+   *
+   * A cashier opening bencris-cashier.iteary.site lands at the till rather
+   * than at the menu with a path to remember, and the owner dashboard is not
+   * a guessable path off the shop front page.
+   *
+   * Presentation, not protection: RequireRole and RLS are unchanged, so a
+   * diner typing the admin address meets the same sign-in wall they would at
+   * /admin. Hiding a door is not locking it, and the lock is elsewhere.
+   *
+   * A staff address gets its own route table rather than one extra <Route>
+   * added to the diner's. The first attempt did the latter — a `path="*"`
+   * entry listed above the rest — and every staff address served the
+   * storefront, because React Router does not try routes in order. It ranks
+   * them by how specific they are and takes the best match, and `/` beats `*`
+   * at the root every time. Writing it first is no help at all; the only way
+   * to mean "this address is the dashboard" is for the dashboard to be the
+   * only thing the address can reach.
+   */
+  if (SURFACE !== 'diner') {
+    return (
+      <BrowserRouter>
+        <Routes>
+          {/* Staff reset their passwords by email like anyone else, and the
+              link lands on whichever address they were using. */}
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route
+            path="*"
+            element={
+              SURFACE === 'admin' ? (
+                <RequireRole allowed={['admin']} area="admin">
+                  <Suspense fallback={<StaffLoading />}>
+                    <AdminApp />
+                  </Suspense>
+                </RequireRole>
+              ) : (
+                <RequireRole allowed={['cashier', 'admin']} area="cashier">
+                  <Suspense fallback={<StaffLoading />}>
+                    <CashierApp />
+                  </Suspense>
+                </RequireRole>
+              )
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
+
   return (
     <BrowserRouter>
       <Routes>
-        {/* The address decides which app this is.
-
-            A cashier opening bencris-cashier.iteary.site lands at the till
-            rather than at the menu with a path to remember, and the owner
-            dashboard is not a guessable path off the shop front page.
-
-            Presentation, not protection: RequireRole and RLS are unchanged,
-            so a diner typing the admin address meets the same sign-in wall
-            they would at /admin. Hiding a door is not locking it, and the
-            lock is elsewhere. */}
-        {SURFACE === 'admin' && (
-          <Route
-            path="*"
-            element={
-              <RequireRole allowed={['admin']} area="admin">
-                <Suspense fallback={<StaffLoading />}>
-                  <AdminApp />
-                </Suspense>
-              </RequireRole>
-            }
-          />
-        )}
-        {SURFACE === 'cashier' && (
-          <Route
-            path="*"
-            element={
-              <RequireRole allowed={['cashier', 'admin']} area="cashier">
-                <Suspense fallback={<StaffLoading />}>
-                  <CashierApp />
-                </Suspense>
-              </RequireRole>
-            }
-          />
-        )}
-
         <Route path="/" element={<Landing />} />
         <Route path="/menu" element={<StorefrontApp />} />
         <Route path="/about" element={<Page><AboutPage /></Page>} />

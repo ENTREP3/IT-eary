@@ -112,8 +112,45 @@ class Api {
 
   /// Returns true when the account is ready to use, false when the project
   /// requires the address to be confirmed by email first.
+  ///
+  /// A guest signing up is upgraded in place, not replaced.
+  ///
+  /// The app gives every diner an anonymous session the moment it opens, so by
+  /// the time anybody reaches this form there is always one. Calling signUp()
+  /// on top of it asks Supabase to mint a second user while the first is still
+  /// signed in — which is why nothing was created and no email ever went out.
+  /// Attaching the address to the user they already are keeps every order that
+  /// user placed as a guest, rather than stranding it against an identity
+  /// nobody can sign into.
+  ///
+  /// The website has always done this. The phone never did.
   static Future<bool> signUp(String email, String password) async {
+    final existing = currentUser;
+    if (existing != null && existing.isAnonymous) {
+      await _db.auth.updateUser(
+        UserAttributes(email: email.trim(), password: password),
+      );
+      // Still anonymous until the address is confirmed, which is right: the
+      // perks belong to a confirmed account.
+      return false;
+    }
+
     final res = await _db.auth.signUp(email: email.trim(), password: password);
+
+    // Signing up with an address that already has an account does not fail.
+    // Supabase answers as though it worked, because telling a stranger which
+    // emails are registered hands them a list of this shop's customers. What
+    // it returns instead is a user with no identities attached, and that is
+    // the tell.
+    //
+    // Left alone it reads as success: the diner is told to check an inbox
+    // that never receives anything, and blames the app rather than
+    // remembering they already signed up. Saying so costs the shop nothing —
+    // anyone can learn the same thing from the sign-in form.
+    if (res.session == null && (res.user?.identities?.isEmpty ?? false)) {
+      throw const AuthException('User already registered');
+    }
+
     return res.session != null;
   }
 
@@ -334,6 +371,107 @@ class Api {
       return const [];
     }
   }
+
+  // ------------------------------------------------------------- favourites
+
+  /// Records or removes one favourite on the account.
+  ///
+  /// The device has already been updated and the menu already redrawn by the
+  /// time this runs, so a failure costs nothing the diner can see: the heart
+  /// simply does not follow them to their next phone, which is where they
+  /// were before favourites were kept at all.
+  static Future<void> setFavourite(String dishId, bool wanted) async {
+    try {
+      final uid = currentUser?.id;
+      if (uid == null) return;
+
+      if (wanted) {
+        await _db.from('favourites').insert({
+          'user_id': uid,
+          'dish_id': dishId,
+        });
+      } else {
+        await _db
+            .from('favourites')
+            .delete()
+            .eq('user_id', uid)
+            .eq('dish_id', dishId);
+      }
+    } catch (_) {
+      // Already on the device; the account catching up is a bonus.
+    }
+  }
+
+  /// Merges the device list into the account and returns the union.
+  ///
+  /// Null means the merge did not happen — signed out, or offline — and the
+  /// caller should leave the device list exactly as it found it. An empty
+  /// list is a real answer and means something different: this diner has no
+  /// favourites anywhere.
+  static Future<List<String>?> mergeFavourites(List<String> dishIds) async {
+    try {
+      if (currentUser == null) return null;
+
+      final rows = await _db.rpc('merge_favourites', params: {
+        'p_dish_ids': dishIds,
+      });
+      if (rows is! List) return null;
+      return rows.map<String>((r) => r.toString()).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ----------------------------------------------------------- announcements
+
+  /// What the shop is telling everybody right now, or null.
+  ///
+  /// The schedule lives in the row and is enforced by RLS, so this asks for
+  /// the newest one and the database decides whether there is anything to
+  /// hand back. Nothing written for later can leak out early, even to a
+  /// client that asks for it directly.
+  static Future<Announcement?> liveAnnouncement() async {
+    try {
+      final rows = await _db
+          .from('announcements')
+          .select('id, message, tone, ends_at')
+          .order('created_at', ascending: false)
+          .limit(1);
+      if (rows.isEmpty) return null;
+      return Announcement.fromMap(rows.first);
+    } catch (_) {
+      // A banner is never worth standing between somebody and their lunch.
+      return null;
+    }
+  }
+
+  /// Every announcement, for the owner: live, scheduled and finished alike.
+  ///
+  /// Hiding the finished ones would leave no way to tell a message that ran
+  /// its course from one that was never saved.
+  static Future<List<Announcement>> allAnnouncements() async {
+    final rows = await _db
+        .from('announcements')
+        .select('id, message, tone, ends_at')
+        .order('created_at', ascending: false)
+        .limit(20);
+    return rows.map<Announcement>((r) => Announcement.fromMap(r)).toList();
+  }
+
+  /// Posts one. [endsAt] is required by the table, not just by this call.
+  static Future<void> postAnnouncement({
+    required String message,
+    required String tone,
+    required DateTime endsAt,
+  }) =>
+      _db.from('announcements').insert({
+        'message': message.trim(),
+        'tone': tone,
+        'ends_at': endsAt.toUtc().toIso8601String(),
+      });
+
+  static Future<void> removeAnnouncement(String id) =>
+      _db.from('announcements').delete().eq('id', id);
 
   /// What diners wrote about one dish, read when somebody opens it.
   static Future<List<Review>> dishReviews(String dishId) async {

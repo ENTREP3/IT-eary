@@ -18,6 +18,9 @@ import { SiteHeader, SiteFooter } from './SiteChrome';
 import { deviceToken } from '../../lib/localPrefs';
 import type { Order } from '../../lib/types';
 import { humanError } from '../../lib/errors';
+import { NotifyToggle } from './NotifyToggle';
+import { refreshPushRegistration } from '../../lib/push';
+import { syncFavourites } from '../../lib/favourites';
 
 /**
  * The diner's own page: sign in or sign up, then follow every order they have
@@ -258,9 +261,37 @@ function AuthPanel() {
     try {
       if (mode === 'up') {
         const { needsConfirmation } = await signUp(email.trim(), password);
-        if (needsConfirmation) setSent(true);
+        if (needsConfirmation) {
+          /**
+           * Back to the sign-in form, holding the email they just typed.
+           *
+           * This used to be its own screen saying "check your email", which
+           * was a dead end: somebody who opened the link in another tab came
+           * back to a page with nothing on it to sign in with, and the only
+           * way forward was to reload the site.
+           *
+           * The password is cleared because the one they chose does not work
+           * until the link is opened, and leaving it filled in invites trying
+           * it straight away and being turned away.
+           */
+          setMode('in');
+          setPassword('');
+          setSent(true);
+        }
       } else {
         await login(email.trim(), password);
+
+        // The device that agreed to be notified was registered against
+        // whoever was signed in at the time — for most diners, the
+        // anonymous guest they were before making an account. Left alone,
+        // somebody who opted in as a guest and then signed up is silently
+        // unreachable. Raises no prompt: it returns at once unless
+        // permission was already granted.
+        void refreshPushRegistration();
+
+        // Same reason: hearts made on this device as a guest should join
+        // the account rather than be stranded on the handset.
+        void syncFavourites();
       }
     } catch (err) {
       setError(humanError(err, 'Something went wrong.'));
@@ -272,18 +303,6 @@ function AuthPanel() {
   const field =
     'w-full h-11 rounded-xl border border-diner-ink/15 bg-diner-card px-4 text-sm outline-none focus:border-diner-ink/45';
 
-  if (sent) {
-    return (
-      <div className="max-w-md">
-        <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }} className="text-3xl">
-          Check your email
-        </h1>
-        <p className="mt-3 opacity-75 leading-relaxed">
-          We sent a confirmation link to {email}. Open it and you will be signed in.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-md">
@@ -298,6 +317,52 @@ function AuthPanel() {
         every order you have placed, live updates while it is cooking, loyalty rewards, and a
         message when a sold-out dish comes back.
       </p>
+
+
+      {/*
+        Says the account was made, in a way that has to be acknowledged.
+
+        A line of text on the form was not enough. Somebody who has just
+        pressed a button is looking at the button, and the form behind it
+        looks much as it did before — so the account gets made twice, and the
+        second attempt is refused for an address that now exists. Something
+        they have to dismiss cannot be walked past, and it names the one thing
+        that has to happen next: open the email.
+      */}
+      {sent && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-sent-title"
+          onClick={() => setSent(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-diner-card p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              id="confirm-sent-title"
+              style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }}
+              className="text-2xl"
+            >
+              Check your email
+            </h2>
+            <p className="mt-3 text-sm opacity-75 leading-relaxed">
+              We sent a confirmation link to {email}. Open it to confirm the account, then
+              sign in here.
+            </p>
+            <button
+              type="button"
+              autoFocus
+              onClick={() => setSent(false)}
+              className="mt-5 w-full h-11 rounded-full bg-diner-ink text-diner-ground"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={submit} className="mt-7 space-y-3">
         <input
@@ -318,6 +383,7 @@ function AuthPanel() {
           autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
           required
           minLength={8}
+          maxLength={64}
         />
         {error && <p className="text-sm text-diner-accent">{error}</p>}
         <button
@@ -351,6 +417,7 @@ function AuthPanel() {
         onClick={() => {
           setMode(mode === 'in' ? 'up' : 'in');
           setError(null);
+          setSent(false);
         }}
         className="mt-4 text-sm text-diner-accent hover:underline"
       >
@@ -515,6 +582,13 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
           <LogOut size={14} /> Sign out
         </button>
       </header>
+
+      {/* Under the orders heading, where somebody is already thinking about
+          a ticket they are waiting on. Offered here rather than raised as a
+          prompt on arrival: a browser only asks once, and a refusal is
+          permanent unless the diner digs into settings, so the question is
+          only ever put when they have a reason to say yes. */}
+      <NotifyToggle />
 
       {/* A staff account is not a customer. create_ticket() deliberately leaves
           customer_id empty when a signed-in member of staff checks out, so a

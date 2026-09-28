@@ -7,6 +7,7 @@ import { ImageWithFallback } from '../sigma/ImageWithFallback';
 import { useBusinessStore } from '../../store/businessStore';
 import { SiteHeader, SiteFooter } from './SiteChrome';
 import { Hero } from './Hero';
+import { AnnouncementBanner } from './AnnouncementBanner';
 import { ReviewShowcase } from '../diner/ReviewShowcase';
 
 /**
@@ -49,6 +50,8 @@ export function Landing() {
       <SiteHeader />
 
       <Hero />
+
+      <AnnouncementBanner />
 
       {/* ---------------------------------------------------- best sellers */}
       {preview.length > 0 && (

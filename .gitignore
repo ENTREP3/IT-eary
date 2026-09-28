@@ -14,3 +14,6 @@ supabase/.branches
 
 # Office lock files left behind while a document is open
 ~$*
+
+# Firebase CLI deploy cache — a local record of what was last uploaded
+.firebase/

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Order, PaymentMethod, PaymentStatus } from '../lib/types';
 import { humanError } from '../lib/errors';
+import { notifyTicket } from '../lib/notify';
 
 type OrdersState = {
   /** Orders from roughly the last 7 days, newest first (admin view). */
@@ -211,6 +212,11 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
       p_status: status,
     });
     if (error) throw new Error(humanError(error));
+
+    // After the change, never before: a diner told their food is ready
+    // when the update then failed is worse than not being told at all.
+    notifyTicket(ticketCode, status);
+
     set((s) => ({
       orders: s.orders.map((o) =>
         o.ticket_code === ticketCode

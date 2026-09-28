@@ -1,0 +1,179 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * The two notifications that no row change can produce.
+ *
+ * Every other alert in the system hangs off something happening: a status
+ * moves, stock drops, a rating lands. These two are the opposite — they are
+ * about something *not* happening, and about the day being over. Nothing
+ * writes a row at the moment a ticket has been ignored for fifteen minutes,
+ * and nothing writes a row at closing time. Only a clock notices.
+ *
+ * So `pg_cron` runs them.
+ *
+ * ---------------------------------------------------------------------------
+ * A ticket left sitting
+ *
+ * An unpaid ticket holds stock. Somebody orders, wanders off, and three
+ * servings of kaldereta stay reserved for a person who is not coming back. The
+ * counter can settle it or cancel it, but only if somebody notices, and at a
+ * busy till nobody does.
+ *
+ * `nudged_at` is what stops this being a nag. Each ticket is mentioned once;
+ * a reminder that repeats every five minutes is one people learn to swipe away
+ * without reading.
+ *
+ * ---------------------------------------------------------------------------
+ * The day's figures
+ *
+ * One message, after closing, with the numbers the owner would otherwise open
+ * the dashboard to find. Sent whether or not it was a good day — a summary
+ * that only arrives when something is wrong becomes a thing people dread, and
+ * its absence stops meaning anything.
+ *
+ * Times are Manila. The server thinks in UTC, and a summary that arrives at
+ * eight in the morning because nobody converted the hour is worse than none.
+ */
+return new class extends Migration
+{
+    public function up(): void
+    {
+        DB::unprepared(<<<'SQL'
+create extension if not exists pg_cron;
+
+alter table public.orders
+  add column if not exists nudged_at timestamptz;
+
+comment on column public.orders.nudged_at is
+  'When the counter was reminded this ticket is still unpaid. Set once, so the reminder does not repeat.';
+
+-- ---------------------------------------------------------------------------
+-- Tickets nobody has settled
+-- ---------------------------------------------------------------------------
+create or replace function public.nudge_unpaid_tickets()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  r record;
+begin
+  for r in
+    select ticket_code, total
+      from public.orders
+     where paid_at is null
+       and status = 'pending'
+       and nudged_at is null
+       and created_at < now() - interval '15 minutes'
+       -- Anything older than the day is not a ticket somebody is waiting on,
+       -- it is one that was abandoned; a different problem, and not one a
+       -- notification at the till solves.
+       and created_at > now() - interval '6 hours'
+     order by created_at
+     limit 20
+  loop
+    perform public.push_notify(jsonb_build_object(
+      'to', jsonb_build_object('kind', 'staff'),
+      'title', 'Ticket ' || r.ticket_code || ' is still unpaid',
+      'body', 'Ordered over 15 minutes ago, and it is holding stock.',
+      'url', '/',
+      'tag', 'unpaid-' || r.ticket_code
+    ));
+
+    update public.orders set nudged_at = now() where ticket_code = r.ticket_code;
+  end loop;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- What the day came to
+-- ---------------------------------------------------------------------------
+create or replace function public.send_daily_summary()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_start    timestamptz := date_trunc('day', now() at time zone 'Asia/Manila') at time zone 'Asia/Manila';
+  v_orders   integer;
+  v_takings  numeric;
+  v_refunded numeric;
+  v_unsettled integer;
+begin
+  select count(*), coalesce(sum(total), 0)
+    into v_orders, v_takings
+    from public.orders
+   where paid_at >= v_start
+     and status <> 'cancelled';
+
+  select coalesce(sum(amount), 0) into v_refunded
+    from public.refunds
+   where created_at >= v_start;
+
+  select count(*) into v_unsettled
+    from public.orders
+   where created_at >= v_start
+     and paid_at is null
+     and status = 'pending';
+
+  perform public.push_notify(jsonb_build_object(
+    'to', jsonb_build_object('kind', 'admins'),
+    'title', 'Today: ' || trim(to_char(v_takings, 'FM999999990.00')) || ' pesos',
+    'body', v_orders || ' orders'
+            || case when v_refunded > 0
+                 then ', ' || trim(to_char(v_refunded, 'FM999999990.00')) || ' refunded'
+                 else '' end
+            || case when v_unsettled > 0
+                 then ', ' || v_unsettled || ' left unpaid'
+                 else '' end
+            || '.',
+    'url', '/',
+    'tag', 'summary'
+  ));
+exception when others then
+  -- A missing table or a renamed column must not leave a cron job failing
+  -- every night in a log nobody reads.
+  return;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- The schedule
+-- ---------------------------------------------------------------------------
+-- Unscheduled first, so re-running this migration does not stack duplicates.
+select cron.unschedule('nudge-unpaid-tickets')
+ where exists (select 1 from cron.job where jobname = 'nudge-unpaid-tickets');
+
+select cron.unschedule('daily-summary')
+ where exists (select 1 from cron.job where jobname = 'daily-summary');
+
+-- Every five minutes through the day. Cheap: it reads an indexed handful of
+-- rows and usually finds none.
+select cron.schedule('nudge-unpaid-tickets', '*/5 * * * *', 'select public.nudge_unpaid_tickets()');
+
+-- 20:30 Manila is 12:30 UTC, half an hour after the latest closing time.
+select cron.schedule('daily-summary', '30 12 * * *', 'select public.send_daily_summary()');
+SQL);
+    }
+
+    public function down(): void
+    {
+        DB::unprepared(<<<'SQL'
+select cron.unschedule('nudge-unpaid-tickets')
+ where exists (select 1 from cron.job where jobname = 'nudge-unpaid-tickets');
+
+select cron.unschedule('daily-summary')
+ where exists (select 1 from cron.job where jobname = 'daily-summary');
+
+drop function if exists public.send_daily_summary();
+drop function if exists public.nudge_unpaid_tickets();
+
+alter table public.orders drop column if exists nudged_at;
+SQL);
+    }
+};

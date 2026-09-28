@@ -37,17 +37,17 @@ import { ImageWithFallback } from '../sigma/ImageWithFallback';
 import { Wordmark, Tagline } from '../site/SiteChrome';
 import { useBusinessStore } from '../../store/businessStore';
 import { ReviewShowcase } from './ReviewShowcase';
+import { useRateable } from '../../lib/rateable';
+import { toggleFavourite, syncFavourites } from '../../lib/favourites';
 import {
   getFavourites,
   getHistory,
   getMyRating,
-  hasOrdered,
   rememberOrder,
   forgetOrder,
   deviceToken,
   saveRating,
   subscribePrefs,
-  toggleFavourite,
   type PastOrder,
 } from '../../lib/localPrefs';
 import type { Dish } from '../data';
@@ -160,6 +160,13 @@ export function StorefrontApp() {
 
   const favourites = usePrefs(getFavourites);
   const history = usePrefs(getHistory);
+
+  // Bring the device list and the account list together once on arrival.
+  // Neither side wins: a diner may have hearted things here before signing
+  // in, and their account may hold things hearted on another phone.
+  useEffect(() => {
+    void syncFavourites();
+  }, []);
 
   // Open on a category that actually has food today. Landing on one where
   // everything is sold out reads as though the karinderya is closed.
@@ -495,7 +502,17 @@ function DishCard({
   const [rateOpen, setRateOpen] = useState(false);
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const myRating = usePrefs(() => getMyRating(dish.id));
-  const canRate = usePrefs(() => hasOrdered(dish.id));
+
+  // Two sources on purpose. The device knows what this browser ordered,
+  // instantly and without a network. The shop knows what this *diner*
+  // ordered, on any device, which is the only one that still works after
+  // they clear their browser or pick up their phone.
+  const rateable = useRateable();
+  const ticket =
+    usePrefs(() => getHistory().find((o) => o.items.some((i) => i.id === dish.id))?.ticket_code) ??
+    rateable.get(dish.id) ??
+    '';
+  const canRate = Boolean(ticket);
 
   // The published average, from everyone, not just this device.
   const rating = useReviewStore((s) => s.ratings[dish.id]);
@@ -651,7 +668,7 @@ function DishCard({
 
         <AnimatePresence>
           {rateOpen && (
-            <RateSheet dish={dish} existing={myRating} onClose={() => setRateOpen(false)} />
+            <RateSheet dish={dish} ticket={ticket} existing={myRating} onClose={() => setRateOpen(false)} />
           )}
         </AnimatePresence>
 
@@ -1076,10 +1093,14 @@ function Stars({ value, size = 13 }: { value: number; size?: number }) {
  */
 function RateSheet({
   dish,
+  ticket,
   existing,
   onClose,
 }: {
   dish: Dish;
+  /** The ticket this rating will be filed against. Never empty here:
+   *  the button that opens this sheet only appears once one is known. */
+  ticket: string;
   existing?: { stars: number; comment: string };
   onClose: () => void;
 }) {
@@ -1089,8 +1110,6 @@ function RateSheet({
   const [error, setError] = useState<string | null>(null);
   const post = useReviewStore((s) => s.submit);
 
-  // The most recent settled ticket on this device that contained the dish.
-  const ticket = getHistory().find((o) => o.items.some((i) => i.id === dish.id))?.ticket_code ?? '';
 
   const submit = async () => {
     if (!stars || !ticket) return;

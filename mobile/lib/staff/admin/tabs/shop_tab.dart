@@ -9,6 +9,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../models/models.dart';
 import '../../../tokens.dart';
 import '../admin_api.dart';
+import 'announcement_card.dart';
 import 'widgets.dart';
 
 /// The shop's own details, and what the storefront is allowed to show.
@@ -355,6 +356,10 @@ class _ShopTabState extends State<ShopTab> {
           ),
         ),
         const SizedBox(height: 12),
+
+        // -------------------------------------------------- todays notice
+        const AnnouncementCard(),
+        const SizedBox(height: 14),
 
         // --------------------------------------------------- what diners see
         AdminCard(

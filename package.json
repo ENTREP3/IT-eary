@@ -10,7 +10,9 @@
     "check:ui": "node scripts/check-ui.mjs",
     "check:backend": "node scripts/verify-backend.mjs && node scripts/verify-phase4.mjs && node scripts/verify-payment-proof.mjs && node scripts/verify-accounts.mjs",
     "check": "npm run typecheck && npm run check:backend && npm run check:ui",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:surfaces": "node scripts/check-surfaces.mjs",
+    "check:functions": "docker run --rm -v \"$PWD/supabase/functions:/w\" -w /w denoland/deno:latest sh -c \"deno check send-push/index.ts && deno lint send-push/index.ts\""
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -51,6 +53,7 @@
     "cmdk": "1.1.1",
     "date-fns": "3.6.0",
     "embla-carousel-react": "8.6.0",
+    "firebase": "^12.19.0",
     "input-otp": "1.4.2",
     "lucide-react": "0.487.0",
     "motion": "12.23.24",

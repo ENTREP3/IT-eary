@@ -1,0 +1,21 @@
+{
+  "projects": {
+    "default": "iteary-92df6"
+  },
+  "targets": {
+    "iteary-92df6": {
+      "hosting": {
+        "customer": [
+          "bencris"
+        ],
+        "admin": [
+          "bencris-admin"
+        ],
+        "cashier": [
+          "bencris-cashier"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

@@ -69,7 +69,16 @@ export function humanError(e: unknown, fallback = 'Something went wrong. Please 
   if (low.includes('invalid login credentials')) {
     return 'That email and password do not match.';
   }
-  if (low.includes('user already registered') || low.includes('already been registered')) {
+  // Supabase phrases this several ways depending on which endpoint refused —
+  // signup, an email change, or an anonymous guest claiming an address.
+  if (
+    low.includes('user already registered') ||
+    low.includes('already been registered') ||
+    low.includes('already registered') ||
+    low.includes('already exists') ||
+    low.includes('email_exists') ||
+    low.includes('user_already_exists')
+  ) {
     return 'There is already an account with that email. Try signing in instead.';
   }
   if (low.includes('email not confirmed')) {

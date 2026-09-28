@@ -1,0 +1,28 @@
+{
+  // Two languages live in this repository, and the editor has to be told where
+  // the seam is.
+  //
+  // Everything under src/ is a React app: browser globals, npm packages, the
+  // project's own tsconfig. Everything under supabase/functions/ is Deno:
+  // different globals, different module resolution, no node_modules at all.
+  //
+  // Left alone, the editor applies the React setup to both and underlines
+  // every use of `Deno` in the edge functions — seven or eight errors in a
+  // file that Deno itself reports as completely clean. That noise is worse
+  // than useless, because it buries the errors that would actually matter.
+  // One real type error did hide in there exactly this way.
+  //
+  // `deno.enablePaths` turns the Deno language server on for that folder only,
+  // so the React app keeps its own tooling and neither one sees the other's
+  // errors. It needs the Deno extension (denoland.vscode-deno); without it
+  // these settings are simply ignored, and supabase/functions/deno.d.ts
+  // declares the handful of Deno APIs the functions use as a fallback.
+  "deno.enable": false,
+  "deno.enablePaths": ["supabase/functions"],
+  "deno.lint": true,
+
+  // The checks that actually gate this code are `npm run typecheck` for the
+  // app and `npm run check:functions` for the edge functions. The editor is a
+  // convenience; those two are the truth.
+  "typescript.tsdk": "node_modules/typescript/lib"
+}

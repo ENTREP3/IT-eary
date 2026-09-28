@@ -114,10 +114,6 @@ export function AuthScreen({ area, allowed }: { area: Area; allowed: UserRole[] 
             Sign in
           </button>
         </form>
-
-        <p className="text-[11px] opacity-40 mt-4 text-center">
-          No account? The owner creates staff logins on the Staff access screen.
-        </p>
       </motion.div>
     </div>
   );

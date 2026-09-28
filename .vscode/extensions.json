@@ -1,0 +1,6 @@
+{
+  // Suggested when somebody opens this repository. Only one, and only because
+  // without it the edge functions under supabase/functions/ are checked with
+  // the React app's TypeScript setup and report errors that are not real.
+  "recommendations": ["denoland.vscode-deno"]
+}
