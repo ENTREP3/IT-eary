@@ -49,6 +49,14 @@ dependencies:
   # Resizes a picked photo to a display copy at upload time. Pure Dart, so it
   # works the same on the phone and in the browser build.
   image: ^4.5.4
+  # Reads the GitHub Releases API to see whether a newer APK exists.
+  http: ^1.2.2
+  # Opens the release page or the APK in the phone browser, since the app
+  # cannot install a file over itself.
+  url_launcher: ^6.3.1
+  # So the app can read its own version rather than keeping a second copy of
+  # it in code that silently stops matching pubspec.
+  package_info_plus: ^10.2.1
 
 dev_dependencies:
   flutter_test:

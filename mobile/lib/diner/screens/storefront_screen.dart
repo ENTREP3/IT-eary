@@ -9,6 +9,7 @@ import '../widgets/hero_header.dart';
 import '../widgets/review_band.dart';
 import 'account_screen.dart';
 import 'menu_screen.dart';
+import '../widgets/update_banner.dart';
 
 /// The first screen a diner meets, matching the website's landing page.
 ///
@@ -130,6 +131,12 @@ class _StorefrontScreenState extends State<StorefrontScreen> {
                   ),
                 ],
               ),
+
+              // Under the photograph, above the food. A diner opening this
+              // app came to order lunch, so news about a version number is
+              // something they meet on the way down, never a dialog across
+              // the thing they came for.
+              const UpdateBanner(),
 
               if (preview.isNotEmpty) ...[
                 Padding(
