@@ -8,6 +8,7 @@ import '../../services/api.dart';
 import '../../theme.dart';
 import '../../tokens.dart';
 import 'ticket_screen.dart';
+import 'forgot_password_screen.dart';
 
 /// An optional account, and everything it makes possible.
 ///
@@ -160,6 +161,30 @@ class _SignedOutState extends State<_SignedOut> {
             _creating ? 'I already have an account' : 'I am new here',
           ),
         ),
+
+        // Only while signing in. Offering it on the signup form would be
+        // asking somebody to recover an account they are in the middle of
+        // creating.
+        if (!_creating)
+          TextButton(
+            onPressed: _busy
+                ? null
+                : () async {
+                    final changed = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => ForgotPasswordScreen(
+                          // Carried over so nobody types it twice.
+                          email: _email.text.trim(),
+                        ),
+                      ),
+                    );
+                    if (changed == true && mounted) {
+                      setState(() => _notice =
+                          'Password changed. You are signed in.');
+                    }
+                  },
+            child: const Text('Forgot my password'),
+          ),
 
         const SizedBox(height: 8),
         Text(

@@ -51,6 +51,7 @@ import { useReviewStore } from './store/reviewStore';
 import { useBusinessStore } from './store/businessStore';
 import type { UserRole } from './lib/types';
 import { SURFACE } from './lib/surface';
+import { ResetPasswordPage } from './components/site/ResetPassword';
 
 /**
  * All three audiences on the web, mirroring the Flutter apps:
@@ -125,6 +126,10 @@ export default function App() {
         <Route path="/refund" element={<Page><RefundPage /></Page>} />
         <Route path="/privacy" element={<Page><PrivacyPage /></Page>} />
         <Route path="/account" element={<Page><AccountPage /></Page>} />
+        {/* Where a reset link lands. Not behind Page: the visitor arrives
+            here from their inbox, mid-way through proving who they are, and
+            a full site chrome invites them to wander off before finishing. */}
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route
           path="/admin"
           element={

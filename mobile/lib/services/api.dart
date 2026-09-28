@@ -122,6 +122,49 @@ class Api {
 
   static Future<void> signOut() => _db.auth.signOut();
 
+  /// Sends a six-digit code to somebody locked out of their account.
+  ///
+  /// A code rather than the link the website uses. A link has to come back
+  /// into the app, which means App Links or a custom scheme — a deployed
+  /// domain, a verification file it has to serve, and a per-platform dance
+  /// that breaks quietly whenever any of it drifts. A code the diner reads
+  /// from their inbox and types needs none of that and works the same on a
+  /// phone with no default browser set.
+  static Future<void> sendPasswordCode(String email) =>
+      _db.auth.resetPasswordForEmail(email.trim());
+
+  /// Exchanges the code for a session, so the password can then be set.
+  ///
+  /// The recovery type is what a reset email carries; it signs them in for
+  /// long enough to choose a new password and no longer.
+  static Future<void> verifyPasswordCode(String email, String code) =>
+      _db.auth.verifyOTP(
+        email: email.trim(),
+        token: code.trim(),
+        type: OtpType.recovery,
+      );
+
+  /// Sets the new password for whoever the code just signed in.
+  static Future<void> setNewPassword(String password) =>
+      _db.auth.updateUser(UserAttributes(password: password));
+
+  /// The shop's own password rule, asked for rather than copied.
+  ///
+  /// Returns what to do next, or null when the password is acceptable. Asking
+  /// the database means this cannot drift out of step with what the server
+  /// will actually accept, and one round trip on a screen somebody is already
+  /// typing into costs nothing worth saving.
+  static Future<String?> passwordProblem(String password) async {
+    try {
+      final r = await _db.rpc('password_problem', params: {'p_password': password});
+      return r as String?;
+    } catch (_) {
+      // Unreachable rule is not a reason to block somebody: the server checks
+      // again on the way in, and it is the one that decides.
+      return null;
+    }
+  }
+
   /// This diner's own orders, newest first.
   ///
   /// Filtered by customer here on purpose. The access rules would return rows

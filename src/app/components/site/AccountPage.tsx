@@ -219,9 +219,37 @@ function AuthPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const signUp = useAuthStore((s) => s.signUpCustomer);
   const login = useAuthStore((s) => s.loginCustomer);
+  const sendReset = useAuthStore((s) => s.sendPasswordReset);
+
+  /**
+   * Sends the reset email, and says the same thing either way.
+   *
+   * Deliberately does not reveal whether the address has an account. A form
+   * that says "no such email" is a way to find out who has one, which is worth
+   * more to somebody guessing than it is to the person who mistyped.
+   */
+  const forgot = async () => {
+    const address = email.trim();
+    if (!address) {
+      setError('Type your email address first, then ask for a reset.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await sendReset(address);
+    } catch {
+      // Swallowed on purpose, for the same reason: a failure here would
+      // distinguish a real address from an unknown one.
+    } finally {
+      setBusy(false);
+      setResetSent(true);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -289,7 +317,7 @@ function AuthPanel() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
           required
-          minLength={6}
+          minLength={8}
         />
         {error && <p className="text-sm text-diner-accent">{error}</p>}
         <button
@@ -300,6 +328,23 @@ function AuthPanel() {
           {busy && <Loader2 size={16} className="animate-spin" />}
           {mode === 'in' ? 'Sign in' : 'Create account'}
         </button>
+
+        {mode === 'in' && !resetSent && (
+          <button
+            type="button"
+            onClick={forgot}
+            disabled={busy}
+            className="w-full text-sm opacity-60 hover:opacity-100 disabled:opacity-40"
+          >
+            Forgot your password?
+          </button>
+        )}
+        {resetSent && (
+          <p className="text-sm text-semantic-cash leading-relaxed">
+            If there is an account for that address, a reset link is on its way. It works once,
+            and only for a short while.
+          </p>
+        )}
       </form>
 
       <button
