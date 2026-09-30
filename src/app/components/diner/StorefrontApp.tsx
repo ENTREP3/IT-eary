@@ -37,8 +37,10 @@ import { ImageWithFallback } from '../sigma/ImageWithFallback';
 import { Wordmark, Tagline } from '../site/SiteChrome';
 import { useBusinessStore } from '../../store/businessStore';
 import { ReviewShowcase } from './ReviewShowcase';
-import { useRateable } from '../../lib/rateable';
+import { useRateable, useRecentOrders } from '../../lib/rateable';
 import { toggleFavourite, syncFavourites } from '../../lib/favourites';
+import { useMyRating, refreshMyRatings } from '../../lib/myRatings';
+import { displayName } from '../../lib/displayName';
 import {
   getFavourites,
   getHistory,
@@ -159,7 +161,14 @@ export function StorefrontApp() {
   );
 
   const favourites = usePrefs(getFavourites);
-  const history = usePrefs(getHistory);
+  // The device and the account both. Reading only the device meant a
+  // diner signed in on a new browser was offered nothing to reorder,
+  // having ordered many times.
+  const history = useRecentOrders();
+
+  // Null for a guest, which is most visitors. The greeting is only shown to
+  // somebody who has actually told the shop what to call them.
+  const profile = useAuthStore((s) => s.profile);
 
   // Bring the device list and the account list together once on arrival.
   // Neither side wins: a diner may have hearted things here before signing
@@ -310,9 +319,25 @@ export function StorefrontApp() {
                 pushed the food further down. */}
             <div className="lg:flex lg:items-end lg:justify-between lg:gap-10">
               <div>
+                {/* Greeted by the name they chose, which is the reason
+                    signing up asks for a username at all. Above the
+                    tagline because it is about them, not about the shop. */}
+                {profile && (
+                  <p className="mb-2 text-sm">
+                    <span className="opacity-60">Welcome back,</span>{' '}
+                    <span className="font-medium">{displayName(profile)}</span>
+                  </p>
+                )}
+
                 <Tagline className="text-4xl md:text-6xl" />
                 <p className="mt-3 opacity-70 max-w-lg text-sm md:text-base">
-                  Only what's cooking right now. If it isn't here, it's sold out, balik ka bukas.
+                  {/* Two different sentences for two different people. A
+                      regular already knows what the shop is and wants to
+                      be nudged towards ordering; a first-time visitor
+                      needs to be told what they are looking at. */}
+                  {profile
+                    ? 'Freshly cooked and waiting. Pick your ulam and we will have it ready by the time you arrive.'
+                    : "Only what's cooking right now. If it isn't here, it's sold out, balik ka bukas."}
                 </p>
               </div>
 
@@ -501,7 +526,9 @@ function DishCard({
 }) {
   const [rateOpen, setRateOpen] = useState(false);
   const [reviewsOpen, setReviewsOpen] = useState(false);
-  const myRating = usePrefs(() => getMyRating(dish.id));
+  // The device and the account both, so a rating left on a phone still
+  // shows as yours on a laptop.
+  const myRating = useMyRating(dish.id);
 
   // Two sources on purpose. The device knows what this browser ordered,
   // instantly and without a network. The shop knows what this *diner*
@@ -1106,6 +1133,21 @@ function RateSheet({
 }) {
   const [stars, setStars] = useState(existing?.stars ?? 0);
   const [comment, setComment] = useState(existing?.comment ?? '');
+
+  /*
+   * Follow the rating once it arrives.
+   *
+   * useState only reads its argument on the first render, and the account
+   * copy is fetched over the network — so a rating left on another device
+   * lands after this has already initialised to zero stars, and without this
+   * would never be shown. Skipped while the sheet is open, so it cannot
+   * overwrite what somebody is in the middle of typing.
+   */
+  useEffect(() => {
+    if (!existing) return;
+    setStars(existing.stars);
+    setComment(existing.comment);
+  }, [existing?.stars, existing?.comment]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const post = useReviewStore((s) => s.submit);

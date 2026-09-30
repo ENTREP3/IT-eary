@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- android:label is what appears under the icon on a customer's phone. It
+         was "iteary_mobile", the Dart package name, which is a thing no diner
+         has any reason to see. -->
     <application
-        android:label="iteary_mobile"
+        android:label="Bencris"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -124,18 +124,48 @@ class Api {
   /// nobody can sign into.
   ///
   /// The website has always done this. The phone never did.
-  static Future<bool> signUp(String email, String password) async {
+  static Future<bool> signUp(
+    String email,
+    String password, {
+    required NewAccount details,
+  }) async {
+    /*
+     * Carried on the auth user so the database trigger can put them on the
+     * profile the moment it creates it. Sending them afterwards would be a
+     * second call that can fail on its own, leaving an account with no name.
+     *
+     * The same keys the website sends, because one trigger reads both.
+     */
+    final data = {
+      'first_name': details.firstName.trim(),
+      'middle_name': details.middleName?.trim(),
+      'last_name': details.lastName.trim(),
+      'username': details.username.trim(),
+      'nickname': details.nickname?.trim(),
+      'phone': details.phone?.trim(),
+    }..removeWhere((_, v) => v == null || v.isEmpty);
+
     final existing = currentUser;
     if (existing != null && existing.isAnonymous) {
       await _db.auth.updateUser(
-        UserAttributes(email: email.trim(), password: password),
+        UserAttributes(email: email.trim(), password: password, data: data),
       );
+
+      // A guest already has a profile row, made when their anonymous account
+      // was, so the trigger that reads this metadata has long since run and
+      // will not run again. Written directly instead.
+      await saveMyProfile(details);
+
       // Still anonymous until the address is confirmed, which is right: the
       // perks belong to a confirmed account.
       return false;
     }
 
-    final res = await _db.auth.signUp(email: email.trim(), password: password);
+    final res = await _db.auth.signUp(
+      email: email.trim(),
+      password: password,
+      data: data,
+    );
 
     // Signing up with an address that already has an account does not fail.
     // Supabase answers as though it worked, because telling a stranger which
@@ -371,6 +401,85 @@ class Api {
       return const [];
     }
   }
+
+  // ---------------------------------------------------------------- profile
+
+  /// Whether a username is free and allowed.
+  ///
+  /// Answered for anybody, signed in or not, because the signup form needs it
+  /// before an account exists. It does reveal that a name is taken — but so
+  /// does the form the moment it is submitted, and a name people are greeted
+  /// by is public by its nature.
+  static Future<bool> usernameAvailable(String username) async {
+    try {
+      final ok = await _db.rpc(
+        'username_available',
+        params: {'p_username': username.trim()},
+      );
+      return ok == true;
+    } catch (_) {
+      // Offline, or the check failed. Let them submit: the database enforces
+      // this properly on the way in, so the worst case is being told then.
+      return true;
+    }
+  }
+
+  /// This diner's own details, including the email.
+  ///
+  /// Read through a function rather than off the table, because the address
+  /// lives on `auth.users` where no client may look. It returns the caller's
+  /// own row and nobody else's — the function reads `auth.uid()` rather than
+  /// taking an id.
+  static Future<MyProfile?> myProfile() async {
+    try {
+      final rows = await _db.rpc('my_profile');
+      if (rows is! List || rows.isEmpty) return null;
+      return MyProfile.fromMap(Map<String, dynamic>.from(rows.first as Map));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Saves the diner's own name, username and number.
+  ///
+  /// Goes through `save_my_profile` rather than updating the row, because
+  /// `profiles` also holds `role`. A policy wide enough to let somebody fix
+  /// their surname would be wide enough to let them make themselves an owner.
+  static Future<void> saveMyProfile(NewAccount details) => _db.rpc(
+    'save_my_profile',
+    params: {
+      'p_first_name': details.firstName.trim(),
+      'p_last_name': details.lastName.trim(),
+      'p_username': details.username.trim(),
+      'p_middle_name': details.middleName?.trim(),
+      'p_nickname': details.nickname?.trim(),
+      'p_phone': details.phone?.trim(),
+    },
+  );
+
+  // ------------------------------------------------------------------- push
+
+  /// Records this device as somewhere the shop may send a notification.
+  ///
+  /// The token is supplied by Firebase; who it belongs to is read from the
+  /// session by the database, never sent from here. A token arriving for a
+  /// second user is reassigned rather than refused, which is the ordinary
+  /// case: one phone, a guest identity first, a real account after signing up.
+  static Future<void> registerPushToken(String token, String platform) =>
+      _db.rpc(
+        'register_push_token',
+        params: {
+          'p_token': token,
+          'p_platform': platform,
+          // Enough to tell one handset from another on a list of devices, and
+          // nothing that identifies a person.
+          'p_label': 'Android',
+        },
+      );
+
+  /// Stops notifications to one device, leaving the diner's others alone.
+  static Future<void> forgetPushToken(String token) =>
+      _db.rpc('forget_push_token', params: {'p_token': token});
 
   // ------------------------------------------------------------- favourites
 

@@ -27,6 +27,7 @@ import {
   Receipt,
   Star,
   Store,
+  Users,
   Clock,
   Menu,
   FlagTriangleRight,
@@ -98,6 +99,7 @@ import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { humanError } from '../lib/errors';
 import { StaffAnnouncement } from './shared/StaffAnnouncement';
+import { PeoplePanel } from './admin/PeoplePanel';
 
 type Tab =
   | 'dashboard'
@@ -108,6 +110,7 @@ type Tab =
   | 'menu'
   | 'payments'
   | 'promos'
+  | 'people'
   | 'shop';
 
 /** payment_method is null until a cashier settles the ticket. */
@@ -217,6 +220,7 @@ function AdminDashboard() {
             ['menu', 'Menu', UtensilsCrossed],
             ['payments', 'Payments', CreditCard],
             ['promos', 'Promotions', Tag],
+            ['people', 'People', Users],
             ['shop', 'Shop', Store],
           ] as const
         ).map(([k, l, Icon]) => {
@@ -300,6 +304,7 @@ function AdminDashboard() {
                 {tab === 'menu' && '— Menu control'}
                 {tab === 'payments' && '— Payment settings'}
                 {tab === 'promos' && '— Promotions'}
+                {tab === 'people' && '— People'}
                 {tab === 'shop' && '— Shop details'}
               </div>
               <h1
@@ -314,6 +319,7 @@ function AdminDashboard() {
                 {tab === 'menu' && "Today's menu"}
                 {tab === 'payments' && 'How customers pay you'}
                 {tab === 'promos' && 'Discount codes'}
+                {tab === 'people' && 'Owners, cashiers and customers'}
                 {tab === 'shop' && 'Details, staff and ratings'}
               </h1>
             </div>
@@ -389,6 +395,7 @@ function AdminDashboard() {
           {tab === 'menu' && <MenuControl />}
           {tab === 'payments' && <PaymentsPanel />}
           {tab === 'promos' && <PromotionsPanel />}
+          {tab === 'people' && <PeoplePanel />}
           {tab === 'shop' && <ShopPanel />}
         </div>
       </main>

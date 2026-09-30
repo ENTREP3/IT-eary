@@ -53,3 +53,36 @@ export function surfaceFor(hostname: string): Surface {
 export const SURFACE: Surface = surfaceFor(
   typeof window === 'undefined' ? '' : window.location.hostname,
 );
+
+/**
+ * The address a customer uses, worked out from wherever this is running.
+ *
+ * Needed because some things the staff apps produce are aimed at diners, and
+ * the obvious `window.location.origin` is then exactly wrong. The printed QR
+ * poster is generated in the owner's dashboard, so it encoded
+ * bencris-admin.iteary.site — and every customer who scanned a sheet of paper
+ * on the wall was shown the staff sign-in screen.
+ *
+ * Derived rather than hardcoded, so it stays correct across the .web.app
+ * addresses, the custom domain, and a single-origin development server where
+ * all three apps share one host and no rewriting is wanted.
+ */
+export function dinerOrigin(): string {
+  if (typeof window === 'undefined') return '';
+
+  const { protocol, host, hostname } = window.location;
+  const [first, ...rest] = hostname.split('.');
+  const label = first.toLowerCase();
+
+  if (!label.endsWith(ADMIN) && !label.endsWith(CASHIER)) return `${protocol}//${host}`;
+
+  // bencris-admin -> bencris, iteary-cashier -> iteary. Only the suffix is
+  // removed, so whatever the sites are named keeps working.
+  const diner = label.endsWith(ADMIN)
+    ? label.slice(0, -ADMIN.length)
+    : label.slice(0, -CASHIER.length);
+
+  // The port travels with the host, which matters on a development machine.
+  const port = window.location.port ? `:${window.location.port}` : '';
+  return `${protocol}//${[diner, ...rest].join('.')}${port}`;
+}

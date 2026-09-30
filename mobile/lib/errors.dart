@@ -93,11 +93,28 @@ String humanError(
     if (low.contains('email not confirmed')) {
       return 'Check your email and confirm the address before signing in.';
     }
+
+    // Said when a reset link did not sign anybody in, so the password is
+    // being set on the guest identity every diner carries instead. Their
+    // password was fine; the link was spent, expired, or opened elsewhere.
+    if (low.contains('anonymous user')) {
+      return 'That reset link has already been used or has expired. Ask for '
+          'a new one.';
+    }
+
+    if (low.contains('otp_expired') ||
+        low.contains('token has expired') ||
+        low.contains('invalid token') ||
+        low.contains('token not found')) {
+      return 'That code has expired or was already used. Ask for a new one.';
+    }
     if (low.contains('password should be') || low.contains('weak password')) {
       return 'That password is too weak. Use a longer one.';
     }
     if (low.contains('too many')) {
-      return 'Too many tries in a row. Wait a moment and try again.';
+      // Naming the wait matters: "a moment" invites trying again in ten
+      // seconds, failing, and concluding the app is broken.
+      return 'Too many attempts. Wait an hour before asking for another email.';
     }
     if (low.contains('expired') || low.contains('jwt')) {
       return 'You have been signed out. Please sign in again.';

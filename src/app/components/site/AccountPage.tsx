@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import {
   BellRing,
   Check,
@@ -21,6 +21,9 @@ import { humanError } from '../../lib/errors';
 import { NotifyToggle } from './NotifyToggle';
 import { refreshPushRegistration } from '../../lib/push';
 import { syncFavourites } from '../../lib/favourites';
+import { displayName } from '../../lib/displayName';
+import { RateFromOrder } from './RateFromOrder';
+import { MyDetails } from './MyDetails';
 
 /**
  * The diner's own page: sign in or sign up, then follow every order they have
@@ -216,6 +219,7 @@ function GuestStatus({ order }: { order: Order }) {
 /* -------------------------------------------------------------- sign in/up */
 
 function AuthPanel() {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<'in' | 'up'>('in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -223,6 +227,27 @@ function AuthPanel() {
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+
+  // Only meaningful while making an account. Kept in one object so the
+  // sign-in form is not carrying six unused pieces of state.
+  const [details, setDetails] = useState({
+    firstName: '',
+    middleName: '',
+    lastName: '',
+    username: '',
+    nickname: '',
+    phone: '',
+  });
+  const set = (k: keyof typeof details) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setDetails((d) => ({ ...d, [k]: e.target.value }));
+
+  /**
+   * Whether the chosen username is free, checked while they type.
+   *
+   * Null means not asked yet. Finding out at submit means filling in six
+   * boxes and being told the one at the top is wrong.
+   */
+  const [usernameFree, setUsernameFree] = useState<boolean | null>(null);
 
   const signUp = useAuthStore((s) => s.signUpCustomer);
   const login = useAuthStore((s) => s.loginCustomer);
@@ -260,7 +285,7 @@ function AuthPanel() {
     setError(null);
     try {
       if (mode === 'up') {
-        const { needsConfirmation } = await signUp(email.trim(), password);
+        const { needsConfirmation } = await signUp(email.trim(), password, details);
         if (needsConfirmation) {
           /**
            * Back to the sign-in form, holding the email they just typed.
@@ -292,6 +317,16 @@ function AuthPanel() {
         // Same reason: hearts made on this device as a guest should join
         // the account rather than be stranded on the handset.
         void syncFavourites();
+
+        /*
+         * Straight to the menu.
+         *
+         * Somebody signing in is not here to look at their own details —
+         * they came to order, and signing in was the obstacle. Leaving
+         * them on the account page makes them find their own way to the
+         * food, which is the one thing the storefront is for.
+         */
+        navigate('/menu');
       }
     } catch (err) {
       setError(humanError(err, 'Something went wrong.'));
@@ -365,6 +400,85 @@ function AuthPanel() {
       )}
 
       <form onSubmit={submit} className="mt-7 space-y-3">
+        {/* Making an account asks for more than signing in does, which is
+            the point: a form identical to the sign-in form gives no sign
+            it is creating anything. */}
+        {mode === 'up' && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                className={field}
+                placeholder="First name"
+                value={details.firstName}
+                onChange={set('firstName')}
+                autoComplete="given-name"
+                required
+              />
+              <input
+                className={field}
+                placeholder="Last name"
+                value={details.lastName}
+                onChange={set('lastName')}
+                autoComplete="family-name"
+                required
+              />
+            </div>
+            <input
+              className={field}
+              placeholder="Middle name (optional)"
+              value={details.middleName}
+              onChange={set('middleName')}
+              autoComplete="additional-name"
+            />
+
+            <div>
+              <input
+                className={field}
+                placeholder="Username"
+                value={details.username}
+                onChange={(e) => {
+                  set('username')(e);
+                  setUsernameFree(null);
+                }}
+                onBlur={async (e) => {
+                  const name = e.target.value.trim();
+                  if (!name) return setUsernameFree(null);
+                  const { data } = await supabase.rpc('username_available', {
+                    p_username: name,
+                  });
+                  setUsernameFree(data === true);
+                }}
+                autoComplete="username"
+                required
+                minLength={3}
+                maxLength={20}
+              />
+              <p className="mt-1 text-xs opacity-55">
+                {usernameFree === false
+                  ? 'Taken, or not allowed. Use 3 to 20 letters, numbers, dots or underscores, starting with a letter.'
+                  : usernameFree === true
+                    ? 'That one is free.'
+                    : 'What we will call you. 3 to 20 characters, starting with a letter.'}
+              </p>
+            </div>
+
+            <input
+              className={field}
+              placeholder="Nickname (optional)"
+              value={details.nickname}
+              onChange={set('nickname')}
+            />
+            <input
+              className={field}
+              placeholder="Mobile number (optional)"
+              value={details.phone}
+              onChange={set('phone')}
+              autoComplete="tel"
+              inputMode="tel"
+            />
+          </>
+        )}
+
         <input
           className={field}
           type="email"
@@ -457,6 +571,7 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
   const [claimed, setClaimed] = useState<string | null>(null);
 
   const role = useAuthStore((s) => s.profile?.role);
+  const profile = useAuthStore((s) => s.profile);
   const isStaff = role === 'admin' || role === 'cashier';
 
   /**
@@ -571,7 +686,7 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
             style={{ fontFamily: 'var(--font-display)', fontWeight: 500, letterSpacing: '-0.02em' }}
             className="text-4xl"
           >
-            Your orders
+            Welcome back, {displayName(profile)}
           </h1>
           <p className="mt-1.5 opacity-60 text-sm">{email}</p>
         </div>
@@ -588,6 +703,8 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
           prompt on arrival: a browser only asks once, and a refusal is
           permanent unless the diner digs into settings, so the question is
           only ever put when they have a reason to say yes. */}
+      <MyDetails />
+
       <NotifyToggle />
 
       {/* A staff account is not a customer. create_ticket() deliberately leaves
@@ -802,6 +919,13 @@ function OrderCard({ order }: { order: Order }) {
           </span>
         </span>
       </div>
+
+      {/* Only once the food has actually been handed over. Rating a meal
+          still being cooked is rating the wait, and the database refuses
+          it anyway — better not to offer than to offer and be refused. */}
+      {stage.kind === 'completed' && (
+        <RateFromOrder ticketCode={order.ticket_code} items={order.items ?? []} />
+      )}
     </li>
   );
 }

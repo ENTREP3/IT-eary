@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/api.dart';
+import 'services/push.dart';
 
 /// Backend selection, shared by both entrypoints.
 ///
@@ -37,6 +40,20 @@ Future<void> bootstrap(Widget app, {bool anonymousIdentity = false}) async {
   // and an anonymous session there would only get in the way of the sign-in
   // screen they are supposed to meet.
   if (anonymousIdentity) await Api.ensureIdentity();
+
+  /*
+   * Firebase is started, but nobody is asked anything.
+   *
+   * Starting it is what lets a notification arriving with the app closed be
+   * handled at all, and it has to happen before runApp. Asking permission is a
+   * separate step behind a button the diner presses, because a prompt that
+   * appears before somebody has done anything is why people refuse — and a
+   * refusal on Android is close to permanent.
+   *
+   * Not awaited: it reaches the network, and the menu must not wait on
+   * Firebase to paint. Failure is already swallowed inside.
+   */
+  if (anonymousIdentity) unawaited(Push.start());
 
   runApp(app);
 }

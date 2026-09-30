@@ -56,8 +56,19 @@ export function AnnouncementBanner() {
 
     // The row is filtered by an RLS predicate on now(), so a client that asks
     // again after the start time gets it and one that asks before does not.
+    /*
+     * A name of its own per mount, not a fixed one.
+     *
+     * supabase.channel(name) hands back the EXISTING channel when one with
+     * that topic is already open, and adding a callback to a channel that
+     * has already subscribed throws. removeChannel is asynchronous, so a
+     * component that unmounts and remounts — switching view, or React
+     * mounting an effect twice in development — reaches for the old channel
+     * before it has finished closing. That threw during render and took the
+     * whole screen down with it, which is a high price for a banner.
+     */
     const channel = supabase
-      .channel('announcements')
+      .channel(`announcements-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, load)
       .subscribe();
 

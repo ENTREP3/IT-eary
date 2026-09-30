@@ -12,3 +12,8 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# The PKCS12 keystore. The template above covers .jks and .keystore but not
+# .p12, which is the modern format keytool now recommends — so converting to it
+# silently made the signing key committable.
+**/*.p12

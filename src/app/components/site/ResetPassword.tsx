@@ -37,14 +37,28 @@ export function ResetPasswordPage() {
     // URL asynchronously — so this waits for the event rather than reading
     // once and concluding there is nobody here.
     let settled = false;
+
+    /**
+     * An anonymous session does not count as arriving from the link.
+     *
+     * Every visitor to this site is given a guest identity, so "there is a
+     * session" is nearly always true and says nothing about whether the
+     * reset link worked. Treating one as proof let the form open, accept a
+     * new password, and fail at the server with "Updating password of an
+     * anonymous user", which reads as the shop being broken rather than as a
+     * link that has expired.
+     */
+    const fromTheLink = (session: { user?: { is_anonymous?: boolean } } | null) =>
+      Boolean(session && session.user?.is_anonymous !== true);
+
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
+      if (fromTheLink(session)) {
         settled = true;
         setReady(true);
       }
     });
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
+      if (fromTheLink(data.session)) {
         settled = true;
         setReady(true);
       } else {

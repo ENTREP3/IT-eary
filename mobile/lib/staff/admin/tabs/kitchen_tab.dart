@@ -3,6 +3,7 @@ import '../../../errors.dart';
 
 import '../../../models/models.dart';
 import '../../../tokens.dart';
+import '../../confirm.dart';
 import '../../widgets/refund_sheet.dart';
 import '../admin_api.dart';
 import 'widgets.dart';
@@ -34,6 +35,21 @@ class _KitchenTabState extends State<KitchenTab> {
   ];
 
   Future<void> _advance(Ticket t, String next) async {
+    // Only the ones that cannot be walked back. Moving a ticket forward is
+    // undone by moving it forward again; cancelling returns the stock to
+    // the shelf and reverses the sale, and the kitchen board is tapped at
+    // arm’s length over a hot counter.
+    if (next == 'cancelled') {
+      final sure = await confirmAction(
+        context,
+        title: 'Cancel ${t.ticketCode}?',
+        body: 'The food goes back on the shelf and the sale is reversed. '
+            'If it was already paid for, refund it instead.',
+        action: 'Cancel order',
+      );
+      if (!sure || !mounted) return;
+    }
+
     setState(() => _busy = t.id);
     try {
       await AdminApi.setStatus(t.ticketCode, next);

@@ -720,3 +720,79 @@ class Announcement {
         DateTime.now(),
   );
 }
+
+/// What the signup form collects beyond an email and a password.
+///
+/// The same six fields the website asks for, because they end up in the same
+/// columns through the same database function. A form that collected a
+/// different set would produce accounts that look different depending on which
+/// app made them.
+class NewAccount {
+  final String firstName;
+  final String? middleName;
+  final String lastName;
+
+  /// What the shop greets them by. Unique without case, 3 to 20 characters.
+  final String username;
+
+  /// Preferred over the username in a greeting, when set.
+  final String? nickname;
+  final String? phone;
+
+  const NewAccount({
+    required this.firstName,
+    required this.lastName,
+    required this.username,
+    this.middleName,
+    this.nickname,
+    this.phone,
+  });
+}
+
+/// A diner's own details, as the shop holds them.
+class MyProfile {
+  final String? email;
+  final String? firstName;
+  final String? middleName;
+  final String? lastName;
+  final String? username;
+  final String? nickname;
+  final String? phone;
+  final String? fullName;
+
+  const MyProfile({
+    this.email,
+    this.firstName,
+    this.middleName,
+    this.lastName,
+    this.username,
+    this.nickname,
+    this.phone,
+    this.fullName,
+  });
+
+  /// What to call this person, mirroring `public.display_name()`.
+  ///
+  /// Four columns might be somebody's name, and a receipt, a greeting and a
+  /// staff list each picking a different one is how the same customer appears
+  /// to be three people. Falls back to "there", so the worst case is "Welcome
+  /// back, there" rather than a greeting with a hole in it.
+  String get displayName {
+    for (final candidate in [nickname, username, firstName, fullName]) {
+      final value = candidate?.trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return 'there';
+  }
+
+  factory MyProfile.fromMap(Map<String, dynamic> m) => MyProfile(
+    email: m['email'] as String?,
+    firstName: m['first_name'] as String?,
+    middleName: m['middle_name'] as String?,
+    lastName: m['last_name'] as String?,
+    username: m['username'] as String?,
+    nickname: m['nickname'] as String?,
+    phone: m['phone'] as String?,
+    fullName: m['full_name'] as String?,
+  );
+}

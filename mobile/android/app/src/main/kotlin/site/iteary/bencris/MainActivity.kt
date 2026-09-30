@@ -1,4 +1,4 @@
-package ph.edu.nu.iteary.iteary_mobile
+package site.iteary.bencris
 
 import io.flutter.embedding.android.FlutterActivity
 

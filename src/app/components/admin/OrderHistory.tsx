@@ -123,7 +123,17 @@ export function OrderDetail({ order, onClose }: { order: Order; onClose: () => v
               <span className="text-[#8cc07a]">−₱{Number(order.discount).toFixed(2)}</span>,
             )}
           {line('Total', <span className="text-base">₱{Number(order.total).toFixed(2)}</span>)}
-          {line('Ordered by', order.customer_name || (order.customer_id ? 'Account holder' : 'Walk-in guest'))}
+          {line(
+            'Ordered by',
+            <span className="flex items-center gap-2">
+              {order.customer_name || (order.from_account ? 'Account holder' : 'Walk-in guest')}
+              {order.from_account && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-[#8cc07a]/50 text-[#8cc07a]">
+                  account
+                </span>
+              )}
+            </span>,
+          )}
           {line('Placed', new Date(order.created_at).toLocaleString())}
           {order.pickup_at && line('Collecting at', new Date(order.pickup_at).toLocaleString())}
           {order.paid_at && line('Paid', new Date(order.paid_at).toLocaleString())}

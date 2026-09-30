@@ -3,6 +3,7 @@ import { Loader2, Undo2, X } from 'lucide-react';
 import { useOrdersStore } from '../../store/ordersStore';
 import type { Order, PaymentMethod } from '../../lib/types';
 import { humanError } from '../../lib/errors';
+import { supabase } from '../../lib/supabase';
 
 /**
  * Handing money back over the counter.
@@ -36,6 +37,15 @@ export function RefundDialog({ order, onClose }: { order: Order; onClose: () => 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * The shop's own proof that it sent the money.
+   *
+   * Optional, and attached after the refund rather than before it.
+   * Giving the money back is the part that matters; a diner must never
+   * stand at the counter unrefunded because a photo would not upload.
+   */
+  const [proof, setProof] = useState<File | null>(null);
+
   const finalReason = reason === 'Other' ? other.trim() : reason;
 
   const submit = async () => {
@@ -47,6 +57,28 @@ export function RefundDialog({ order, onClose }: { order: Order; onClose: () => 
     setError(null);
     try {
       await refund({ ticketCode: order.ticket_code, reason: finalReason, method, note: note.trim() || null });
+
+      // Deliberately after, and deliberately swallowed. The refund is
+      // recorded either way; a failed upload is worth a line in the log,
+      // not an error over a refund that actually happened.
+      if (proof) {
+        try {
+          const ext = proof.name.split('.').pop()?.toLowerCase() || 'jpg';
+          const path = `refunds/${order.ticket_code}/${crypto.randomUUID()}.${ext}`;
+          const { error: upErr } = await supabase.storage
+            .from('payment-proofs')
+            .upload(path, proof, { contentType: proof.type || 'image/jpeg' });
+          if (!upErr) {
+            await supabase.rpc('attach_refund_proof', {
+              p_ticket_code: order.ticket_code,
+              p_path: path,
+            });
+          }
+        } catch {
+          /* the money is back; the receipt can be added later */
+        }
+      }
+
       onClose();
     } catch (e) {
       setError(humanError(e, 'The refund could not be recorded.'));
@@ -149,6 +181,25 @@ export function RefundDialog({ order, onClose }: { order: Order; onClose: () => 
             </p>
           )}
         </div>
+
+        {/* Offered for a GCash refund, where there is a screenshot to keep.
+            Cash handed across the counter has no receipt to photograph, so
+            asking for one would only be a box nobody can fill. */}
+        {method === 'gcash' && (
+          <div className="mt-3">
+            <span className="text-[11px] opacity-55">Proof you sent it (optional)</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setProof(e.target.files?.[0] ?? null)}
+              className="mt-1 block w-full text-xs file:mr-3 file:h-8 file:px-3 file:rounded-lg file:border-0 file:bg-[#e8dfc8]/10 file:text-[#e8dfc8] file:text-xs"
+            />
+            <p className="text-[11px] opacity-45 mt-1">
+              The GCash screenshot. Kept for the shop only, in case the refund is ever
+              questioned. The refund is recorded whether or not you add one.
+            </p>
+          </div>
+        )}
 
         <input
           value={note}

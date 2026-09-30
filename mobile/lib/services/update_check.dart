@@ -21,8 +21,17 @@ class UpdateCheck {
   const UpdateCheck._();
 
   /// Where the releases live. Public, so this needs no credentials.
+  ///
+  /// A repository of its own, separate from the source. The QR code on the
+  /// shop wall and the download page both lead here, and a customer following
+  /// either of them should arrive at a file — not at the source code of a
+  /// system they have no reason to know exists.
+  ///
+  /// It must stay public: this call is unauthenticated, and so is the download
+  /// behind it. A private repository answers 404 to both, which this treats as
+  /// "no release yet" and reports as nothing at all.
   static const _latest =
-      'https://api.github.com/repos/ENTREP3/IT-eary/releases/latest';
+      'https://api.github.com/repos/ENTREP3/IT-eary-release-apk/releases/latest';
 
   /// Looks for a newer release. Null means there is nothing to say.
   static Future<AppUpdate?> latest() async {

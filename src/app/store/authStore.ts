@@ -3,6 +3,16 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Profile, UserRole } from '../lib/types';
 
+/** What the signup form collects beyond an email and a password. */
+export type NewAccount = {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  username: string;
+  nickname?: string;
+  phone?: string;
+};
+
 type AuthState = {
   session: Session | null;
 
@@ -41,7 +51,11 @@ type AuthState = {
    * The signup trigger always assigns the inert `customer` role server-side, so
    * nothing here can grant staff access however the form is tampered with.
    */
-  signUpCustomer: (email: string, password: string) => Promise<{ needsConfirmation: boolean }>;
+  signUpCustomer: (
+    email: string,
+    password: string,
+    details: NewAccount,
+  ) => Promise<{ needsConfirmation: boolean }>;
   loginCustomer: (email: string, password: string) => Promise<void>;
   /**
    * Sends the email that lets somebody back into an account they are locked
@@ -100,9 +114,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
     };
 
+    /**
+     * Whether this page load is somebody arriving from an email link.
+     *
+     * Supabase processes the token in the address asynchronously, so for
+     * the first moments after such a link is opened getSession() answers
+     * null even though a real session is seconds away. Minting a guest
+     * identity in that gap is how a password reset ends up trying to set
+     * the password of an anonymous user, which the server refuses outright:
+     * "Updating password of an anonymous user without an email or phone is
+     * not allowed".
+     *
+     * Both forms are checked because Supabase uses the fragment for the
+     * implicit flow and the query string for PKCE, and which one arrives
+     * depends on project settings rather than on anything here.
+     */
+    const arrivingFromALink = () => {
+      if (typeof window === 'undefined') return false;
+      if (window.location.pathname.startsWith('/reset-password')) return true;
+      const url = window.location.hash + window.location.search;
+      return /access_token=|token_hash=|type=recovery|[?&]code=/.test(url);
+    };
+
     // 1. Hydrate from any persisted session, minting one if there is none.
     supabase.auth.getSession().then(async ({ data }) => {
       if (data.session) return settle(data.session);
+
+      // Wait for the real one rather than racing it with a guest.
+      if (arrivingFromALink()) return settle(null);
 
       const { data: anon, error } = await supabase.auth.signInAnonymously();
       // A shop whose sign-in is unreachable should still take orders. Without a
@@ -134,7 +173,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ session: data.session, user: data.user, profile, loading: false });
   },
 
-  signUpCustomer: async (email, password) => {
+  signUpCustomer: async (email, password, details) => {
+    // Carried on the auth user so the database trigger can put them on the
+      // profile the moment it creates it. Passing them afterwards would mean
+      // a second call that can fail on its own, leaving an account with no
+      // name on it.
+    const data = {
+      first_name: details.firstName.trim(),
+      middle_name: details.middleName?.trim() || null,
+      last_name: details.lastName.trim(),
+      username: details.username.trim(),
+      nickname: details.nickname?.trim() || null,
+      phone: details.phone?.trim() || null,
+    };
+
     /**
      * A guest signing up is upgraded in place, not replaced.
      *
@@ -144,14 +196,58 @@ export const useAuthStore = create<AuthState>((set, get) => ({
      * user they already are keeps it.
      */
     if (get().identity?.is_anonymous) {
-      const { error: upgradeError } = await supabase.auth.updateUser({ email, password });
+      const { error: upgradeError } = await supabase.auth.updateUser(
+        { email, password, data },
+        // Same reason as the signup below: an address change is confirmed
+        // by email too, and that link must come back here.
+        { emailRedirectTo: window.location.origin },
+      );
       if (upgradeError) throw upgradeError;
+
+      /**
+       * The profile row already exists for a guest, created when the
+       * anonymous account was, so the trigger that reads this metadata has
+       * long since run and will not run again. Written directly instead.
+       */
+      const { error: profileError } = await supabase.rpc('save_my_profile', {
+        p_first_name: data.first_name,
+        p_last_name: data.last_name,
+        p_username: data.username,
+        p_middle_name: data.middle_name,
+        p_nickname: data.nickname,
+        p_phone: data.phone,
+      });
+      if (profileError) throw profileError;
       // Still anonymous until the address is confirmed, which is right: the
       // perks belong to a confirmed account.
       return { needsConfirmation: true };
     }
 
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data: created, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data,
+        /*
+         * Where the confirmation link lands, said explicitly.
+         *
+         * Left unset, Supabase falls back to the project Site URL — a
+         * single value in a dashboard that has to be right for every
+         * environment at once, and cannot be. It pointed at a laptop on
+         * the shop wifi for a while, which meant every confirmation email
+         * sent from the live site was undeliverable in practice: the link
+         * opened an address that only existed on one machine.
+         *
+         * Taken from the address they are actually on, so somebody who
+         * signs up on the live site is sent back to the live site, and
+         * somebody testing locally is sent back there. Supabase still
+         * requires the address to be on its allow list, so a new one has
+         * to be added there once — but it can never again point somewhere
+         * nobody asked for.
+         */
+        emailRedirectTo: window.location.origin,
+      },
+    });
     if (error) throw error;
 
     /**
@@ -167,17 +263,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
      * already have an account. Saying so costs nothing here — the sign-in
      * form below reveals exactly the same thing to anyone who asks it.
      */
-    if (!data.session && data.user?.identities?.length === 0) {
+    if (!created.session === null && created.user?.identities?.length === 0) {
       throw new Error('User already registered');
     }
 
     // With email confirmation switched on there is no session yet, so the
     // caller has to tell the diner to check their inbox rather than silently
     // appearing to do nothing.
-    if (!data.session) return { needsConfirmation: true };
+    if (!created.session) return { needsConfirmation: true };
 
-    const profile = data.user ? await fetchProfile(data.user.id) : null;
-    set({ session: data.session, user: data.user, profile, loading: false });
+    const profile = created.user ? await fetchProfile(created.user.id) : null;
+    set({ session: created.session, user: created.user, profile, loading: false });
     return { needsConfirmation: false };
   },
 
@@ -198,6 +294,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   setNewPassword: async (password) => {
+    /**
+     * Refuse before asking, when the session is not the one from the link.
+     *
+     * A reset link signs somebody in as themselves. If the session here is
+     * anonymous instead, the link was never processed — expired, already
+     * used, or opened in a different browser from the one that asked — and
+     * the server answers with "Updating password of an anonymous user
+     * without an email or phone is not allowed", which tells the diner
+     * nothing they can act on.
+     */
+    const { data } = await supabase.auth.getUser();
+    if (!data.user || data.user.is_anonymous) {
+      throw new Error(
+        'This reset link is no longer valid. Ask for a new one and open it in this same browser.',
+      );
+    }
+
     const { error } = await supabase.auth.updateUser({ password });
     if (error) throw error;
   },

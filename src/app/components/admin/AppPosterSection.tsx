@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import { Loader2, Printer, QrCode } from 'lucide-react';
 import { useBusinessStore } from '../../store/businessStore';
 import { humanError } from '../../lib/errors';
+import { dinerOrigin } from '../../lib/surface';
 
 /**
  * The printed poster that gets the app onto a diner's phone.
@@ -36,8 +37,23 @@ export function AppPosterSection() {
   // the saved address can arrive after this section has already rendered.
   useEffect(() => setUrl(profile.app_download_url), [profile.app_download_url]);
 
+  /**
+   * The poster points at the download page, never at the file.
+   *
+   * A code encoding the .apk directly starts a download the moment somebody
+   * scans a sheet of paper, with no explanation of what they are installing or
+   * warning about the security prompt Android is about to show them. Pointing
+   * it at the release host instead shows a customer a page of version tags
+   * belonging to a system they have no reason to know exists.
+   *
+   * It is also the only address that gets printed. The file behind it can move
+   * between releases or hosts without every poster on the wall becoming wrong,
+   * which is the thing nobody remembers to reprint.
+   */
+  const posterTarget = `${dinerOrigin()}/download`;
+
   useEffect(() => {
-    const target = url.trim();
+    const target = posterTarget;
     if (!target) {
       setSvg(null);
       return;
@@ -61,7 +77,7 @@ export function AppPosterSection() {
     return () => {
       stale = true;
     };
-  }, [url]);
+  }, [posterTarget]);
 
   const commit = async () => {
     setSaving(true);
@@ -88,14 +104,26 @@ export function AppPosterSection() {
         gets the app, so you are not paying anyone to advertise it.
       </p>
 
+      <p className="text-[12px] opacity-55 mb-4 max-w-lg leading-relaxed">
+        The code points at <code className="opacity-80">{posterTarget}</code>, a page that
+        explains the install before it starts and warns about Android&rsquo;s security prompt.
+        That address never changes, so a printed poster stays correct forever.
+      </p>
+
       <label className="block mb-3 max-w-lg">
-        <span className="text-[11px] opacity-55">Where the app can be downloaded</span>
+        <span className="text-[11px] opacity-55">
+          Link to the app file, used by the Download button on that page
+        </span>
         <input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://bencris.example.com/download/"
+          placeholder="https://github.com/your-name/bencris-app/releases/latest/download/bencris.apk"
           className={`${field} mt-1`}
         />
+        <span className="block mt-1 text-[11px] opacity-45 leading-relaxed">
+          Use a <strong>latest</strong> link rather than one naming a version, so new releases
+          are picked up without changing anything here.
+        </span>
       </label>
 
       <div className="flex items-center gap-2 mb-5">

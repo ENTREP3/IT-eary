@@ -5,7 +5,15 @@ export type UserRole = 'customer' | 'admin' | 'cashier';
 
 export type Profile = {
   id: string;
+  /** Kept equal to the name parts by a database trigger. */
   full_name: string | null;
+  first_name: string | null;
+  middle_name: string | null;
+  last_name: string | null;
+  /** What the shop greets them by. Null for a guest with no account. */
+  username: string | null;
+  /** Preferred over the username in a greeting, when set. */
+  nickname: string | null;
   phone: string | null;
   role: UserRole;
   created_at: string;
@@ -91,6 +99,15 @@ export type Order = {
   promo_code: string | null;
   /** NULL for a guest order. Set when a signed-in customer checks out. */
   customer_id: string | null;
+  /**
+   * Whether the diner had a real account when they ordered.
+   *
+   * customer_id cannot answer this: every visitor is given an anonymous
+   * account on opening the app, so it is filled in for a walk-in guest
+   * exactly as for a regular. Stamped once at the time of ordering, so a
+   * guest who signs up later does not rewrite their old tickets.
+   */
+  from_account?: boolean;
   /** When the diner said they would collect. NULL means as soon as it is ready. */
   pickup_at: string | null;
   /** Stamped when the order is completed. What the loyalty count is based on. */

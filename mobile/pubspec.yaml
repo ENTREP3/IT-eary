@@ -57,6 +57,8 @@ dependencies:
   # So the app can read its own version rather than keeping a second copy of
   # it in code that silently stops matching pubspec.
   package_info_plus: ^10.2.1
+  firebase_core: ^4.15.0
+  firebase_messaging: ^16.7.0
 
 dev_dependencies:
   flutter_test:

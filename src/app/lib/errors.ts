@@ -84,6 +84,36 @@ export function humanError(e: unknown, fallback = 'Something went wrong. Please 
   if (low.includes('email not confirmed')) {
     return 'Check your email and confirm the address before signing in.';
   }
+
+  /*
+   * "Updating password of an anonymous user without an email or phone is
+   * not allowed".
+   *
+   * Said when a reset link did not sign anybody in, so the password is being
+   * set on the guest identity every visitor carries instead. The diner did
+   * nothing wrong and their password was fine — the link was spent, expired,
+   * or opened somewhere other than where it was asked for.
+   *
+   * Worth naming rather than leaving to a fallback: this is the difference
+   * between "your password is bad" and "ask for a new link", and the diner
+   * cannot tell which from a generic failure.
+   */
+  if (low.includes('anonymous user')) {
+    return (
+      'That reset link has already been used or has expired. Ask for a new one, ' +
+      'and open it in this same browser.'
+    );
+  }
+
+  // A token that was already spent, or a stale link opened twice.
+  if (
+    low.includes('otp_expired') ||
+    low.includes('token has expired') ||
+    low.includes('invalid token') ||
+    low.includes('token not found')
+  ) {
+    return 'That link has expired or was already used. Ask for a new one.';
+  }
   if (low.includes('password should be') || low.includes('weak password')) {
     return 'That password is too weak. Use a longer one.';
   }
@@ -97,7 +127,9 @@ export function humanError(e: unknown, fallback = 'Something went wrong. Please 
 
   // ---- too fast, or our end ------------------------------------------------
   if (status === 429 || low.includes('too many')) {
-    return 'Too many tries in a row. Wait a moment and try again.';
+    // Naming the wait matters: 'a moment' invites trying again in ten
+    // seconds, failing, and concluding the site is broken.
+    return 'Too many attempts. Wait an hour before asking for another email.';
   }
   if ((status ?? 0) >= 500) {
     return 'The shop system had a problem at its end. Please try again.';

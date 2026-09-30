@@ -8,6 +8,9 @@ import '../../services/api.dart';
 import '../../theme.dart';
 import '../../tokens.dart';
 import 'ticket_screen.dart';
+import '../../services/push.dart';
+import '../widgets/my_details.dart';
+import '../widgets/notify_toggle.dart';
 import 'forgot_password_screen.dart';
 
 /// An optional account, and everything it makes possible.
@@ -55,17 +58,49 @@ class _SignedOut extends StatefulWidget {
 class _SignedOutState extends State<_SignedOut> {
   final _email = TextEditingController();
   final _password = TextEditingController();
+
+  // Only used while making an account. The same six the website collects,
+  // because both end up in the same columns through the same function.
+  final _firstName = TextEditingController();
+  final _middleName = TextEditingController();
+  final _lastName = TextEditingController();
+  final _username = TextEditingController();
+  final _nickname = TextEditingController();
+  final _phone = TextEditingController();
+
   bool _creating = false;
   bool _busy = false;
   String? _error;
   String? _notice;
 
+  /// Whether the chosen username is free. Null means not asked yet.
+  ///
+  /// Checked when the field loses focus rather than at submit: filling in six
+  /// boxes and then being told the one at the top is wrong is a form that
+  /// wasted somebody's time on purpose.
+  bool? _usernameFree;
+
   @override
   void dispose() {
     _email.dispose();
     _password.dispose();
+    _firstName.dispose();
+    _middleName.dispose();
+    _lastName.dispose();
+    _username.dispose();
+    _nickname.dispose();
+    _phone.dispose();
     super.dispose();
   }
+
+  NewAccount get _details => NewAccount(
+    firstName: _firstName.text,
+    middleName: _middleName.text,
+    lastName: _lastName.text,
+    username: _username.text,
+    nickname: _nickname.text,
+    phone: _phone.text,
+  );
 
   Future<void> _submit() async {
     setState(() {
@@ -75,7 +110,11 @@ class _SignedOutState extends State<_SignedOut> {
     });
     try {
       if (_creating) {
-        final ready = await Api.signUp(_email.text, _password.text);
+        final ready = await Api.signUp(
+          _email.text,
+          _password.text,
+          details: _details,
+        );
         if (!ready && mounted) {
           // Back to the sign-in form, holding the email they just typed.
           //
@@ -97,6 +136,26 @@ class _SignedOutState extends State<_SignedOut> {
         }
       } else {
         await Api.signIn(_email.text, _password.text);
+
+        // The device that agreed to be notified was recorded against whoever
+        // was signed in at the time — for most diners, the guest they were
+        // before making an account. Left alone, somebody who opted in as a
+        // guest is silently unreachable afterwards. Raises no prompt.
+        unawaited(Push.reregister());
+
+        /*
+         * Back to where they came from, which is the menu.
+         *
+         * Somebody signing in is not here to look at their own account —
+         * they came to order, and signing in was the obstacle. Leaving them
+         * on this screen makes them find their own way back to the food.
+         *
+         * Popping rather than pushing the menu, so the history does not grow
+         * a second copy of a screen that is already underneath this one.
+         */
+        if (mounted && Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
       }
     } catch (e) {
       // Supabase messages are already diner-readable ("Invalid login
@@ -159,6 +218,92 @@ class _SignedOutState extends State<_SignedOut> {
           style: TextStyle(height: 1.5, color: Palette.ink.withValues(alpha: 0.7)),
         ),
         const SizedBox(height: 22),
+
+        // Making an account asks for more than signing in does, which is the
+        // point: a form identical to the sign-in form gives no sign it is
+        // creating anything.
+        if (_creating) ...[
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _firstName,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(labelText: 'First name'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: _lastName,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(labelText: 'Last name'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _middleName,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Middle name (optional)',
+            ),
+          ),
+          const SizedBox(height: 12),
+          Focus(
+            // Checked on the way out of the field, so somebody is told while
+            // they are still thinking about it.
+            onFocusChange: (hasFocus) async {
+              if (hasFocus) return;
+              final name = _username.text.trim();
+              if (name.isEmpty) {
+                if (mounted) setState(() => _usernameFree = null);
+                return;
+              }
+              final free = await Api.usernameAvailable(name);
+              if (mounted) setState(() => _usernameFree = free);
+            },
+            child: TextField(
+              controller: _username,
+              autocorrect: false,
+              onChanged: (_) => setState(() => _usernameFree = null),
+              decoration: InputDecoration(
+                labelText: 'Username',
+                helperMaxLines: 3,
+                helperText: switch (_usernameFree) {
+                  false =>
+                    'Taken, or not allowed. Use 3 to 20 letters, numbers, dots '
+                        'or underscores, starting with a letter.',
+                  true => 'That one is free.',
+                  null =>
+                    'What we will call you. 3 to 20 characters, starting with '
+                        'a letter.',
+                },
+                helperStyle: TextStyle(
+                  color: _usernameFree == false ? Palette.red : null,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _nickname,
+            decoration: const InputDecoration(
+              labelText: 'Nickname (optional)',
+              helperText: 'Used to greet you, if you would rather we did.',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _phone,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+              labelText: 'Mobile number (optional)',
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
 
         TextField(
           controller: _email,
@@ -263,6 +408,10 @@ class _SignedInState extends State<_SignedIn> {
   Loyalty? _loyalty;
   List<Promo> _promos = const [];
 
+  /// Who this is, for the greeting. Null until it arrives, which is why the
+  /// heading falls back to a plain "Welcome back" rather than a blank.
+  MyProfile? _me;
+
   @override
   void initState() {
     super.initState();
@@ -271,6 +420,9 @@ class _SignedInState extends State<_SignedIn> {
     });
     Api.activePromos().then((p) {
       if (mounted) setState(() => _promos = p);
+    });
+    Api.myProfile().then((p) {
+      if (mounted) setState(() => _me = p);
     });
   }
 
@@ -285,12 +437,33 @@ class _SignedInState extends State<_SignedIn> {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Text(
-                    Api.currentUser?.email ?? '',
-                    style: TextStyle(color: Palette.ink.withValues(alpha: 0.6)),
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Greeted by name, the same rule the database and the
+                      // website use: nickname, then username, then first name.
+                      Text(
+                        _me == null
+                            ? 'Welcome back'
+                            : 'Welcome back, ${_me!.displayName}',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        Api.currentUser?.email ?? '',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: Palette.ink.withValues(alpha: 0.6),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ),
                 TextButton.icon(
@@ -301,6 +474,8 @@ class _SignedInState extends State<_SignedIn> {
               ],
             ),
 
+            const MyDetails(),
+
             if (_loyalty != null) ...[
               const SizedBox(height: 8),
               _LoyaltyCard(loyalty: _loyalty!),
@@ -310,6 +485,12 @@ class _SignedInState extends State<_SignedIn> {
               const SizedBox(height: 12),
               _PromoCard(promos: _promos),
             ],
+
+            // Above the order list, where somebody is already thinking about
+            // a ticket they are waiting on. Offered here rather than raised on
+            // arrival: Android will not ask twice, so a refusal by reflex
+            // costs the shop that customer for good.
+            const NotifyToggle(),
 
             const SizedBox(height: 22),
             const Text(

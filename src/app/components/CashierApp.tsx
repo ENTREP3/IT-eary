@@ -320,8 +320,24 @@ function CashierCounter({ chrome }: { chrome: boolean }) {
                     >
                       {order.ticket_code}
                     </div>
-                    {order.customer_name && (
-                      <div className="text-sm opacity-60 mt-1">{order.customer_name}</div>
+                    {(order.customer_name || order.from_account) && (
+                      <div className="text-sm opacity-60 mt-1 flex items-center justify-center gap-2">
+                        {order.customer_name}
+                        {/* Worth saying at the till: a regular with an
+                            account is somebody whose order history and
+                            loyalty the shop holds, and a name alone does
+                            not distinguish them from a walk-in who typed
+                            the same thing. */}
+                        {order.from_account ? (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-[#8cc07a]/50 text-[#8cc07a]">
+                            account
+                          </span>
+                        ) : (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-[#e8dfc8]/25 opacity-60">
+                            guest
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">

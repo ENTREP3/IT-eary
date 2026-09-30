@@ -79,11 +79,36 @@ await new Promise((r) => (ws.onopen = r));
 
 let id = 0;
 const pending = new Map();
+
+/**
+ * Anything the page threw, collected per address.
+ *
+ * Checking only what rendered is not enough. A React app that throws
+ * during render still serves a 200 with a valid index.html and still
+ * mounts its root element — it just paints nothing into it. That is
+ * exactly how a realtime subscription error took the whole dashboard down
+ * while every check here reported the address was fine.
+ */
+let thrown = [];
+
 ws.addEventListener('message', (e) => {
   const m = JSON.parse(e.data);
   if (m.id && pending.has(m.id)) {
     pending.get(m.id)(m);
     pending.delete(m.id);
+  }
+  if (m.method === 'Runtime.exceptionThrown') {
+    const d = m.params.exceptionDetails;
+    thrown.push((d.exception?.description || d.text || '').split(String.fromCharCode(10))[0]);
+  }
+  if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') {
+    thrown.push(
+      m.params.args
+        .map((a) => a.value || a.description || '')
+        .join(' ')
+        .split(String.fromCharCode(10))[0]
+        .slice(0, 160),
+    );
   }
 });
 const send = (method, params = {}) =>
@@ -106,6 +131,7 @@ let failures = 0;
 console.log(`checking ${SURFACES.length} addresses\n`);
 
 for (const s of SURFACES) {
+  thrown = [];
   await send('Page.navigate', { url: s.url });
   await sleep(4000);
 
@@ -132,15 +158,21 @@ for (const s of SURFACES) {
     lower.includes('dashboard') ||
     lower.includes('owner');
 
-  const ok = s.name === 'diner' ? looksDiner : looksStaff && !looksDiner;
+  // Noise that says nothing about whether the app works.
+  const noise = /favicon|manifest|Download the React DevTools|404 (Not Found)/i;
+  const errors = thrown.filter((e) => !noise.test(e));
+
+  const right = s.name === 'diner' ? looksDiner : looksStaff && !looksDiner;
+  const ok = right && errors.length === 0;
   if (!ok) failures++;
 
   const excerpt = text.replace(/\s*\n+\s*/g, ' | ').trim().slice(0, 180);
   console.log(`${ok ? 'ok  ' : 'FAIL'}  ${s.name.padEnd(8)} ${s.url}`);
   console.log(`        ${excerpt || '(blank)'}`);
-  if (!ok && s.name !== 'diner' && looksDiner) {
+  if (!right && s.name !== 'diner' && looksDiner) {
     console.log('        ^ this is the storefront, not the staff app');
   }
+  for (const e of errors.slice(0, 3)) console.log(`        threw: ${e}`);
 }
 
 ws.close();

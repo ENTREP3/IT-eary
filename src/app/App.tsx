@@ -43,6 +43,9 @@ const RefundPage = lazy(() =>
 const PrivacyPage = lazy(() =>
   import('./components/site/InfoPages').then((m) => ({ default: m.PrivacyPage })),
 );
+const DownloadPage = lazy(() =>
+  import('./components/site/DownloadPage').then((m) => ({ default: m.DownloadPage })),
+);
 import { AuthScreen } from './components/auth/AuthScreen';
 import { useAuthStore } from './store/authStore';
 import { usePaymentStore } from './store/paymentStore';
@@ -106,6 +109,15 @@ export default function App() {
           {/* Staff reset their passwords by email like anyone else, and the
               link lands on whichever address they were using. */}
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+          {/* The download page works from every address, not only the
+              storefront. The printed poster points at the customer site, but a
+              staff address reaching this should show somebody how to install
+              the app rather than a sign-in wall — which is what happened when
+              the poster was generated in the dashboard and encoded its own
+              origin. Nothing here is private: it is a page about installing an
+              app, offered to anyone who asks. */}
+          <Route path="/download" element={<Page><DownloadPage /></Page>} />
           <Route
             path="*"
             element={
@@ -140,6 +152,10 @@ export default function App() {
         <Route path="/refund" element={<Page><RefundPage /></Page>} />
         <Route path="/privacy" element={<Page><PrivacyPage /></Page>} />
         <Route path="/account" element={<Page><AccountPage /></Page>} />
+        {/* Where the printed QR code lands. Not behind the site chrome:
+            somebody arriving here has scanned a code on a wall and wants the
+            app, not a navigation bar offering them six other places to go. */}
+        <Route path="/download" element={<Page><DownloadPage /></Page>} />
         {/* Where a reset link lands. Not behind Page: the visitor arrives
             here from their inbox, mid-way through proving who they are, and
             a full site chrome invites them to wander off before finishing. */}
