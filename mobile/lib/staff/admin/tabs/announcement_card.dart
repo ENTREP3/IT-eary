@@ -51,6 +51,8 @@ class _AnnouncementCardState extends State<AnnouncementCard> {
 
   List<Announcement> _rows = const [];
   String _tone = 'notice';
+  String _audience = 'diners';
+  bool _notify = false;
   String _run = 'Rest of today';
   bool _busy = false;
   String? _error;
@@ -89,12 +91,19 @@ class _AnnouncementCardState extends State<AnnouncementCard> {
       await Api.postAnnouncement(
         message: text,
         tone: _tone,
+        audience: _audience,
+        notify: _notify,
         endsAt: _runs[_run]!(),
       );
+
+      // Only once the row is safely in. A notification for an announcement
+      // that failed to save would point at nothing.
+      if (_notify) await Api.notifyAnnouncement(text, _audience);
       _message.clear();
       if (mounted) {
         setState(() {
           _tone = 'notice';
+          _notify = false;
           _saved = 'Posted. Every customer screen has it now.';
         });
       }
@@ -203,6 +212,51 @@ class _AnnouncementCardState extends State<AnnouncementCard> {
                   onChanged: (v) => setState(() => _run = v ?? 'Rest of today'),
                 ),
               ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            initialValue: _audience,
+            isDense: true,
+            decoration: const InputDecoration(
+              labelText: 'Who sees it',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            items: const [
+              DropdownMenuItem(value: 'diners', child: Text('Customers')),
+              DropdownMenuItem(value: 'staff', child: Text('Staff only')),
+              DropdownMenuItem(value: 'both', child: Text('Everyone')),
+            ],
+            onChanged: (v) => setState(() => _audience = v ?? 'diners'),
+          ),
+
+          // Off by default, and the wording says why. A banner is cheap; a
+          // buzz is not, and people notified about everything stop reading
+          // any of it.
+          CheckboxListTile(
+            value: _notify,
+            onChanged: (v) => setState(() => _notify = v ?? false),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            title: const Text('Also send a notification',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+            subtitle: Text(
+              'Buzzes the phone of everyone who allowed notifications, even '
+                  'with the app closed. Worth it for closing early. Not for '
+                  "today's ulam.",
+              style: TextStyle(
+                fontSize: 11.5,
+                height: 1.35,
+                color: Tokens.staffInk.withValues(alpha: 0.55),
+              ),
+            ),
+          ),
+
+          Row(
+            children: [
             ],
           ),
 

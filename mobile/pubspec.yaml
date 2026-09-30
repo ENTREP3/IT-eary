@@ -16,7 +16,14 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+# The part before the + is what the in-app update check compares against the
+# newest GitHub release tag, so the two must be kept equal: publishing v1.0.1
+# while this still says 1.0.0 leaves the update banner showing forever, even
+# to somebody who has just installed the newest build.
+#
+# The part after the + is Android versionCode. It must increase on every
+# release or the install is refused as a downgrade, with no useful message.
+version: 1.0.1+2
 
 environment:
   # Widened from the ^3.12.2 that "flutter create" pinned. Nothing in this app

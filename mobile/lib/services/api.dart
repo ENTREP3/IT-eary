@@ -211,6 +211,27 @@ class Api {
         type: OtpType.recovery,
       );
 
+  /// Confirms a new account with the six-digit code from the email.
+  ///
+  /// The website confirms with a link, and that is right there: a link in an
+  /// email opens the browser, which is where the website already is. On a
+  /// phone the same link opens a browser too — away from the app the diner
+  /// just signed up in, leaving them confirmed somewhere they were not.
+  ///
+  /// A code brings them back into the app instead. Same account, same email,
+  /// same backend; only the way back differs, because the way back is the
+  /// part that differs between a browser and an app.
+  static Future<void> verifySignupCode(String email, String code) =>
+      _db.auth.verifyOTP(
+        email: email.trim(),
+        token: code.trim(),
+        type: OtpType.signup,
+      );
+
+  /// Sends the signup code again, for somebody who waited too long.
+  static Future<void> resendSignupCode(String email) =>
+      _db.auth.resend(type: OtpType.signup, email: email.trim());
+
   /// Sets the new password for whoever the code just signed in.
   static Future<void> setNewPassword(String password) =>
       _db.auth.updateUser(UserAttributes(password: password));
@@ -572,12 +593,46 @@ class Api {
     required String message,
     required String tone,
     required DateTime endsAt,
+    String audience = 'diners',
+    bool notify = false,
   }) =>
       _db.from('announcements').insert({
         'message': message.trim(),
         'tone': tone,
+        'audience': audience,
+        'notify': notify,
         'ends_at': endsAt.toUtc().toIso8601String(),
       });
+
+  /// Pushes an announcement to whoever it was written for.
+  ///
+  /// Separate from posting it, and called only when the owner ticks the
+  /// box. A banner is cheap; a notification is not, and a shop that buzzes
+  /// people about everything trains them to turn notifications off — so the
+  /// one that mattered arrives to nobody.
+  static Future<void> notifyAnnouncement(String message, String audience) async {
+    Future<void> send(Map<String, dynamic> to, String title) => _db.functions
+        .invoke('send-push', body: {
+          'to': to,
+          'title': title,
+          'body': message,
+          'url': '/',
+          'tag': 'announcement',
+        })
+        .then((_) {});
+
+    try {
+      if (audience != 'staff') {
+        await send({'kind': 'everyone'}, 'Bencris');
+      }
+      if (audience != 'diners') {
+        await send({'kind': 'staff'}, 'Message from the owner');
+      }
+    } catch (_) {
+      // The announcement is saved either way. A failed push is not worth
+      // an error over something the banner already says.
+    }
+  }
 
   static Future<void> removeAnnouncement(String id) =>
       _db.from('announcements').delete().eq('id', id);

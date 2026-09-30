@@ -13,6 +13,7 @@ import 'tabs/kitchen_tab.dart';
 import 'tabs/menu_tab.dart';
 import 'tabs/payments_tab.dart';
 import 'tabs/promos_tab.dart';
+import 'tabs/people_tab.dart';
 import 'tabs/shop_tab.dart';
 
 /// Owner dashboard — the mobile twin of the React admin, tab for tab.
@@ -44,6 +45,7 @@ class _AdminScreenState extends State<AdminScreen> {
     ('Menu control', "Today's menu"),
     ('Payment settings', 'How customers pay you'),
     ('Promotions', 'Discounts you are running'),
+    ('People', 'Owners, cashiers and customers'),
     ('Shop', 'Your details, and what diners see'),
   ];
 
@@ -177,6 +179,7 @@ class _AdminScreenState extends State<AdminScreen> {
           ),
         6 => const PaymentsTab(),
         7 => const PromosTab(),
+        8 => const PeopleTab(),
         _ => const ShopTab(),
       };
 
@@ -218,6 +221,7 @@ class _AdminScreenState extends State<AdminScreen> {
       (Icons.menu_book_outlined, 'Menu'),
       (Icons.credit_card_outlined, 'Payments'),
       (Icons.sell_outlined, 'Promotions'),
+      (Icons.people_outline, 'People'),
       (Icons.storefront_outlined, 'Shop'),
     ];
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../errors.dart';
 
 import '../../models/models.dart';
@@ -53,6 +54,11 @@ class _RefundSheetState extends State<RefundSheet> {
   final _note = TextEditingController();
   late String _method = widget.order.paymentMethod ?? 'cash';
   bool _busy = false;
+
+  /// The shop's own proof it sent the money. Optional, and attached after
+  /// the refund: a diner must never stand unrefunded because a photo would
+  /// not upload.
+  XFile? _proof;
   String? _error;
 
   @override
@@ -81,6 +87,23 @@ class _RefundSheetState extends State<RefundSheet> {
         method: _method,
         note: _note.text.trim().isEmpty ? null : _note.text.trim(),
       );
+      // Deliberately after, and deliberately swallowed. The refund is
+      // recorded either way; a failed upload is not worth an error over a
+      // refund that actually happened.
+      if (_proof != null) {
+        try {
+          final bytes = await _proof!.readAsBytes();
+          final ext = _proof!.name.split('.').last.toLowerCase();
+          await AdminApi.attachRefundProof(
+            widget.order.ticketCode,
+            bytes,
+            ext.isEmpty ? 'jpg' : ext,
+          );
+        } catch (_) {
+          // The money is back; the receipt can be added later.
+        }
+      }
+
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
@@ -241,6 +264,38 @@ class _RefundSheetState extends State<RefundSheet> {
               ),
             ],
             const SizedBox(height: 12),
+
+            // Offered for a GCash refund, where there is a screenshot to
+            // keep. Cash across the counter has no receipt to photograph, so
+            // asking would only be a box nobody can fill.
+            if (_method == 'gcash') ...[
+              OutlinedButton.icon(
+                onPressed: _busy
+                    ? null
+                    : () async {
+                        final picked = await ImagePicker().pickImage(
+                          source: ImageSource.gallery,
+                          imageQuality: 70,
+                        );
+                        if (picked != null && mounted) {
+                          setState(() => _proof = picked);
+                        }
+                      },
+                icon: const Icon(Icons.receipt_long_outlined, size: 16),
+                label: Text(
+                  _proof == null
+                      ? 'Add proof you sent it (optional)'
+                      : 'Proof attached',
+                ),
+              ),
+              Text(
+                'The GCash screenshot. Kept for the shop only, in case the '
+                    'refund is ever questioned. The refund is recorded '
+                    'whether or not you add one.',
+                style: TextStyle(fontSize: 11, height: 1.4, color: faint),
+              ),
+              const SizedBox(height: 12),
+            ],
 
             TextField(
               controller: _note,

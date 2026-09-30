@@ -796,3 +796,77 @@ class MyProfile {
     fullName: m['full_name'] as String?,
   );
 }
+
+/// Somebody with an account, as the owner's People screen sees them.
+///
+/// Anonymous guests are not here: the database leaves them out, because there
+/// is nothing to manage about a row with no email, no password and no name,
+/// and the next visit mints another one.
+class Person {
+  final String id;
+  final String? email;
+  final String? firstName;
+  final String? middleName;
+  final String? lastName;
+  final String? username;
+  final String? nickname;
+  final String displayName;
+  final String? fullName;
+  final String? phone;
+
+  /// 'admin' | 'cashier' | 'customer'.
+  final String role;
+
+  /// When a suspension runs out, or null when they are not suspended. A ban is
+  /// simply a suspension a hundred years away.
+  final DateTime? bannedUntil;
+
+  /// Null for staff, not zero: create_ticket deliberately leaves staff orders
+  /// unattributed, so the figure does not apply rather than being none.
+  final int? orders;
+  final double? spent;
+  final DateTime? lastOrder;
+
+  const Person({
+    required this.id,
+    required this.displayName,
+    required this.role,
+    this.email,
+    this.firstName,
+    this.middleName,
+    this.lastName,
+    this.username,
+    this.nickname,
+    this.fullName,
+    this.phone,
+    this.bannedUntil,
+    this.orders,
+    this.spent,
+    this.lastOrder,
+  });
+
+  bool get isSuspended => bannedUntil != null;
+
+  /// A ban is a suspension far enough away that nobody outlives it.
+  bool get isBanned =>
+      bannedUntil != null &&
+      bannedUntil!.difference(DateTime.now()).inDays > 365 * 50;
+
+  factory Person.fromMap(Map<String, dynamic> m) => Person(
+    id: m['id'] as String,
+    email: m['email'] as String?,
+    firstName: m['first_name'] as String?,
+    middleName: m['middle_name'] as String?,
+    lastName: m['last_name'] as String?,
+    username: m['username'] as String?,
+    nickname: m['nickname'] as String?,
+    displayName: (m['display_name'] as String?) ?? 'Somebody',
+    fullName: m['full_name'] as String?,
+    phone: m['phone'] as String?,
+    role: (m['role'] as String?) ?? 'customer',
+    bannedUntil: DateTime.tryParse(m['banned_until'] as String? ?? '')?.toLocal(),
+    orders: (m['orders'] as num?)?.toInt(),
+    spent: (m['spent'] as num?)?.toDouble(),
+    lastOrder: DateTime.tryParse(m['last_order'] as String? ?? '')?.toLocal(),
+  );
+}

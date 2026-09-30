@@ -11,6 +11,7 @@ import 'ticket_screen.dart';
 import '../../services/push.dart';
 import '../widgets/my_details.dart';
 import '../widgets/notify_toggle.dart';
+import 'confirm_signup_screen.dart';
 import 'forgot_password_screen.dart';
 
 /// An optional account, and everything it makes possible.
@@ -116,23 +117,32 @@ class _SignedOutState extends State<_SignedOut> {
           details: _details,
         );
         if (!ready && mounted) {
-          // Back to the sign-in form, holding the email they just typed.
-          //
-          // Leaving the signup form on screen after it succeeded is how
-          // somebody ends up submitting it twice: nothing visibly changed,
-          // so the natural reading is that the button did not work. The
-          // second attempt then hits "already registered" and the account
-          // they successfully made looks like a failure.
-          //
-          // The next thing they do is sign in, so that is the form to leave
-          // them on. The password is cleared because the one they chose is
-          // not usable until the link in their email is opened, and a
-          // prefilled field invites trying it now and being turned away.
+          /*
+           * Straight to the code, not to a dialog saying "check your
+           * email".
+           *
+           * The confirmation link in that email opens a browser, which
+           * on a phone means leaving the app they just signed up in. The
+           * same email carries a six-digit code; typing it here finishes
+           * the account without going anywhere.
+           */
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ConfirmSignupScreen(email: _email.text.trim()),
+            ),
+          );
+          if (!mounted) return;
+
+          // Reached only when the code screen was backed out of without
+          // confirming. The account exists but cannot be signed into yet,
+          // so the sign-in form is the honest place to leave them — with
+          // the password cleared, because the one they chose does not work
+          // until the code is typed and a filled field invites trying it.
           setState(() {
             _creating = false;
             _password.clear();
+            _notice = 'Type the code from your email to finish the account.';
           });
-          await _saySoLoudly();
         }
       } else {
         await Api.signIn(_email.text, _password.text);
@@ -164,34 +174,6 @@ class _SignedOutState extends State<_SignedOut> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
-  }
-
-  /// Says the account was made, in a way that has to be acknowledged.
-  ///
-  /// A line of text on the form was not enough. Somebody who has just
-  /// pressed a button is looking at the button, and the form behind it looks
-  /// much as it did before — so the account gets made twice, and the second
-  /// attempt is refused for an address that now exists. Something they have
-  /// to dismiss cannot be walked past, and it names the one thing that has to
-  /// happen next: open the email.
-  Future<void> _saySoLoudly() async {
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Check your email'),
-        content: Text(
-          'We sent a confirmation link to ${_email.text.trim()}. '
-          'Open it to confirm the account, then sign in here.',
-          style: const TextStyle(height: 1.5),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Got it'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override

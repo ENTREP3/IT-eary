@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'dart:math';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -719,4 +721,96 @@ class AdminApi {
       return null;
     }
   }
+
+  /// Uploads the shop's proof that a refund was actually sent.
+  ///
+  /// The shop demands a screenshot when money comes in; until now it kept
+  /// nothing when money went out, so "you never refunded me" was a dispute
+  /// the shop could only answer with its own word.
+  ///
+  /// Attached after the refund, never before. Giving the money back is the
+  /// part that matters and must not be held up by a photo.
+  static Future<void> attachRefundProof(
+    String ticketCode,
+    Uint8List bytes,
+    String extension,
+  ) async {
+    final path = 'refunds/$ticketCode/'
+        '${DateTime.now().millisecondsSinceEpoch}.$extension';
+
+    await _db.storage.from('payment-proofs').uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(contentType: 'image/$extension'),
+    );
+
+    await _db.rpc('attach_refund_proof', params: {
+      'p_ticket_code': ticketCode,
+      'p_path': path,
+    });
+  }
+
+  /// Who is signed in, so the People screen can refuse to offer somebody
+  /// the buttons that would lock them out of their own shop.
+  static String? get currentUserId => _db.auth.currentUser?.id;
+
+  // ------------------------------------------------------------- people
+
+  /// Everyone with a real account, newest regulars first.
+  ///
+  /// Refused by the database for anybody who is not the owner, so this is
+  /// not gated here as well — one rule, in the place it cannot be skipped.
+  static Future<List<Person>> people() async {
+    final rows = await _db.rpc('list_people', params: {'p_role': null});
+    if (rows is! List) return const [];
+    return rows
+        .map<Person>((r) => Person.fromMap(Map<String, dynamic>.from(r as Map)))
+        .toList();
+  }
+
+  /// How many of each role, counted in the database so the tallies on this
+  /// screen cannot drift from the list beside them.
+  static Future<Map<String, int>> peopleCounts() async {
+    final rows = await _db.rpc('people_counts');
+    if (rows is! List) return const {};
+    return {
+      for (final r in rows)
+        (r['role'] as String): (r['n'] as num).toInt(),
+    };
+  }
+
+  /// Stops somebody signing in for a while.
+  static Future<void> suspendPerson(String id, int days) =>
+      _db.rpc('suspend_person', params: {'p_id': id, 'p_days': days});
+
+  /// Stops them indefinitely. A ban is a suspension a hundred years out.
+  static Future<void> banPerson(String id) =>
+      _db.rpc('ban_person', params: {'p_id': id});
+
+  /// Lets them back in.
+  static Future<void> restorePerson(String id) =>
+      _db.rpc('restore_person', params: {'p_id': id});
+
+  /// Removes the account for good.
+  ///
+  /// Their past orders stay in the shop's takings as guest orders — last
+  /// Tuesday's sales are the shop's record, not the customer's.
+  static Future<void> deletePerson(String id) =>
+      _db.rpc('delete_person', params: {'p_id': id});
+
+  /// Promotes or demotes somebody.
+  static Future<void> setPersonRole(String id, String role) =>
+      _db.rpc('set_person_role', params: {'p_id': id, 'p_role': role});
+
+  /// Corrects somebody's name, username or number. Never their role.
+  static Future<void> savePersonProfile(String id, NewAccount details) =>
+      _db.rpc('save_person_profile', params: {
+        'p_id': id,
+        'p_first_name': details.firstName.trim(),
+        'p_last_name': details.lastName.trim(),
+        'p_username': details.username.trim(),
+        'p_middle_name': details.middleName?.trim(),
+        'p_nickname': details.nickname?.trim(),
+        'p_phone': details.phone?.trim(),
+      });
 }

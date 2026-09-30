@@ -137,6 +137,11 @@ class _StorefrontScreenState extends State<StorefrontScreen> {
               // app came to order lunch, so news about a version number is
               // something they meet on the way down, never a dialog across
               // the thing they came for.
+              // Greeted by the name they chose, which is the reason
+              // signing up asks for a username at all. Above the
+              // announcement because it is about them, not the shop.
+              const _Welcome(),
+
               const AnnouncementBanner(),
 
               const UpdateBanner(),
@@ -488,6 +493,67 @@ class _DishPreview extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Greets a signed-in diner by name, and nudges them towards ordering.
+///
+/// Nothing at all for a guest, which is most visitors: a greeting to
+/// somebody who has not told the shop what to call them would have to be
+/// addressed to nobody.
+class _Welcome extends StatefulWidget {
+  const _Welcome();
+
+  @override
+  State<_Welcome> createState() => _WelcomeState();
+}
+
+class _WelcomeState extends State<_Welcome> {
+  MyProfile? _me;
+
+  @override
+  void initState() {
+    super.initState();
+    _look();
+    // Signing in and out both change who this is, and the storefront is
+    // usually still underneath when that happens.
+    Api.authChanges.listen((_) {
+      if (mounted) _look();
+    });
+  }
+
+  Future<void> _look() async {
+    final me = await Api.myProfile();
+    if (mounted) setState(() => _me = me);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final me = _me;
+    if (me == null || me.username == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Welcome back, ${me.displayName}',
+            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            'Freshly cooked and waiting. Pick your ulam and we will have it '
+                'ready by the time you arrive.',
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.45,
+              color: Palette.ink.withValues(alpha: 0.65),
+            ),
+          ),
+        ],
       ),
     );
   }
