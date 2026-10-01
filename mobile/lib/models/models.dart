@@ -680,11 +680,33 @@ class DishReview {
   final int rating;
   final String comment;
 
-  const DishReview({required this.rating, required this.comment});
+  /// When the diner first rated this. Never overwritten by an edit, so
+  /// the hour below is measured from the rating rather than the last
+  /// change — otherwise editing repeatedly would hold the window open.
+  final DateTime? ratedAt;
+
+  const DishReview({
+    required this.rating,
+    required this.comment,
+    this.ratedAt,
+  });
+
+  /// Whether it can still be changed.
+  ///
+  /// A transcription of the interval inside `leave_review`, which is what
+  /// actually refuses a late edit. This exists so the app can stop offering
+  /// a control that would only produce a refusal, and so a mistap months
+  /// later cannot quietly rewrite a dish's average.
+  bool get editable {
+    final at = ratedAt;
+    if (at == null) return true;
+    return DateTime.now().difference(at) < const Duration(hours: 1);
+  }
 
   factory DishReview.fromMap(Map<String, dynamic> m) => DishReview(
     rating: (m['rating'] as num?)?.toInt() ?? 0,
     comment: m['comment'] as String? ?? '',
+    ratedAt: DateTime.tryParse(m['created_at'] as String? ?? '')?.toLocal(),
   );
 }
 

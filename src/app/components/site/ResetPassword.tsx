@@ -23,6 +23,7 @@ import { passwordProblem } from '../../lib/password';
 export function ResetPasswordPage() {
   const navigate = useNavigate();
   const setNewPassword = useAuthStore((s) => s.setNewPassword);
+  const signOut = useAuthStore((s) => s.signOut);
 
   const [ready, setReady] = useState<boolean | null>(null);
   const [password, setPassword] = useState('');
@@ -91,10 +92,23 @@ export function ResetPasswordPage() {
     setError(null);
     try {
       await setNewPassword(password);
+
+      /*
+       * Signed out again, deliberately.
+       *
+       * The recovery link signs somebody in as a side effect of proving
+       * who they are, so without this they are let straight into the site
+       * never having typed the password they just chose.
+       *
+       * Typing it once more is the only way either of us finds out it is
+       * what they meant. A mistyped new password discovered now costs one
+       * more reset; discovered next week it looks like the shop having
+       * lost their account.
+       */
+      await signOut();
+
       setDone(true);
-      // Straight to their orders, already signed in. Sending somebody who has
-      // just proved who they are back to a sign-in form is a wasted step.
-      setTimeout(() => navigate('/account'), 1800);
+      setTimeout(() => navigate('/account'), 2200);
     } catch (err) {
       setError(humanError(err, 'That password could not be saved.'));
     } finally {
@@ -144,7 +158,7 @@ export function ResetPasswordPage() {
         >
           <CheckCircle2 size={26} className="text-semantic-cash" /> Password changed
         </h1>
-        <p className="mt-3 opacity-70">Taking you to your orders…</p>
+        <p className="mt-3 opacity-70">Sign in with it now, so you know it is the one you meant.</p>
       </Shell>
     );
   }

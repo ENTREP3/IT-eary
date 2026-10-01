@@ -163,16 +163,37 @@ class _RateOrderState extends State<RateOrder> {
                         on ? Icons.star_rounded : Icons.star_outline_rounded,
                         color: on ? Palette.gold : Palette.ink.withValues(alpha: 0.3),
                       ),
-                      onPressed: () => _rate(item.id, star),
+                      // A rating settles an hour after it is left. The
+                      // database refuses a late edit regardless; greying
+                      // the star out is so nobody taps it, sees nothing
+                      // happen, and taps again.
+                      onPressed: (mine != null && !mine.editable)
+                          ? null
+                          : () => _rate(item.id, star),
                     );
                   }),
                 ),
             ],
           ),
 
-          // Only offered once stars are given. Asking for words from somebody
-          // who has not even tapped a star is asking too much.
-          if (mine != null && !open)
+          // Said once the hour is up, so greyed-out stars are explained
+          // rather than looking broken.
+          if (mine != null && !mine.editable)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Rated. This can no longer be changed.',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: Palette.ink.withValues(alpha: 0.45),
+                ),
+              ),
+            ),
+
+          // Only offered once stars are given, and only while it can
+          // still be changed. Asking for words from somebody who has not
+          // even tapped a star is asking too much.
+          if (mine != null && mine.editable && !open)
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(

@@ -40,6 +40,7 @@ import { ReviewShowcase } from './ReviewShowcase';
 import { useRateable, useRecentOrders } from '../../lib/rateable';
 import { toggleFavourite, syncFavourites } from '../../lib/favourites';
 import { useMyRating, refreshMyRatings } from '../../lib/myRatings';
+import { stillEditable } from '../../lib/ratingWindow';
 import { displayName } from '../../lib/displayName';
 import {
   getFavourites,
@@ -656,13 +657,19 @@ function DishCard({
             <span className="text-xs opacity-45">No ratings yet</span>
           )}
 
-          {canRate ? (
+          {/* A rating settles an hour after it is left, so the link to
+              change it goes rather than being offered and refused. */}
+          {canRate && (!myRating || stillEditable(myRating.at)) ? (
             <button
               onClick={() => setRateOpen(true)}
               className="inline-flex items-center gap-1.5 text-xs text-diner-accent hover:underline"
             >
               <Star size={12} /> {myRating ? 'Edit your rating' : 'Rate this dish'}
             </button>
+          ) : myRating ? (
+            <span className="text-xs opacity-45">
+              You rated this {myRating.stars}★
+            </span>
           ) : (
             <span className="text-xs opacity-45">Order it to leave a rating</span>
           )}

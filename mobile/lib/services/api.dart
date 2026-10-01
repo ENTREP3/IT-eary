@@ -662,7 +662,7 @@ class Api {
     try {
       final rows = await _db
           .from('reviews')
-          .select('dish_id, rating, comment')
+          .select('dish_id, rating, comment, created_at')
           .eq('ticket_code', ticketCode.trim().toUpperCase());
       return {
         for (final r in rows) r['dish_id'] as String: DishReview.fromMap(r),

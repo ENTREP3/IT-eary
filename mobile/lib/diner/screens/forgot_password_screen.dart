@@ -103,6 +103,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     });
     try {
       await Api.setNewPassword(_password.text);
+
+      /*
+       * Signed out again, deliberately.
+       *
+       * The recovery code signs somebody in as a side effect of proving
+       * who they are, so without this they are simply let into the app —
+       * never having typed the password they just chose.
+       *
+       * Typing it once more is the only way either of us finds out it is
+       * what they meant. A mistyped new password discovered now costs one
+       * more reset; discovered next week it looks like the shop losing
+       * their account.
+       */
+      await Api.signOut();
+
       if (!mounted) return;
       setState(() {
         _busy = false;
@@ -246,12 +261,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'You are signed in already.',
+            'Sign in with it now, so you know it is the one you meant.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Palette.ink.withValues(alpha: 0.65)),
           ),
           const SizedBox(height: 20),
-          _primary('Back to my orders', () => Navigator.of(context).pop(true)),
+          _primary('Sign in', () => Navigator.of(context).pop(true)),
         ],
       );
 

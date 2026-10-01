@@ -3,6 +3,7 @@ import { Loader2, Star } from 'lucide-react';
 import { useReviewStore } from '../../store/reviewStore';
 import { saveRating } from '../../lib/localPrefs';
 import { useMyRating, refreshMyRatings } from '../../lib/myRatings';
+import { stillEditable } from '../../lib/ratingWindow';
 import { humanError } from '../../lib/errors';
 
 /**
@@ -55,6 +56,16 @@ function DishRow({ ticketCode, item }: { ticketCode: string; item: Item }) {
   const post = useReviewStore((s) => s.submit);
 
   const existing = useMyRating(dishId);
+
+  /*
+   * Settled ratings cannot be changed, and the stars stop being buttons.
+   *
+   * The database refuses a late edit regardless; this is so nobody taps a
+   * star, watches nothing happen, and taps it again. It also removes the
+   * risk the window exists for: a mistap on a months-old rating silently
+   * rewriting a dish's average.
+   */
+  const locked = Boolean(existing) && !stillEditable(existing?.at);
   const [stars, setStars] = useState(existing?.stars ?? 0);
   const [comment, setComment] = useState(existing?.comment ?? '');
 
@@ -127,7 +138,7 @@ function DishRow({ ticketCode, item }: { ticketCode: string; item: Item }) {
             <button
               key={n}
               type="button"
-              disabled={busy}
+              disabled={busy || locked}
               onClick={() => pick(n)}
               aria-label={`${n} star${n > 1 ? 's' : ''} for ${item.name}`}
               className="p-0.5 disabled:opacity-50"
@@ -144,7 +155,7 @@ function DishRow({ ticketCode, item }: { ticketCode: string; item: Item }) {
         {busy && <Loader2 size={13} className="animate-spin opacity-50" />}
       </div>
 
-      {done && !open && (
+      {done && !open && !locked && (
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -183,8 +194,16 @@ function DishRow({ ticketCode, item }: { ticketCode: string; item: Item }) {
         </div>
       )}
 
+      {/* Said once the hour is up, so the greyed-out stars are explained
+          rather than looking broken. */}
+      {locked && (
+        <p className="mt-0.5 text-xs opacity-45">
+          Rated. This can no longer be changed.
+        </p>
+      )}
+
       {error && <p className="mt-1 text-xs text-diner-accent">{error}</p>}
-      {done && !open && !error && (
+      {done && !open && !error && !locked && (
         <p className="mt-0.5 text-xs opacity-45">Thank you — this is on the dish now.</p>
       )}
     </div>

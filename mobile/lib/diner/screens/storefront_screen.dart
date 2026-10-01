@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/models.dart';
@@ -32,11 +34,31 @@ class _StorefrontScreenState extends State<StorefrontScreen> {
   Shop? _shop;
   List<Dish> _dishes = const [];
   bool _loading = true;
+  StreamSubscription<AuthState>? _auth;
 
   @override
   void initState() {
     super.initState();
     _load();
+
+    /*
+     * Rebuild when the diner signs in or out.
+     *
+     * The header already asks Api.signedIn whether to say "My orders" or
+     * "Sign in", but it only asked once, when the screen was first built.
+     * This screen sits underneath the account screen the whole time
+     * somebody is signing in, so it was never rebuilt afterwards and went
+     * on offering to sign in a diner who already had.
+     */
+    _auth = Api.authChanges.listen((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _auth?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
