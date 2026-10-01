@@ -2040,7 +2040,7 @@ function TicketView({
         </div>
       )}
 
-      <Receipt order={order} />
+      <Receipt order={order} shareable />
     </div>
   );
 }

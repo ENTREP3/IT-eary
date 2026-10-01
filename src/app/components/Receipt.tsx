@@ -1,6 +1,7 @@
 import React from 'react';
-import { Printer, Download, Check } from 'lucide-react';
-import { downloadTextFile } from '../lib/exportCsv';
+import { Printer, Download, Share2, Check } from 'lucide-react';
+import { receiptPng } from '../lib/receiptImage';
+import { dinerOrigin } from '../lib/surface';
 import type { Order } from '../lib/types';
 
 const STORE_NAME = 'Bencris Karinderya';
@@ -15,41 +16,65 @@ function methodLabel(order: Order) {
   return 'Unpaid';
 }
 
-/** Plain-text receipt sized for an 80mm thermal roll (32 columns). */
-export function buildReceiptText(order: Order) {
-  const W = 32;
-  const line = (l: string, r: string) => l + r.padStart(Math.max(1, W - l.length));
-  const rule = '-'.repeat(W);
-
-  const out: string[] = [
-    STORE_NAME.padStart(Math.floor((W + STORE_NAME.length) / 2)),
-    '',
-    `Ticket:  ${order.ticket_code}`,
-    `Date:    ${new Date(order.paid_at ?? order.created_at).toLocaleString()}`,
-  ];
-  if (order.customer_name) out.push(`Name:    ${order.customer_name}`);
-  out.push(`Payment: ${methodLabel(order)}`, rule);
-
-  for (const item of order.items ?? []) {
-    out.push(`${item.qty} x ${item.name}`);
-    out.push(line('', peso(item.qty * item.price)));
-  }
-
-  out.push(rule, line('TOTAL', peso(order.total)), '', 'Salamat po!', '');
-  return out.join('\n');
+/**
+ * Saves the receipt as a picture.
+ *
+ * It wrote a .txt, on the reasoning that a receipt is read and kept and that
+ * text does both without a library. That was wrong about what people do with
+ * one: it gets sent to somebody, and a text file in a chat is an attachment
+ * nobody opens while a picture is simply there.
+ *
+ */
+export async function downloadReceipt(order: Order) {
+  // The renderer adds "Karinderya" itself, so it is given the bare name.
+  const blob = await receiptPng(order, { name: 'Bencris' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `bencris-${order.ticket_code}.png`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
-export function downloadReceipt(order: Order) {
-  downloadTextFile(`receipt-${order.ticket_code}.txt`, buildReceiptText(order));
+/** Hands the receipt to somebody else, with a link back to the menu. */
+export async function shareReceipt(order: Order) {
+  const link = dinerOrigin();
+  const text = 'My order from Bencris Karinderya';
+  const blob = await receiptPng(order, { name: 'Bencris' });
+  const file = new File([blob], `bencris-${order.ticket_code}.png`, {
+    type: 'image/png',
+  });
+
+  try {
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ text, url: link, files: [file] });
+      return;
+    }
+    if (navigator.share) {
+      await navigator.share({ text, url: link });
+      return;
+    }
+    // Most desktop browsers. Copying the link is the honest version of this
+    // button rather than letting it do nothing.
+    await navigator.clipboard.writeText(`${text} — ${link}`);
+  } catch (e) {
+    // Dismissing the share sheet rejects, and deciding not to send something
+    // is not an error.
+    if (e instanceof DOMException && e.name === 'AbortError') return;
+    throw e;
+  }
 }
 
 export function Receipt({
   order,
   onPrint,
+  shareable = false,
   className = '',
 }: {
   order: Order;
   onPrint?: () => void;
+  /** Offer to send it on. For the diner's copy; the till has nobody to send it to. */
+  shareable?: boolean;
   className?: string;
 }) {
   return (
@@ -125,11 +150,19 @@ export function Receipt({
           <Printer size={15} /> Print
         </button>
         <button
-          onClick={() => downloadReceipt(order)}
+          onClick={() => void downloadReceipt(order)}
           className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-current/20 text-sm"
         >
           <Download size={15} /> Download
         </button>
+        {shareable && (
+          <button
+            onClick={() => void shareReceipt(order)}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-current/20 text-sm"
+          >
+            <Share2 size={15} /> Share
+          </button>
+        )}
       </div>
     </div>
   );

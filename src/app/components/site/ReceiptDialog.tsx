@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Download, Loader2, X } from 'lucide-react';
+import { Download, Loader2, Share2, X } from 'lucide-react';
 import type { Order } from '../../lib/types';
 import { useOrdersStore } from '../../store/ordersStore';
 import { useBusinessStore } from '../../store/businessStore';
 import { humanError } from '../../lib/errors';
 import { useConfirm } from '../shared/useConfirm';
+import { receiptPng } from '../../lib/receiptImage';
+import { dinerOrigin } from '../../lib/surface';
 
 /**
  * The receipt for one order, reopened from the order history.
@@ -37,6 +39,8 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Said when something quietly succeeded, like a link reaching the clipboard. */
+  const [note, setNote] = useState<string | null>(null);
 
   const paid = Boolean(order.paid_at);
   const settled = ['cancelled', 'refunded', 'expired'].includes(order.status);
@@ -46,54 +50,62 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
 
   const peso = (n: number) => `PHP ${Number(n ?? 0).toFixed(2)}`;
 
-  /**
-   * The receipt as plain text, laid out to be read in a notes app.
-   *
-   * Built here rather than scraped from the rendered page, so what is saved is
-   * the record rather than whatever the layout happened to be.
-   */
-  const asText = () => {
-    const lines: string[] = [];
-    lines.push(shop.name || 'Bencris');
-    if (shop.address_line && !shop.address_line.includes('[')) {
-      lines.push([shop.address_line, shop.district, shop.city].filter(Boolean).join(', '));
+  /** Saves the receipt as a picture, in the browser's downloads. */
+  const download = async () => {
+    setError(null);
+    try {
+      const blob = await receiptPng(order, shop);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bencris-${order.ticket_code}.png`;
+      a.click();
+      // Released straight away: the download is already the browser's, and
+      // holding the object alive leaks the whole file.
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(humanError(e, 'Could not save the receipt.'));
     }
-    lines.push('');
-    lines.push(`Ticket      ${order.ticket_code}`);
-    lines.push(`Date        ${new Date(order.created_at).toLocaleString()}`);
-    if (order.customer_name) lines.push(`Name        ${order.customer_name}`);
-    lines.push('');
-
-    for (const item of order.items ?? []) {
-      const qty = `${item.qty}x`.padEnd(5);
-      lines.push(`${qty}${(item.name ?? '').padEnd(24)}${peso(Number(item.price) * item.qty)}`);
-    }
-
-    lines.push('');
-    lines.push(`Subtotal    ${peso(order.subtotal || order.total)}`);
-    if (order.discount > 0) {
-      // The code is named because a diner checking a discount wants to know
-      // which one was applied, not only that something came off.
-      lines.push(`Discount    -${peso(order.discount)}${order.promo_code ? `  (${order.promo_code})` : ''}`);
-    }
-    lines.push(`Total       ${peso(order.total)}`);
-    lines.push(`Paid by     ${order.payment_method === 'gcash' ? 'GCash' : 'Cash'}`);
-    if (order.served_by_name) lines.push(`Served by   ${order.served_by_name}`);
-    lines.push('');
-    lines.push(`Status      ${order.status}`);
-    return lines.join('\n');
   };
 
-  const download = () => {
-    const blob = new Blob([asText()], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `bencris-${order.ticket_code}.txt`;
-    a.click();
-    // Released straight away: the download has already been handed to the
-    // browser, and holding the object alive leaks the whole file.
-    URL.revokeObjectURL(url);
+  /**
+   * Sends the receipt on, with a way back to the shop.
+   *
+   * Three rungs, because browsers differ and the button has to do something
+   * on all of them. Where the Web Share API takes files, the picture goes
+   * with the link — that is the real thing, and it is what the phone does.
+   * Where sharing exists but not for files, the text and link go alone.
+   * Where there is no sharing at all, which is most desktop browsers, the
+   * link is copied and the button says so rather than appearing to fail.
+   */
+  const share = async () => {
+    setError(null);
+    setNote(null);
+    const link = dinerOrigin();
+    const text = `My order from ${shop.name || 'Bencris'} Karinderya`;
+
+    try {
+      const blob = await receiptPng(order, shop);
+      const file = new File([blob], `bencris-${order.ticket_code}.png`, {
+        type: 'image/png',
+      });
+
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ text, url: link, files: [file] });
+        return;
+      }
+      if (navigator.share) {
+        await navigator.share({ text, url: link });
+        return;
+      }
+      await navigator.clipboard.writeText(`${text} — ${link}`);
+      setNote('Link copied. The receipt is in your downloads if you save it.');
+    } catch (e) {
+      // Dismissing the share sheet rejects, and that is not a failure worth
+      // reporting to somebody who just decided not to send it.
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      setError(humanError(e, 'Could not share the receipt.'));
+    }
   };
 
   const doCancel = async () => {
@@ -129,26 +141,39 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
   );
 
   return (
+    /* A solid panel, not a floating card on a translucent wash.
+     *
+     * It used to be the latter, and the page showed straight through the
+     * parts that were not the white paper — the buttons and the note under it
+     * sat on a scrim with order cards and star ratings legible behind them.
+     * The close button had the matching problem: it lived above the card in a
+     * scrolling column, so on a short screen it scrolled off the top edge and
+     * was clipped.
+     *
+     * Now the panel owns a header, a scrolling middle and a pinned footer, so
+     * the only thing that moves is the receipt itself. */
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4 py-6"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       role="dialog"
       aria-modal="true"
       onClick={busy ? undefined : onClose}
     >
       <div
-        className="w-full max-w-sm max-h-full overflow-auto"
+        className="w-full max-w-sm max-h-[92vh] flex flex-col overflow-hidden rounded-3xl bg-diner-ground text-diner-ink border border-diner-ink/10 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-end mb-2">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-diner-ink/10 shrink-0">
+          <span className="text-xs tracking-[0.25em] uppercase opacity-55">Receipt</span>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="p-2 rounded-full bg-diner-card text-diner-ink/60 hover:text-diner-ink"
+            className="p-2 -mr-2 rounded-full text-diner-ink/60 hover:text-diner-ink"
           >
             <X size={18} />
           </button>
         </div>
 
+        <div className="flex-1 overflow-auto p-4">
         {/* White, not the page colour: a receipt is a piece of paper, and the
             phone has always shown it that way. */}
         <div className="rounded-3xl bg-white text-[#1a1410] border border-diner-ink/10 p-5">
@@ -224,17 +249,29 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
           )}
 
           <p className="mt-4 text-center text-xs text-black/45">Salamat po!</p>
+          </div>
         </div>
 
-        {error && <p className="mt-3 text-sm text-diner-accent">{error}</p>}
-
-        <div className="mt-5 space-y-2">
-          <button
-            onClick={download}
-            className="w-full h-11 rounded-full border border-diner-ink/20 inline-flex items-center justify-center gap-2 text-sm"
-          >
-            <Download size={15} /> Download receipt
-          </button>
+        <div className="shrink-0 border-t border-diner-ink/10 p-4 space-y-2">
+          {error && <p className="text-sm text-diner-accent">{error}</p>}
+          {note && <p className="text-sm text-diner-ink/70">{note}</p>}
+          {/* Two different things, so two buttons. Saving puts a picture in
+              the downloads folder; sharing hands it to somebody else with a
+              way back to the shop. */}
+          <div className="flex gap-2">
+            <button
+              onClick={download}
+              className="flex-1 h-11 rounded-full border border-diner-ink/20 inline-flex items-center justify-center gap-2 text-sm hover:border-diner-ink/40"
+            >
+              <Download size={15} /> Download
+            </button>
+            <button
+              onClick={share}
+              className="flex-1 h-11 rounded-full border border-diner-ink/20 inline-flex items-center justify-center gap-2 text-sm hover:border-diner-ink/40"
+            >
+              <Share2 size={15} /> Share
+            </button>
+          </div>
 
           {canCancel && (
             <button

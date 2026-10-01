@@ -59,6 +59,30 @@ void main() {
       expect(cart.lines, isEmpty);
     });
 
+    test('the x button drops a line however many are on it', () {
+      final cart = Cart()
+        ..add(_sago)
+        ..add(_sago)
+        ..add(_sago)
+        ..add(_tapsilog);
+
+      // The distinction the two methods exist for: minus steps the count
+      // down, this takes the dish off outright. Pressing minus here would
+      // leave two.
+      cart.removeLine('sago');
+
+      expect(cart.qtyOf('sago'), 0);
+      expect(cart.qtyOf('tapsilog'), 1);
+      expect(cart.lines.length, 1);
+    });
+
+    test('dropping a line that is not in the cart changes nothing', () {
+      final cart = Cart()..add(_sago);
+      cart.removeLine('tapsilog');
+      expect(cart.qtyOf('sago'), 1);
+      expect(cart.lines.length, 1);
+    });
+
     test('sends only ids and quantities — never prices', () {
       final cart = Cart()
         ..add(_tapsilog)

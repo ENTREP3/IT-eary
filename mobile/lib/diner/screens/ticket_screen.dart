@@ -1,11 +1,13 @@
 import 'dart:async';
-import 'dart:io';
-import '../../errors.dart';
+import 'dart:ui' show ImageByteFormat;
 
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+
+import '../../errors.dart';
 
 import '../../models/models.dart';
 import '../../services/api.dart';
@@ -16,6 +18,13 @@ import '../../tokens.dart';
 
 /// The ticket the diner shows at the counter. Subscribes to Realtime so it
 /// flips to Paid / Ready on its own while they're standing there.
+/// Where a shared receipt sends the person reading it.
+///
+/// The customer site, never a staff address: this link is forwarded to
+/// friends, and the only thing they should land on is the menu.
+const _siteUrl = 'https://bencris.iteary.site';
+
+
 class TicketScreen extends StatefulWidget {
   const TicketScreen({super.key, required this.ticket});
 
@@ -26,6 +35,9 @@ class TicketScreen extends StatefulWidget {
 }
 
 class _TicketScreenState extends State<TicketScreen> {
+  /// Identifies the receipt so it can be rasterised when saving.
+  final _receiptKey = GlobalKey();
+
   late Ticket _ticket = widget.ticket;
   PaymentSettings? _settings;
   bool _uploading = false;
@@ -162,20 +174,94 @@ class _TicketScreenState extends State<TicketScreen> {
     }
   }
 
+  /// Saves the receipt to the phone as a picture.
+  ///
+  /// It used to write a .txt to a temporary folder and open the system share
+  /// sheet. Two things were wrong with that. A receipt gets sent to somebody
+  /// — a housemate, a group chat, whoever is being paid back — and a text
+  /// file in a chat is an attachment nobody opens, while a picture is simply
+  /// there in the conversation. And a share sheet is not a download: it asked
+  /// where to send the thing, and because the file was text, Android offered
+  /// Print among the targets, on a receipt for a karinderya.
+  ///
+  /// So it saves rather than shares. The button said Download; now that is
+  /// what it does.
+  /// The receipt as a PNG, rasterised from the widget on screen.
+  ///
+  /// Shared by both buttons, so what gets saved and what gets sent to
+  /// somebody are the same picture, and there is one place where the
+  /// resolution is decided.
+  Future<Uint8List> _receiptPng() async {
+    final boundary = _receiptKey.currentContext?.findRenderObject()
+        as RenderRepaintBoundary?;
+    if (boundary == null) throw StateError('receipt not on screen');
+
+    // Three times the logical size: a receipt gets pinched open to check a
+    // figure, and a blurry total is the one thing it cannot afford.
+    final image = await boundary.toImage(pixelRatio: 3);
+    final bytes = await image.toByteData(format: ImageByteFormat.png);
+    if (bytes == null) throw StateError('could not encode the receipt');
+    return bytes.buffer.asUint8List();
+  }
+
+  /// Sends the receipt on to somebody, with a way back to the shop.
+  ///
+  /// The picture carries what they ordered, which is the part people actually
+  /// forward — "this is what I had" — and the link is so the person reading it
+  /// can order the same thing rather than ask where it came from.
   Future<void> _shareReceipt() async {
-    final text = buildReceiptText(_ticket);
     try {
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/receipt-${_ticket.ticketCode}.txt');
-      await file.writeAsString(text);
+      final png = await _receiptPng();
       await SharePlus.instance.share(
         ShareParams(
-          files: [XFile(file.path)],
-          text: 'Bencris receipt ${_ticket.ticketCode}',
+          files: [
+            XFile.fromData(
+              png,
+              name: 'bencris-${_ticket.ticketCode}.png',
+              mimeType: 'image/png',
+            ),
+          ],
+          text: 'My order from Bencris Karinderya — $_siteUrl',
         ),
       );
-    } catch (_) {
-      await SharePlus.instance.share(ShareParams(text: text));
+    } catch (e) {
+      // A picture is the point, but a phone that will not hand one over
+      // should still manage to pass on what was ordered. The plain-text
+      // receipt is the same record in the form that always travels.
+      try {
+        await SharePlus.instance.share(
+          ShareParams(
+            text: '${buildReceiptText(_ticket)}\n\n$_siteUrl',
+          ),
+        );
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(humanError(e, 'Could not share the receipt.')),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveReceipt() async {
+    try {
+      await FileSaver.instance.saveFile(
+        name: 'bencris-${_ticket.ticketCode}',
+        bytes: await _receiptPng(),
+        ext: 'png',
+        mimeType: MimeType.png,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Receipt ${_ticket.ticketCode} saved.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(humanError(e, 'Could not save the receipt.'))),
+      );
     }
   }
 
@@ -467,18 +553,54 @@ class _TicketScreenState extends State<TicketScreen> {
               _gcashPanel(),
             ],
             const SizedBox(height: 20),
-            _ReceiptCard(ticket: _ticket),
+            // Wrapped so the receipt can be rasterised exactly as it looks
+            // here. Capturing the widget already on screen is what keeps the
+            // saved picture and the displayed receipt from drifting apart,
+            // which a second hand-drawn copy of the layout would not.
+            RepaintBoundary(
+              key: _receiptKey,
+              child: _ReceiptCard(ticket: _ticket),
+            ),
             const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: _shareReceipt,
-              icon: const Icon(Icons.download),
-              label: Text(paid ? 'Download receipt' : 'Save a copy'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(50),
-                foregroundColor: Palette.ink,
-                side: BorderSide(color: Palette.ink.withValues(alpha: 0.3)),
-                shape: const StadiumBorder(),
-              ),
+            // Two different things, so two buttons. Saving puts a picture in
+            // the phone's files; sharing hands it to somebody else along with
+            // a way back to the shop. Collapsing them into one button is what
+            // made Download open a share sheet, which is not what the word
+            // means.
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _saveReceipt,
+                    icon: const Icon(Icons.download, size: 18),
+                    label: Text(paid ? 'Download' : 'Save a copy'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      foregroundColor: Palette.ink,
+                      side: BorderSide(
+                        color: Palette.ink.withValues(alpha: 0.3),
+                      ),
+                      shape: const StadiumBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _shareReceipt,
+                    icon: const Icon(Icons.ios_share, size: 18),
+                    label: const Text('Share'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      foregroundColor: Palette.ink,
+                      side: BorderSide(
+                        color: Palette.ink.withValues(alpha: 0.3),
+                      ),
+                      shape: const StadiumBorder(),
+                    ),
+                  ),
+                ),
+              ],
             ),
 
             // Calling it off. Only while it is unpaid and the kitchen has not
@@ -710,58 +832,6 @@ String _formatDate(DateTime d) {
   return '${d.month}/${d.day}/${d.year}, $h:${d.minute.toString().padLeft(2, '0')} $ampm';
 }
 
-/// 32-column plain-text receipt, matching the cashier's thermal-roll format.
-String buildReceiptText(Ticket t) {
-  const w = 32;
-  String line(String l, String r) => l + r.padLeft((w - l.length).clamp(1, w));
-  final rule = '-' * w;
-  const title = 'Bencris Karinderya';
-
-  final out = <String>[
-    title.padLeft(((w + title.length) / 2).floor()),
-    '',
-    'Ticket:  ${t.ticketCode}',
-    'Date:    ${_formatDate(t.paidAt ?? t.createdAt)}',
-  ];
-  if (t.customerName != null) out.add('Name:    ${t.customerName}');
-  out
-    ..add('Payment: ${t.receiptPaymentLabel}')
-    ..add(rule);
-
-  for (final item in t.items) {
-    out.add('${item.qty} x ${item.name}');
-    out.add(line('', '₱${item.lineTotal.toStringAsFixed(2)}'));
-  }
-
-  out.add(rule);
-
-  // Named, not just subtracted: somebody checking a discount wants to
-  // know which code did it.
-  if (t.discount > 0) {
-    out.add(line('Subtotal', '₱${t.subtotal.toStringAsFixed(2)}'));
-    out.add(line(
-      t.promoCode == null ? 'Discount' : 'Discount (${t.promoCode})',
-      '-₱${t.discount.toStringAsFixed(2)}',
-    ));
-  }
-
-  out
-    ..add(line('TOTAL', '₱${t.total.toStringAsFixed(2)}'))
-    ..add('');
-
-  // The person, not their job title. A diner has no use for knowing
-  // whether it was the owner or a cashier at the till.
-  if ((t.servedByName ?? '').trim().isNotEmpty) {
-    out.add(line('Served by', t.servedByName!));
-  }
-
-  out
-    ..add('')
-    ..add('Salamat po!')
-    ..add('');
-  return out.join('\n');
-}
-
 /// Lets a diner pull a ticket back up on a different device or after a restart.
 class FindTicketScreen extends StatefulWidget {
   const FindTicketScreen({super.key});
@@ -899,4 +969,56 @@ class _ReceiptLine extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// 32-column plain-text receipt, matching the cashier's thermal-roll format.
+String buildReceiptText(Ticket t) {
+  const w = 32;
+  String line(String l, String r) => l + r.padLeft((w - l.length).clamp(1, w));
+  final rule = '-' * w;
+  const title = 'Bencris Karinderya';
+
+  final out = <String>[
+    title.padLeft(((w + title.length) / 2).floor()),
+    '',
+    'Ticket:  ${t.ticketCode}',
+    'Date:    ${_formatDate(t.paidAt ?? t.createdAt)}',
+  ];
+  if (t.customerName != null) out.add('Name:    ${t.customerName}');
+  out
+    ..add('Payment: ${t.receiptPaymentLabel}')
+    ..add(rule);
+
+  for (final item in t.items) {
+    out.add('${item.qty} x ${item.name}');
+    out.add(line('', '₱${item.lineTotal.toStringAsFixed(2)}'));
+  }
+
+  out.add(rule);
+
+  // Named, not just subtracted: somebody checking a discount wants to
+  // know which code did it.
+  if (t.discount > 0) {
+    out.add(line('Subtotal', '₱${t.subtotal.toStringAsFixed(2)}'));
+    out.add(line(
+      t.promoCode == null ? 'Discount' : 'Discount (${t.promoCode})',
+      '-₱${t.discount.toStringAsFixed(2)}',
+    ));
+  }
+
+  out
+    ..add(line('TOTAL', '₱${t.total.toStringAsFixed(2)}'))
+    ..add('');
+
+  // The person, not their job title. A diner has no use for knowing
+  // whether it was the owner or a cashier at the till.
+  if ((t.servedByName ?? '').trim().isNotEmpty) {
+    out.add(line('Served by', t.servedByName!));
+  }
+
+  out
+    ..add('')
+    ..add('Salamat po!')
+    ..add('');
+  return out.join('\n');
 }
