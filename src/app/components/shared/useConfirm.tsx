@@ -61,7 +61,36 @@ export function useConfirm() {
   return useContext(ConfirmContext);
 }
 
-export function ConfirmProvider({ children }: { children: React.ReactNode }) {
+/**
+ * Which of the two palettes the dialog should wear.
+ *
+ * The staff screens are near-black with cream text; the customer site is cream
+ * with dark text. The dialog was written for the first and hardcoded to it, so
+ * mounting it on the customer site dropped a black box onto a cream page.
+ */
+type Tone = 'staff' | 'diner';
+
+const SKIN: Record<Tone, { content: string; body: string; cancel: string }> = {
+  staff: {
+    content: 'bg-[#0a0d0a] border-[#e8dfc8]/15 text-[#e8dfc8]',
+    body: 'text-[#e8dfc8]/60',
+    cancel: 'bg-transparent border-[#e8dfc8]/20 text-[#e8dfc8] hover:bg-[#e8dfc8]/10',
+  },
+  diner: {
+    content: 'bg-[#fbf4e3] border-[#2a1810]/15 text-[#2a1810]',
+    body: 'text-[#2a1810]/65',
+    cancel: 'bg-transparent border-[#2a1810]/20 text-[#2a1810] hover:bg-[#2a1810]/10',
+  },
+};
+
+export function ConfirmProvider({
+  children,
+  tone = 'staff',
+}: {
+  children: React.ReactNode;
+  tone?: Tone;
+}) {
+  const skin = SKIN[tone];
   const [ask, setAsk] = useState<Ask | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -84,17 +113,17 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     <ConfirmContext.Provider value={confirm}>
       {children}
       <AlertDialog open={!!ask} onOpenChange={(open) => !open && !busy && setAsk(null)}>
-        <AlertDialogContent className="bg-[#0a0d0a] border-[#e8dfc8]/15 text-[#e8dfc8]">
+        <AlertDialogContent className={skin.content}>
           <AlertDialogHeader>
             <AlertDialogTitle>{ask?.title}</AlertDialogTitle>
             {ask?.body && (
-              <AlertDialogDescription className="text-[#e8dfc8]/60">
+              <AlertDialogDescription className={skin.body}>
                 {ask.body}
               </AlertDialogDescription>
             )}
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-transparent border-[#e8dfc8]/20 text-[#e8dfc8] hover:bg-[#e8dfc8]/10">
+            <AlertDialogCancel className={skin.cancel}>
               Keep it
             </AlertDialogCancel>
             <AlertDialogAction

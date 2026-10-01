@@ -5,6 +5,16 @@ import { useOrdersStore, formatOrderTime, isRefundable } from '../../store/order
 import type { Order } from '../../lib/types';
 import { useConfirm } from './useConfirm';
 import { RefundDialog } from './RefundDialog';
+import { humanError } from '../../lib/errors';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../ui/alert-dialog';
 
 /** Same panel skin the staff screens use elsewhere. */
 const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
@@ -75,6 +85,45 @@ export function KitchenBoard({ orders }: { orders: Order[] }) {
   }, []);
 
   const [refunding, setRefunding] = useState<Order | null>(null);
+
+  /**
+   * What the board has to say when an action will not go through.
+   *
+   * Every one of these used to go to the console and nowhere else. Pressing
+   * "Start preparing" on an unpaid ticket did nothing at all on screen: the
+   * database refused it, the promise rejected, and the counter was left
+   * looking at a button that appeared broken.
+   */
+  const [notice, setNotice] = useState<string | null>(null);
+
+  /**
+   * Moves a ticket along, and says why when it cannot.
+   *
+   * The unpaid case is answered here rather than by letting the database
+   * refuse it, because it is the one a cashier meets daily and it deserves a
+   * sentence about the shop's rule rather than a translated error. Anything
+   * else is reported in the database's own words, which are written to be
+   * read.
+   *
+   * This is not the rule itself. advance_order_status still refuses an unpaid
+   * ticket whatever this file believes, and the catch below is what runs if
+   * the two ever disagree.
+   */
+  const advance = async (o: Order, next: Order['status']) => {
+    if (next !== 'cancelled' && !o.paid_at) {
+      setNotice(
+        `Ticket ${o.ticket_code} has not been paid for yet. Take the payment ` +
+          'at the counter first — the kitchen only starts once a ticket is ' +
+          'settled.',
+      );
+      return;
+    }
+    try {
+      await setStatus(o.ticket_code, next);
+    } catch (e) {
+      setNotice(humanError(e, `Could not move ticket ${o.ticket_code} along.`));
+    }
+  };
 
   const lanes = [
     { title: 'New', statuses: ['pending', 'paid'], accent: '#6dadff', next: 'preparing' as const, nextLabel: 'Start preparing' },
@@ -194,7 +243,7 @@ export function KitchenBoard({ orders }: { orders: Order[] }) {
                   )}
                   <div className="mt-3 flex gap-2">
                     <button
-                      onClick={() => setStatus(o.ticket_code, lane.next)}
+                      onClick={() => advance(o, lane.next)}
                       className="flex-1 py-2 rounded-lg text-sm font-medium text-[#0a0d0a]"
                       style={{ background: lane.accent }}
                     >
@@ -212,7 +261,7 @@ export function KitchenBoard({ orders }: { orders: Order[] }) {
                             body: 'Nothing has been paid, so nothing goes back. The servings return to the menu and the diner sees it as cancelled.',
                             action: 'Cancel the order',
                             danger: true,
-                            onConfirm: () => setStatus(o.ticket_code, 'cancelled'),
+                            onConfirm: () => advance(o, 'cancelled'),
                           })
                         }
                         className="px-3 py-2 rounded-lg border border-[#e8dfc8]/15 text-[#e87a5c] hover:bg-[#c8442a]/20"
@@ -241,6 +290,29 @@ export function KitchenBoard({ orders }: { orders: Order[] }) {
       })}
 
       {refunding && <RefundDialog order={refunding} onClose={() => setRefunding(null)} />}
+
+      {/* One button, and it only says the thing was understood. Nothing here
+          is a choice: the action has already not happened, and offering
+          "Cancel" next to "OK" on a message would invite the reader to
+          wonder which one undoes it. */}
+      <AlertDialog open={!!notice} onOpenChange={(open) => !open && setNotice(null)}>
+        <AlertDialogContent className="bg-[#0a0d0a] border-[#e8dfc8]/15 text-[#e8dfc8]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>That cannot happen yet</AlertDialogTitle>
+            <AlertDialogDescription className="text-[#e8dfc8]/70 leading-relaxed">
+              {notice}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              className="bg-[#e8a84a] text-[#0a0d0a] hover:bg-[#e8a84a]/85"
+              onClick={() => setNotice(null)}
+            >
+              Got it
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

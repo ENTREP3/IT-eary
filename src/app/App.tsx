@@ -154,7 +154,7 @@ export default function App() {
    */
   return (
     <BrowserRouter>
-      <ConfirmProvider>
+      <ConfirmProvider tone="diner">
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/menu" element={<StorefrontApp />} />

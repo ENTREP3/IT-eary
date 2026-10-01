@@ -35,6 +35,22 @@ class _KitchenTabState extends State<KitchenTab> {
   ];
 
   Future<void> _advance(Ticket t, String next) async {
+    // Answered here rather than by letting the database refuse it. This is
+    // the refusal a cashier meets daily, and it deserves a sentence about the
+    // shop's rule rather than a translated error. Not the rule itself:
+    // advance_order_status still turns an unpaid ticket away whatever this
+    // screen believes, and the catch below is what runs if they disagree.
+    if (next != 'cancelled' && t.paidAt == null) {
+      await showNotice(
+        context,
+        title: 'That cannot happen yet',
+        body: 'Ticket ${t.ticketCode} has not been paid for yet. Take the '
+            'payment at the counter first — the kitchen only starts once a '
+            'ticket is settled.',
+      );
+      return;
+    }
+
     // Only the ones that cannot be walked back. Moving a ticket forward is
     // undone by moving it forward again; cancelling returns the stock to
     // the shelf and reverses the sale, and the kitchen board is tapped at
@@ -56,11 +72,16 @@ class _KitchenTabState extends State<KitchenTab> {
       await widget.onChanged();
     } catch (e) {
       // The database refuses what the shop's rules forbid — cooking an unpaid
-      // ticket, a cashier cancelling, acting on one already refunded. Shown as
-      // written, because the refusal is the rule speaking.
+      // ticket, cancelling one already paid for, acting on one already
+      // refunded. Shown as written, because the refusal is the rule speaking,
+      // and in a dialog rather than a snackbar: this board is glanced at
+      // between orders, and a message that slides away on its own is one the
+      // counter never saw.
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(humanError(e))),
+        await showNotice(
+          context,
+          title: 'That did not go through',
+          body: humanError(e),
         );
       }
     } finally {
