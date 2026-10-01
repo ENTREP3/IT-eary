@@ -269,14 +269,17 @@ export function StorefrontApp() {
    * ordering five of something, and five taps on a small round button on a phone
    * is exactly where a diner mis-taps and buys a sixth.
    */
-  const removeLine = (id: string) =>
-    setCart((prev) => {
-      const next = prev.filter((l) => l.dish.id !== id);
-      // An empty sheet is a dead end: no items, and a checkout button that
-      // cannot be pressed. Send them back to the menu to pick something.
-      if (next.length === 0) setStage('menu');
-      return next;
-    });
+  const removeLine = (id: string) => {
+    const next = cart.filter((l) => l.dish.id !== id);
+    setCart(next);
+    // An empty sheet is a dead end: nothing listed, and a checkout button
+    // that cannot be pressed. Send them back to the menu to pick something.
+    //
+    // Decided out here rather than inside the updater. React may run an
+    // updater more than once for the same change, so anything in there that
+    // is not purely computing the next value can happen twice.
+    if (next.length === 0) setStage('menu');
+  };
 
   const clearCart = () => {
     setCart([]);
