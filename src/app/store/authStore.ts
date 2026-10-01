@@ -8,7 +8,6 @@ export type NewAccount = {
   firstName: string;
   middleName?: string;
   lastName: string;
-  username: string;
   nickname?: string;
   phone?: string;
 };
@@ -182,7 +181,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       first_name: details.firstName.trim(),
       middle_name: details.middleName?.trim() || null,
       last_name: details.lastName.trim(),
-      username: details.username.trim(),
       nickname: details.nickname?.trim() || null,
       phone: details.phone?.trim() || null,
     };
@@ -212,8 +210,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { error: profileError } = await supabase.rpc('save_my_profile', {
         p_first_name: data.first_name,
         p_last_name: data.last_name,
-        p_username: data.username,
-        p_middle_name: data.middle_name,
+          p_middle_name: data.middle_name,
         p_nickname: data.nickname,
         p_phone: data.phone,
       });

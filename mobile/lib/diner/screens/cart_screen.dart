@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../confirm.dart';
 import '../../errors.dart';
 
 import '../../models/models.dart';
@@ -30,10 +31,39 @@ class _CartScreenState extends State<CartScreen> {
   String _method = 'cash';
   PaymentSettings? _settings;
 
+  /// Whether the name in the box came from the signed-in diner's account.
+  ///
+  /// Used only to decide what the field says about itself, so the hint does not
+  /// claim an account name is there when a guest typed their own.
+  bool _nameIsMine = false;
+
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _prefillName();
+  }
+
+  /// Starts a signed-in diner off with their own name already filled in.
+  ///
+  /// It used to start empty for everyone and the database filled the gap at
+  /// order time from the profile. That worked, but somebody who had already told
+  /// us their name was still looking at an empty box labelled "your name" — and
+  /// an empty box asks to be filled, so one live order went out stamped
+  /// `SUKIF9061`.
+  ///
+  /// Still editable: ordering for somebody else is normal, and the counter calls
+  /// out whatever is on the ticket. A guest sees it empty and optional, as
+  /// before — there is nothing to prefill it from.
+  Future<void> _prefillName() async {
+    if (!Api.signedIn) return;
+    final me = await Api.myProfile();
+    final name = me?.realName;
+    if (!mounted || name == null || _nameCtrl.text.trim().isNotEmpty) return;
+    setState(() {
+      _nameCtrl.text = name;
+      _nameIsMine = true;
+    });
   }
 
   Future<void> _loadSettings() async {
@@ -211,6 +241,7 @@ class _CartScreenState extends State<CartScreen> {
                             onPressed: () =>
                                 context.read<Cart>().remove(line.key.id),
                             icon: const Icon(Icons.remove_circle_outline),
+                            tooltip: 'One fewer',
                           ),
                           Text(
                             '${line.value}',
@@ -219,8 +250,53 @@ class _CartScreenState extends State<CartScreen> {
                           IconButton(
                             onPressed: () => context.read<Cart>().add(line.key),
                             icon: const Icon(Icons.add_circle_outline),
+                            tooltip: 'One more',
+                          ),
+
+                          // Minus is for changing your mind about the number;
+                          // this is for changing your mind about the dish.
+                          // Getting to the second by repeating the first is a
+                          // tax on ordering five of something, and five taps on
+                          // a small round button is where a thumb mis-hits and
+                          // buys a sixth. Square, and set apart, so it does not
+                          // read as a third counting button.
+                          IconButton(
+                            onPressed: () =>
+                                context.read<Cart>().removeLine(line.key.id),
+                            icon: const Icon(Icons.close, size: 18),
+                            tooltip: 'Take ${line.key.name} out',
+                            visualDensity: VisualDensity.compact,
+                            color: Palette.ink.withValues(alpha: 0.45),
                           ),
                         ],
+                      ),
+                    ),
+
+                  // Below the list, because it clears what is above it. Not in
+                  // the app bar, where it would sit beside the back arrow.
+                  if (lines.length > 1)
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final sure = await confirmAction(
+                          context,
+                          title: 'Empty your order?',
+                          body: 'All ${lines.length} items come off. Nothing '
+                              'has been sent to the kitchen, so you can start '
+                              'again straight away.',
+                          action: 'Empty it',
+                        );
+                        if (!sure || !context.mounted) return;
+                        context.read<Cart>().clear();
+                        Navigator.of(context).pop();
+                      },
+                      icon: const Icon(Icons.delete_outline, size: 16),
+                      label: const Text('Empty the whole order'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Palette.ink.withValues(alpha: 0.6),
+                        minimumSize: const Size.fromHeight(44),
+                        side: BorderSide(
+                          color: Palette.ink.withValues(alpha: 0.2),
+                        ),
                       ),
                     ),
                   const SizedBox(height: 8),
@@ -228,8 +304,14 @@ class _CartScreenState extends State<CartScreen> {
                     controller: _nameCtrl,
                     textCapitalization: TextCapitalization.words,
                     decoration: InputDecoration(
-                      labelText: 'Your name (optional)',
-                      helperText: 'Helps staff call your order',
+                      labelText: _nameIsMine
+                          ? 'Name for this order'
+                          : 'Your name (optional)',
+                      helperText: _nameIsMine
+                          ? 'From your account. Change it if you are ordering '
+                              'for somebody else.'
+                          : 'Helps staff call your order',
+                      helperMaxLines: 2,
                       filled: true,
                       fillColor: Palette.card,
                       border: OutlineInputBorder(

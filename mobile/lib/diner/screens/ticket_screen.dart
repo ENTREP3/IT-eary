@@ -610,6 +610,19 @@ class _ReceiptCard extends StatelessWidget {
             padding: EdgeInsets.symmetric(vertical: 14),
             child: DottedDivider(),
           ),
+          if (ticket.discount > 0) ...[
+            _ReceiptLine(
+              label: 'Subtotal',
+              value: '₱${ticket.subtotal.toStringAsFixed(2)}',
+            ),
+            _ReceiptLine(
+              label: ticket.promoCode == null
+                  ? 'Discount'
+                  : 'Discount (${ticket.promoCode})',
+              value: '-₱${ticket.discount.toStringAsFixed(2)}',
+            ),
+            const SizedBox(height: 6),
+          ],
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -628,6 +641,15 @@ class _ReceiptCard extends StatelessWidget {
               ),
             ],
           ),
+          // The person, not their job title. A diner has no use for knowing
+          // whether it was the owner or a cashier at the till.
+          if ((ticket.servedByName ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _ReceiptLine(
+              label: 'Served by',
+              value: ticket.servedByName!,
+            ),
+          ],
           const SizedBox(height: 14),
           const Center(
             child: Text(
@@ -711,9 +733,29 @@ String buildReceiptText(Ticket t) {
     out.add(line('', '₱${item.lineTotal.toStringAsFixed(2)}'));
   }
 
+  out.add(rule);
+
+  // Named, not just subtracted: somebody checking a discount wants to
+  // know which code did it.
+  if (t.discount > 0) {
+    out.add(line('Subtotal', '₱${t.subtotal.toStringAsFixed(2)}'));
+    out.add(line(
+      t.promoCode == null ? 'Discount' : 'Discount (${t.promoCode})',
+      '-₱${t.discount.toStringAsFixed(2)}',
+    ));
+  }
+
   out
-    ..add(rule)
     ..add(line('TOTAL', '₱${t.total.toStringAsFixed(2)}'))
+    ..add('');
+
+  // The person, not their job title. A diner has no use for knowing
+  // whether it was the owner or a cashier at the till.
+  if ((t.servedByName ?? '').trim().isNotEmpty) {
+    out.add(line('Served by', t.servedByName!));
+  }
+
+  out
     ..add('')
     ..add('Salamat po!')
     ..add('');
@@ -831,4 +873,30 @@ class _FindTicketScreenState extends State<FindTicketScreen> {
       ),
     );
   }
+}
+
+/// One label-and-value line on the receipt.
+class _ReceiptLine extends StatelessWidget {
+  const _ReceiptLine({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.5,
+            color: Palette.ink.withValues(alpha: 0.6),
+          ),
+        ),
+        Text(value, style: const TextStyle(fontSize: 12.5)),
+      ],
+    ),
+  );
 }

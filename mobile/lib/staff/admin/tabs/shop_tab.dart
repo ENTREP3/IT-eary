@@ -1087,6 +1087,14 @@ class _StaffLoginsState extends State<_StaffLogins> {
   }
 
   Future<void> _create() async {
+    // Required because the receipt prints it. "Served by" with a blank
+    // after it is worse than not saying it at all, and the database refuses
+    // this anyway — catching it here just saves a round trip.
+    if (_name.text.trim().isEmpty) {
+      setState(() => _error = 'A staff member needs a full name — it is printed on the receipt.');
+      return;
+    }
+
     setState(() {
       _busy = true;
       _error = null;
@@ -1218,7 +1226,7 @@ class _StaffLoginsState extends State<_StaffLogins> {
           ),
           const SizedBox(height: 14),
 
-          _StaffField(controller: _name, label: 'Name'),
+          _StaffField(controller: _name, label: 'Full name (printed on receipts)'),
           _StaffField(controller: _email, label: 'Email'),
           _StaffField(controller: _password, label: 'Password', obscure: true),
           DropdownButtonFormField<String>(

@@ -54,6 +54,7 @@ import { useReviewStore } from './store/reviewStore';
 import { useBusinessStore } from './store/businessStore';
 import type { UserRole } from './lib/types';
 import { SURFACE } from './lib/surface';
+import { ConfirmProvider } from './components/shared/useConfirm';
 import { ResetPasswordPage } from './components/site/ResetPassword';
 
 /**
@@ -141,47 +142,59 @@ export default function App() {
     );
   }
 
+  /* The diner pages get the confirm dialog too.
+   *
+   * It was added for the staff screens, where the irreversible things live, and
+   * both staff apps mount their own provider. The diner side was left without
+   * one, and that is not merely a missing feature: `useConfirm` outside a
+   * provider returns a function that does nothing. Emptying a cart and
+   * cancelling an unpaid ticket both ask for confirmation, so both were silent
+   * dead buttons on the customer site — the failure a provider-based API invites,
+   * and the reason the default logs rather than returning quietly.
+   */
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/menu" element={<StorefrontApp />} />
-        <Route path="/about" element={<Page><AboutPage /></Page>} />
-        <Route path="/faq" element={<Page><FaqPage /></Page>} />
-        <Route path="/contact" element={<Page><ContactPage /></Page>} />
-        <Route path="/refund" element={<Page><RefundPage /></Page>} />
-        <Route path="/privacy" element={<Page><PrivacyPage /></Page>} />
-        <Route path="/account" element={<Page><AccountPage /></Page>} />
-        {/* Where the printed QR code lands. Not behind the site chrome:
-            somebody arriving here has scanned a code on a wall and wants the
-            app, not a navigation bar offering them six other places to go. */}
-        <Route path="/download" element={<Page><DownloadPage /></Page>} />
-        {/* Where a reset link lands. Not behind Page: the visitor arrives
-            here from their inbox, mid-way through proving who they are, and
-            a full site chrome invites them to wander off before finishing. */}
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route
-          path="/admin"
-          element={
-            <RequireRole allowed={['admin']} area="admin">
-              <Suspense fallback={<StaffLoading />}>
-                <AdminApp />
-              </Suspense>
-            </RequireRole>
-          }
-        />
-        <Route
-          path="/cashier"
-          element={
-            <RequireRole allowed={['cashier', 'admin']} area="cashier">
-              <Suspense fallback={<StaffLoading />}>
-                <CashierApp />
-              </Suspense>
-            </RequireRole>
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <ConfirmProvider>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/menu" element={<StorefrontApp />} />
+          <Route path="/about" element={<Page><AboutPage /></Page>} />
+          <Route path="/faq" element={<Page><FaqPage /></Page>} />
+          <Route path="/contact" element={<Page><ContactPage /></Page>} />
+          <Route path="/refund" element={<Page><RefundPage /></Page>} />
+          <Route path="/privacy" element={<Page><PrivacyPage /></Page>} />
+          <Route path="/account" element={<Page><AccountPage /></Page>} />
+          {/* Where the printed QR code lands. Not behind the site chrome:
+              somebody arriving here has scanned a code on a wall and wants the
+              app, not a navigation bar offering them six other places to go. */}
+          <Route path="/download" element={<Page><DownloadPage /></Page>} />
+          {/* Where a reset link lands. Not behind Page: the visitor arrives
+              here from their inbox, mid-way through proving who they are, and
+              a full site chrome invites them to wander off before finishing. */}
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route
+            path="/admin"
+            element={
+              <RequireRole allowed={['admin']} area="admin">
+                <Suspense fallback={<StaffLoading />}>
+                  <AdminApp />
+                </Suspense>
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/cashier"
+            element={
+              <RequireRole allowed={['cashier', 'admin']} area="cashier">
+                <Suspense fallback={<StaffLoading />}>
+                  <CashierApp />
+                </Suspense>
+              </RequireRole>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </ConfirmProvider>
     </BrowserRouter>
   );
 }

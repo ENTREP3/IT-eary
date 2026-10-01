@@ -53,7 +53,6 @@ type Person = {
   first_name: string | null;
   middle_name: string | null;
   last_name: string | null;
-  username: string | null;
   nickname: string | null;
   display_name: string;
   full_name: string | null;
@@ -154,7 +153,7 @@ export function PeoplePanel() {
     return rows.filter((r) => {
       if (group !== 'all' && r.role !== group) return false;
       if (!q) return true;
-      return [r.display_name, r.username, r.full_name, r.email, r.phone]
+      return [r.display_name, r.full_name, r.email, r.phone]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q));
     });
@@ -187,7 +186,7 @@ export function PeoplePanel() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Name, username, email"
+            placeholder="Name or email"
             className="bg-transparent outline-none w-48 placeholder:opacity-40"
           />
         </div>
@@ -507,7 +506,7 @@ function Badge({ role }: { role: Person['role'] }) {
  *
  * The same six fields the signup form collects, and the same rules — they are
  * enforced in one place in the database, which both this and the diner's own
- * "Your details" call. A username taken by somebody else comes back as a
+ * "Your details" call. A refusal comes back as a
  * sentence rather than a constraint name.
  *
  * Email is absent on purpose. Changing it means proving the new address
@@ -528,7 +527,6 @@ function EditDetails({
     firstName: person.first_name ?? '',
     middleName: person.middle_name ?? '',
     lastName: person.last_name ?? '',
-    username: person.username ?? '',
     nickname: person.nickname ?? '',
     phone: person.phone ?? '',
   });
@@ -545,7 +543,6 @@ function EditDetails({
         <input className={box} placeholder="First name" value={form.firstName} onChange={set('firstName')} />
         <input className={box} placeholder="Middle name" value={form.middleName} onChange={set('middleName')} />
         <input className={box} placeholder="Last name" value={form.lastName} onChange={set('lastName')} />
-        <input className={box} placeholder="Username" value={form.username} onChange={set('username')} />
         <input className={box} placeholder="Nickname" value={form.nickname} onChange={set('nickname')} />
         <input className={box} placeholder="Mobile number" value={form.phone} onChange={set('phone')} inputMode="tel" />
       </div>
@@ -560,7 +557,6 @@ function EditDetails({
                 p_id: person.id,
                 p_first_name: form.firstName,
                 p_last_name: form.lastName,
-                p_username: form.username,
                 p_middle_name: form.middleName || null,
                 p_nickname: form.nickname || null,
                 p_phone: form.phone || null,

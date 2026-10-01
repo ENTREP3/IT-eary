@@ -160,7 +160,7 @@ class _StorefrontScreenState extends State<StorefrontScreen> {
               // something they meet on the way down, never a dialog across
               // the thing they came for.
               // Greeted by the name they chose, which is the reason
-              // signing up asks for a username at all. Above the
+              // signing up asks for a nickname at all. Above the
               // announcement because it is about them, not the shop.
               const _Welcome(),
 
@@ -554,7 +554,7 @@ class _WelcomeState extends State<_Welcome> {
   @override
   Widget build(BuildContext context) {
     final me = _me;
-    if (me == null || me.username == null) return const SizedBox.shrink();
+    if (me == null || me.nickname == null && me.firstName == null) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),

@@ -7,7 +7,7 @@ import { useAuthStore } from '../../store/authStore';
 /**
  * A diner's own details, and a way to fix them.
  *
- * Accounts collect a name and a username at signup, and until this existed
+ * Accounts collect a name at signup, and until this existed
  * there was nowhere to see either of them again, let alone correct a surname
  * typed wrong on a phone keyboard at the counter.
  *
@@ -28,7 +28,6 @@ type Details = {
   first_name: string | null;
   middle_name: string | null;
   last_name: string | null;
-  username: string | null;
   nickname: string | null;
   phone: string | null;
 };
@@ -37,7 +36,6 @@ const EMPTY = {
   firstName: '',
   middleName: '',
   lastName: '',
-  username: '',
   nickname: '',
   phone: '',
 };
@@ -73,7 +71,6 @@ export function MyDetails() {
         firstName: row.first_name ?? '',
         middleName: row.middle_name ?? '',
         lastName: row.last_name ?? '',
-        username: row.username ?? '',
         nickname: row.nickname ?? '',
         phone: row.phone ?? '',
       });
@@ -93,7 +90,6 @@ export function MyDetails() {
     const { error: e } = await supabase.rpc('save_my_profile', {
       p_first_name: form.firstName,
       p_last_name: form.lastName,
-      p_username: form.username,
       p_middle_name: form.middleName || null,
       p_nickname: form.nickname || null,
       p_phone: form.phone || null,
@@ -101,7 +97,7 @@ export function MyDetails() {
     setBusy(false);
 
     if (e) {
-      // The messages here are written for the diner — "That username is
+      // The messages here are written for the diner — "A first name is
       // taken", "A first name is needed" — so they pass through unchanged.
       return setError(humanError(e, 'Could not save that.'));
     }
@@ -149,7 +145,6 @@ export function MyDetails() {
       {!editing ? (
         <dl className="mt-4 space-y-2.5 text-sm">
           <Line label="Name" value={parts.join(' ') || null} />
-          <Line label="Username" value={details.username} />
           <Line label="Nickname" value={details.nickname} />
           <Line label="Email" value={details.email} />
           <Line label="Mobile" value={details.phone} />
@@ -166,7 +161,6 @@ export function MyDetails() {
             value={form.middleName}
             onChange={set('middleName')}
           />
-          <input className={field} placeholder="Username" value={form.username} onChange={set('username')} />
           <input
             className={field}
             placeholder="Nickname (optional)"

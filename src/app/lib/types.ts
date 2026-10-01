@@ -10,9 +10,7 @@ export type Profile = {
   first_name: string | null;
   middle_name: string | null;
   last_name: string | null;
-  /** What the shop greets them by. Null for a guest with no account. */
-  username: string | null;
-  /** Preferred over the username in a greeting, when set. */
+  /** What the shop greets them by. Null when they have not chosen one. */
   nickname: string | null;
   phone: string | null;
   role: UserRole;
@@ -97,6 +95,14 @@ export type Order = {
   subtotal: number;
   discount: number;
   promo_code: string | null;
+  /**
+   * Who took the payment, stamped onto the order at the time.
+   *
+   * Not resolved from processed_by on read: a diner may not read another
+   * account's profile, and the receipt should say who served them that day
+   * rather than what that person is called now.
+   */
+  served_by_name?: string | null;
   /** NULL for a guest order. Set when a signed-in customer checks out. */
   customer_id: string | null;
   /**

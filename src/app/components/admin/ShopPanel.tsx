@@ -259,7 +259,7 @@ function StaffSection() {
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <label className="block">
-          <span className="text-[11px] opacity-55">Name</span>
+          <span className="text-[11px] opacity-55">Full name &mdash; printed on receipts</span>
           <input
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -299,7 +299,7 @@ function StaffSection() {
 
       <button
         onClick={create}
-        disabled={busy || !form.email.trim() || form.password.length < 6}
+        disabled={busy || !form.name.trim() || !form.email.trim() || form.password.length < 6}
         className="mt-3 h-10 px-4 rounded-lg bg-[#e8a84a] text-[#0a0d0a] text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-40"
       >
         {busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Create login

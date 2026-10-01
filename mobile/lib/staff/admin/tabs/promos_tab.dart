@@ -379,8 +379,14 @@ class _PromosTabState extends State<PromosTab> {
                     Row(
                       children: [
                         Expanded(
+                          // Wrapped rather than cut. The owner types these
+                          // themselves and nothing stops a long one, and a code
+                          // ending in "…" is unreadable precisely when it needs
+                          // to be read out to a diner at the counter.
                           child: Text(
                             p['code'] as String? ?? '',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               letterSpacing: 1.5,

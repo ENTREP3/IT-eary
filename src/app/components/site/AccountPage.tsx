@@ -18,12 +18,14 @@ import { SiteHeader, SiteFooter } from './SiteChrome';
 import { deviceToken } from '../../lib/localPrefs';
 import type { Order } from '../../lib/types';
 import { humanError } from '../../lib/errors';
+import { passwordProblem } from '../../lib/password';
 import { NotifyToggle } from './NotifyToggle';
 import { refreshPushRegistration } from '../../lib/push';
 import { syncFavourites } from '../../lib/favourites';
 import { displayName } from '../../lib/displayName';
 import { RateFromOrder } from './RateFromOrder';
 import { MyDetails } from './MyDetails';
+import { ReceiptDialog } from './ReceiptDialog';
 
 /**
  * The diner's own page: sign in or sign up, then follow every order they have
@@ -234,20 +236,12 @@ function AuthPanel() {
     firstName: '',
     middleName: '',
     lastName: '',
-    username: '',
     nickname: '',
     phone: '',
   });
   const set = (k: keyof typeof details) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setDetails((d) => ({ ...d, [k]: e.target.value }));
 
-  /**
-   * Whether the chosen username is free, checked while they type.
-   *
-   * Null means not asked yet. Finding out at submit means filling in six
-   * boxes and being told the one at the top is wrong.
-   */
-  const [usernameFree, setUsernameFree] = useState<boolean | null>(null);
 
   const signUp = useAuthStore((s) => s.signUpCustomer);
   const login = useAuthStore((s) => s.loginCustomer);
@@ -285,6 +279,22 @@ function AuthPanel() {
     setError(null);
     try {
       if (mode === 'up') {
+        /*
+         * The shop's own rule, checked before Supabase is asked.
+         *
+         * signUp() goes straight to Supabase Auth, which applies whatever
+         * policy the project has rather than ours — so an account could be
+         * made with a password the reset screen would later refuse. The
+         * same person would then be unable to choose the password they
+         * already had.
+         */
+        const problem = passwordProblem(password);
+        if (problem) {
+          setError(problem);
+          setBusy(false);
+          return;
+        }
+
         const { needsConfirmation } = await signUp(email.trim(), password, details);
         if (needsConfirmation) {
           /**
@@ -431,43 +441,20 @@ function AuthPanel() {
               autoComplete="additional-name"
             />
 
+
             <div>
               <input
                 className={field}
-                placeholder="Username"
-                value={details.username}
-                onChange={(e) => {
-                  set('username')(e);
-                  setUsernameFree(null);
-                }}
-                onBlur={async (e) => {
-                  const name = e.target.value.trim();
-                  if (!name) return setUsernameFree(null);
-                  const { data } = await supabase.rpc('username_available', {
-                    p_username: name,
-                  });
-                  setUsernameFree(data === true);
-                }}
-                autoComplete="username"
-                required
-                minLength={3}
-                maxLength={20}
+                placeholder="Nickname (optional)"
+                value={details.nickname}
+                onChange={set('nickname')}
               />
+              {/* Worth saying, now that this is the only name the diner
+                  chooses. Without it the box reads as decoration. */}
               <p className="mt-1 text-xs opacity-55">
-                {usernameFree === false
-                  ? 'Taken, or not allowed. Use 3 to 20 letters, numbers, dots or underscores, starting with a letter.'
-                  : usernameFree === true
-                    ? 'That one is free.'
-                    : 'What we will call you. 3 to 20 characters, starting with a letter.'}
+                What we will call you. Leave it blank and we will use your first name.
               </p>
             </div>
-
-            <input
-              className={field}
-              placeholder="Nickname (optional)"
-              value={details.nickname}
-              onChange={set('nickname')}
-            />
             <input
               className={field}
               placeholder="Mobile number (optional)"
@@ -797,11 +784,18 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
           <h2 className="flex items-center gap-2 text-sm font-semibold">
             <Tag size={16} className="text-diner-accent" /> Promotions running now
           </h2>
-          <ul className="mt-3 space-y-2">
+          {/* Wraps rather than sharing one line.
+
+              The owner types these codes, and some are a sentence —
+              "TEST PER ACCOUNT ONCE ONLY CLAIM". Side by side, a long code
+              took the whole row and squeezed "10% off" into one character
+              per line. Letting the pair wrap costs a little height on the
+              rare long code and nothing at all on a short one. */}
+          <ul className="mt-3 space-y-2.5">
             {promos.map((p) => (
-              <li key={p.code} className="flex items-baseline gap-3 text-sm">
-                <span className="font-mono tracking-wider">{p.code}</span>
-                <span className="opacity-70">{p.label}</span>
+              <li key={p.code} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <span className="font-mono tracking-wider break-all">{p.code}</span>
+                <span className="opacity-70 whitespace-nowrap">{p.label}</span>
               </li>
             ))}
           </ul>
@@ -852,6 +846,14 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
 }
 
 function OrderCard({ order }: { order: Order }) {
+  /*
+   * The whole card opens the receipt, as it does on the phone.
+   *
+   * The website only ever showed a receipt once, in the moment after
+   * ordering, and closing it was final — no way back to it, no way to
+   * save it, and no way to cancel a ticket nobody had paid for yet.
+   */
+  const [open, setOpen] = useState(false);
   const stage = stageOf(order);
   const stepIndex = STAGE_ORDER.indexOf(stage.kind as (typeof STAGE_ORDER)[number]);
 
@@ -863,7 +865,16 @@ function OrderCard({ order }: { order: Order }) {
         : 'text-diner-ink border-diner-ink/20';
 
   return (
-    <li className="rounded-3xl bg-diner-card border border-diner-ink/10 p-5">
+    <li
+      onClick={() => setOpen(true)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpen(true); }}
+      aria-label={`Receipt for ${order.ticket_code}`}
+      className="rounded-3xl bg-diner-card border border-diner-ink/10 p-5 cursor-pointer hover:border-diner-ink/25 transition-colors"
+    >
+      {open && <ReceiptDialog order={order} onClose={() => setOpen(false)} />}
+
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <span className="font-mono tracking-widest">{order.ticket_code}</span>
         <span className={`text-xs px-3 py-1 rounded-full border ${tone}`}>{stage.label}</span>
@@ -924,7 +935,12 @@ function OrderCard({ order }: { order: Order }) {
           still being cooked is rating the wait, and the database refuses
           it anyway — better not to offer than to offer and be refused. */}
       {stage.kind === 'completed' && (
-        <RateFromOrder ticketCode={order.ticket_code} items={order.items ?? []} />
+        /* Stops the click reaching the card, which now opens the receipt.
+           Tapping a star to rate a dish and having a dialog appear over it
+           would make the stars feel broken. */
+        <div onClick={(e) => e.stopPropagation()}>
+          <RateFromOrder ticketCode={order.ticket_code} items={order.items ?? []} />
+        </div>
       )}
     </li>
   );

@@ -43,6 +43,17 @@ class Cart extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Drops a line outright, however many of it there are.
+  ///
+  /// `remove` steps the count down by one and only clears the line when it
+  /// reaches zero. That is the right behaviour for a minus button and the wrong
+  /// one for "I don't want this after all".
+  void removeLine(String dishId) {
+    if (_qty.remove(dishId) == null) return;
+    _dishes.remove(dishId);
+    notifyListeners();
+  }
+
   void clear() {
     _qty.clear();
     _dishes.clear();

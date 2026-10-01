@@ -259,7 +259,6 @@ class AdminApi {
     await _db.from('categories').delete().eq('name', name);
   }
 
-
   // ---- the kitchen, in numbers ---------------------------------------------
   //
   // Every one of these is a SECURITY DEFINER function that checks is_admin()
@@ -802,13 +801,13 @@ class AdminApi {
   static Future<void> setPersonRole(String id, String role) =>
       _db.rpc('set_person_role', params: {'p_id': id, 'p_role': role});
 
-  /// Corrects somebody's name, username or number. Never their role.
+  /// Corrects somebody's name, nickname or number. Never their role.
   static Future<void> savePersonProfile(String id, NewAccount details) =>
       _db.rpc('save_person_profile', params: {
         'p_id': id,
         'p_first_name': details.firstName.trim(),
         'p_last_name': details.lastName.trim(),
-        'p_username': details.username.trim(),
+
         'p_middle_name': details.middleName?.trim(),
         'p_nickname': details.nickname?.trim(),
         'p_phone': details.phone?.trim(),

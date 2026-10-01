@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../errors.dart';
 import '../../../models/models.dart';
 import '../../../tokens.dart';
-import '../../confirm.dart';
+import '../../../confirm.dart';
 import '../admin_api.dart';
 import 'widgets.dart';
 
@@ -110,7 +110,6 @@ class _PeopleTabState extends State<PeopleTab> {
       if (q.isEmpty) return true;
       return [
         p.displayName,
-        p.username,
         p.fullName,
         p.email,
         p.phone,
@@ -158,7 +157,7 @@ class _PeopleTabState extends State<PeopleTab> {
           decoration: const InputDecoration(
             isDense: true,
             prefixIcon: Icon(Icons.search, size: 18),
-            hintText: 'Name, username, email',
+            hintText: 'Name or email',
             border: OutlineInputBorder(),
           ),
         ),
@@ -229,7 +228,6 @@ class _PersonCardState extends State<_PersonCard> {
   late final _firstName = TextEditingController(text: widget.person.firstName ?? '');
   late final _middleName = TextEditingController(text: widget.person.middleName ?? '');
   late final _lastName = TextEditingController(text: widget.person.lastName ?? '');
-  late final _username = TextEditingController(text: widget.person.username ?? '');
   late final _nickname = TextEditingController(text: widget.person.nickname ?? '');
   late final _phone = TextEditingController(text: widget.person.phone ?? '');
 
@@ -238,7 +236,6 @@ class _PersonCardState extends State<_PersonCard> {
     _firstName.dispose();
     _middleName.dispose();
     _lastName.dispose();
-    _username.dispose();
     _nickname.dispose();
     _phone.dispose();
     super.dispose();
@@ -390,13 +387,6 @@ class _PersonCardState extends State<_PersonCard> {
           ),
         ),
         const SizedBox(height: 8),
-        TextField(
-          controller: _username,
-          decoration: const InputDecoration(
-            labelText: 'Username',
-            isDense: true,
-          ),
-        ),
         const SizedBox(height: 8),
         TextField(
           controller: _nickname,
@@ -427,7 +417,6 @@ class _PersonCardState extends State<_PersonCard> {
                       firstName: _firstName.text,
                       middleName: _middleName.text,
                       lastName: _lastName.text,
-                      username: _username.text,
                       nickname: _nickname.text,
                       phone: _phone.text,
                     ),

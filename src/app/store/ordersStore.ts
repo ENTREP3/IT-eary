@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Order, PaymentMethod, PaymentStatus } from '../lib/types';
 import { humanError } from '../lib/errors';
+import { deviceToken, forgetOrder } from '../lib/localPrefs';
 import { notifyTicket } from '../lib/notify';
 
 type OrdersState = {
@@ -43,6 +44,8 @@ type OrdersState = {
    */
   resolveReview: (ticketCode: string, verified: boolean, note?: string) => Promise<Order>;
   setStatus: (ticketCode: string, status: Order['status']) => Promise<void>;
+  /** A diner cancelling their own unpaid ticket. */
+  cancel: (ticketCode: string) => Promise<void>;
   /**
    * Hands the money back. The database decides whether it is allowed — the
    * shop's rule is that a refund is only possible while the food can still go
@@ -204,6 +207,33 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
     const order = data as Order;
     set((s) => ({ orders: s.orders.map((o) => (o.id === order.id ? order : o)) }));
     return order;
+  },
+
+  /**
+   * The diner cancels their own ticket, which is not the same call staff
+   * make.
+   *
+   * `cancel_my_order` proves the ticket belongs to this person — by
+   * account, or by the device token a guest holds — and refuses once it
+   * has been paid for or the kitchen has started. Letting a customer
+   * reach advance_order_status would be letting them cancel anybody.
+   *
+   * The device copy goes too, so "Order again" cannot offer back
+   * something that no longer exists.
+   */
+  cancel: async (ticketCode) => {
+    const { error } = await supabase.rpc('cancel_my_order', {
+      p_ticket_code: ticketCode.trim().toUpperCase(),
+      p_device_token: deviceToken(),
+    });
+    if (error) throw new Error(humanError(error));
+
+    forgetOrder(ticketCode);
+    set((s) => ({
+      orders: s.orders.map((o) =>
+        o.ticket_code === ticketCode ? { ...o, status: 'cancelled' as const } : o,
+      ),
+    }));
   },
 
   setStatus: async (ticketCode, status) => {

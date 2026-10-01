@@ -65,7 +65,6 @@ class _SignedOutState extends State<_SignedOut> {
   final _firstName = TextEditingController();
   final _middleName = TextEditingController();
   final _lastName = TextEditingController();
-  final _username = TextEditingController();
   final _nickname = TextEditingController();
   final _phone = TextEditingController();
 
@@ -73,13 +72,9 @@ class _SignedOutState extends State<_SignedOut> {
   bool _busy = false;
   String? _error;
   String? _notice;
-
-  /// Whether the chosen username is free. Null means not asked yet.
-  ///
   /// Checked when the field loses focus rather than at submit: filling in six
   /// boxes and then being told the one at the top is wrong is a form that
   /// wasted somebody's time on purpose.
-  bool? _usernameFree;
 
   @override
   void dispose() {
@@ -88,7 +83,6 @@ class _SignedOutState extends State<_SignedOut> {
     _firstName.dispose();
     _middleName.dispose();
     _lastName.dispose();
-    _username.dispose();
     _nickname.dispose();
     _phone.dispose();
     super.dispose();
@@ -98,7 +92,6 @@ class _SignedOutState extends State<_SignedOut> {
     firstName: _firstName.text,
     middleName: _middleName.text,
     lastName: _lastName.text,
-    username: _username.text,
     nickname: _nickname.text,
     phone: _phone.text,
   );
@@ -111,6 +104,27 @@ class _SignedOutState extends State<_SignedOut> {
     });
     try {
       if (_creating) {
+        /*
+         * The shop's own rule, asked for before Supabase is.
+         *
+         * signUp() goes straight to Supabase Auth, which applies whatever
+         * policy the project has rather than ours — so an account could be
+         * made with a password the reset screen would later refuse, leaving
+         * somebody unable to choose the password they already had.
+         *
+         * Asked of the database rather than copied, so there is one rule.
+         */
+        final problem = await Api.passwordProblem(_password.text);
+        if (problem != null) {
+          if (mounted) {
+            setState(() {
+              _error = problem;
+              _busy = false;
+            });
+          }
+          return;
+        }
+
         final ready = await Api.signUp(
           _email.text,
           _password.text,
@@ -233,41 +247,6 @@ class _SignedOutState extends State<_SignedOut> {
             ),
           ),
           const SizedBox(height: 12),
-          Focus(
-            // Checked on the way out of the field, so somebody is told while
-            // they are still thinking about it.
-            onFocusChange: (hasFocus) async {
-              if (hasFocus) return;
-              final name = _username.text.trim();
-              if (name.isEmpty) {
-                if (mounted) setState(() => _usernameFree = null);
-                return;
-              }
-              final free = await Api.usernameAvailable(name);
-              if (mounted) setState(() => _usernameFree = free);
-            },
-            child: TextField(
-              controller: _username,
-              autocorrect: false,
-              onChanged: (_) => setState(() => _usernameFree = null),
-              decoration: InputDecoration(
-                labelText: 'Username',
-                helperMaxLines: 3,
-                helperText: switch (_usernameFree) {
-                  false =>
-                    'Taken, or not allowed. Use 3 to 20 letters, numbers, dots '
-                        'or underscores, starting with a letter.',
-                  true => 'That one is free.',
-                  null =>
-                    'What we will call you. 3 to 20 characters, starting with '
-                        'a letter.',
-                },
-                helperStyle: TextStyle(
-                  color: _usernameFree == false ? Palette.red : null,
-                ),
-              ),
-            ),
-          ),
           const SizedBox(height: 12),
           TextField(
             controller: _nickname,
@@ -426,7 +405,7 @@ class _SignedInState extends State<_SignedIn> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Greeted by name, the same rule the database and the
-                      // website use: nickname, then username, then first name.
+                      // website use: nickname, then first name.
                       Text(
                         _me == null
                             ? 'Welcome back'
@@ -691,13 +670,27 @@ class _PromoCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
+          // Wraps rather than sharing one line.
+          //
+          // The owner types these codes, and some are a sentence — "TEST
+          // PER ACCOUNT ONCE ONLY CLAIM". In a Row the chip took the whole
+          // width and the Expanded label was squeezed to one character per
+          // line. A Wrap puts the label underneath when it will not fit,
+          // which costs a little height on the rare long code and nothing
+          // at all on a short one.
           ...promos.map(
             (p) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: Palette.ink,
                       borderRadius: BorderRadius.circular(6),
@@ -712,14 +705,11 @@ class _PromoCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      p.label,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Palette.ink.withValues(alpha: 0.7),
-                      ),
+                  Text(
+                    p.label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Palette.ink.withValues(alpha: 0.7),
                     ),
                   ),
                 ],

@@ -234,8 +234,14 @@ export function PromotionsPanel() {
               <tbody>
                 {rows.map((p) => (
                   <tr key={p.code} className="border-t border-[#e8dfc8]/10">
-                    <td className="py-2.5 pr-3 font-mono tracking-wider">{p.code}</td>
-                    <td className="py-2.5 pr-3 opacity-75">{p.label}</td>
+                    {/* Codes are typed by the owner and some are a whole
+                        sentence, which pushed this table wider than the
+                        screen. Breaking inside the code keeps the row on the
+                        page; the description wraps normally beside it. */}
+                    <td className="py-2.5 pr-3 font-mono tracking-wider break-all max-w-[12rem]">
+                      {p.code}
+                    </td>
+                    <td className="py-2.5 pr-3 opacity-75 break-words min-w-[8rem]">{p.label}</td>
                     <td className="py-2.5 pr-3 tabular-nums">
                       {p.kind === 'percent' ? `${p.value}%` : `₱${p.value}`}
                       {p.max_discount ? <span className="opacity-50"> up to ₱{p.max_discount}</span> : null}

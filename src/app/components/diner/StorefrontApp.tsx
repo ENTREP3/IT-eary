@@ -26,6 +26,7 @@ import {
   Images as ImagesIcon,
   BellRing,
   UserRound,
+  Trash2,
 } from 'lucide-react';
 import { useKarinderyaStore } from '../../store/karinderyaStore';
 import { usePaymentStore } from '../../store/paymentStore';
@@ -41,7 +42,7 @@ import { useRateable, useRecentOrders } from '../../lib/rateable';
 import { toggleFavourite, syncFavourites } from '../../lib/favourites';
 import { useMyRating, refreshMyRatings } from '../../lib/myRatings';
 import { stillEditable } from '../../lib/ratingWindow';
-import { displayName } from '../../lib/displayName';
+import { displayName, realName } from '../../lib/displayName';
 import {
   getFavourites,
   getHistory,
@@ -56,6 +57,7 @@ import {
 import type { Dish } from '../data';
 import type { Order, PaymentMethod } from '../../lib/types';
 import { humanError } from '../../lib/errors';
+import { useConfirm } from '../shared/useConfirm';
 
 /** Re-renders whatever reads it whenever the device's own preferences change. */
 function usePrefs<T>(read: () => T): T {
@@ -259,6 +261,28 @@ export function StorefrontApp() {
       ),
     );
 
+  /**
+   * Drop a whole line, however many of it there are.
+   *
+   * Minus is for changing your mind about the number; this is for changing your
+   * mind about the dish. Reaching the second by repeating the first is a tax on
+   * ordering five of something, and five taps on a small round button on a phone
+   * is exactly where a diner mis-taps and buys a sixth.
+   */
+  const removeLine = (id: string) =>
+    setCart((prev) => {
+      const next = prev.filter((l) => l.dish.id !== id);
+      // An empty sheet is a dead end: no items, and a checkout button that
+      // cannot be pressed. Send them back to the menu to pick something.
+      if (next.length === 0) setStage('menu');
+      return next;
+    });
+
+  const clearCart = () => {
+    setCart([]);
+    setStage('menu');
+  };
+
   const onPlaced = (o: Order) => {
     // The device keeps its own copy so the next visit can reorder in one tap.
     rememberOrder(o);
@@ -321,7 +345,7 @@ export function StorefrontApp() {
             <div className="lg:flex lg:items-end lg:justify-between lg:gap-10">
               <div>
                 {/* Greeted by the name they chose, which is the reason
-                    signing up asks for a username at all. Above the
+                    signing up asks for a nickname at all. Above the
                     tagline because it is about them, not about the shop. */}
                 {profile && (
                   <p className="mb-2 text-sm">
@@ -467,6 +491,8 @@ export function StorefrontApp() {
             onClose={() => setStage('menu')}
             onAdd={add}
             onSub={sub}
+            onRemove={removeLine}
+            onClear={clearCart}
             onPlaced={onPlaced}
           />
         )}
@@ -1305,6 +1331,8 @@ function CartSheet({
   onClose,
   onAdd,
   onSub,
+  onRemove,
+  onClear,
   onPlaced,
 }: {
   cart: CartLine[];
@@ -1312,11 +1340,34 @@ function CartSheet({
   onClose: () => void;
   onAdd: (d: Dish) => void;
   onSub: (id: string) => void;
+  onRemove: (id: string) => void;
+  onClear: () => void;
   onPlaced: (o: Order) => void;
 }) {
+  const confirm = useConfirm();
   const settings = usePaymentStore((s) => s.settings);
   const user = useAuthStore((s) => s.user);
-  const [name, setName] = useState('');
+  const profile = useAuthStore((s) => s.profile);
+
+  /**
+   * A signed-in diner starts with their own name already in the box.
+   *
+   * It used to start empty for everybody, and the database filled the gap at
+   * order time from the profile. That worked, but it meant somebody who had told
+   * us their name was still looking at an empty field labelled "your name" — and
+   * an empty field asks to be filled, so one order went out stamped `SUKIF9061`.
+   *
+   * Still editable, not read-only: ordering for somebody else is normal here,
+   * and the counter calls out whatever is on the ticket.
+   */
+  const mine = realName(profile);
+  const [name, setName] = useState(mine ?? '');
+
+  // Only to catch the profile arriving after this sheet opened, and only while
+  // the diner has not typed anything of their own.
+  useEffect(() => {
+    setName((current) => (current === '' && mine ? mine : current));
+  }, [mine]);
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1436,7 +1487,7 @@ function CartSheet({
               <button
                 onClick={() => onSub(l.dish.id)}
                 className="w-8 h-8 rounded-full border border-diner-ink/25 grid place-items-center"
-                aria-label="Remove one"
+                aria-label={`One fewer ${l.dish.name}`}
               >
                 <Minus size={13} />
               </button>
@@ -1444,21 +1495,63 @@ function CartSheet({
               <button
                 onClick={() => onAdd(l.dish)}
                 className="w-8 h-8 rounded-full border border-diner-ink/25 grid place-items-center"
-                aria-label="Add one"
+                aria-label={`One more ${l.dish.name}`}
               >
                 <Plus size={13} />
+              </button>
+
+              {/* Set apart from the two counting buttons, and the only one in
+                  the row that is not a circle. Next to a minus it would be a
+                  third identical target where two of them differ by how many
+                  times you press. */}
+              <button
+                onClick={() => onRemove(l.dish.id)}
+                className="ml-1 w-8 h-8 rounded-lg grid place-items-center text-diner-ink/45 hover:text-diner-accent hover:bg-diner-accent/10"
+                aria-label={`Take ${l.dish.name} out of the order`}
+                title="Remove from order"
+              >
+                <X size={15} />
               </button>
             </div>
           ))}
 
+          {/* Below the list rather than in the header: it clears what is above
+              it, and it should not sit next to the button that closes the
+              sheet. Confirmed, because it throws away every choice made so far
+              — the one place in this cart where a mis-tap costs real work. */}
+          {cart.length > 1 && (
+            <button
+              onClick={() =>
+                confirm({
+                  title: 'Empty your order?',
+                  body: `All ${cart.length} items come off. Nothing has been sent to the kitchen, so you can start again straight away.`,
+                  action: 'Empty it',
+                  danger: true,
+                  onConfirm: onClear,
+                })
+              }
+              className="w-full mt-1 py-2.5 rounded-xl text-sm text-diner-ink/60 border border-dashed border-diner-ink/20 hover:text-diner-accent hover:border-diner-accent/40 inline-flex items-center justify-center gap-2"
+            >
+              <Trash2 size={14} /> Empty the whole order
+            </button>
+          )}
+
           <label className="block pt-2">
-            <span className="text-xs opacity-60">Your name (optional)</span>
+            <span className="text-xs opacity-60">
+              {mine ? 'Name for this order' : 'Your name (optional)'}
+            </span>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Helps staff call your order"
               className="mt-1 w-full h-11 rounded-xl border border-diner-ink/15 bg-diner-card px-4 text-sm outline-none focus:border-diner-ink/40"
             />
+            {mine && (
+              <span className="mt-1 block text-[11px] opacity-50">
+                This is the name on your account. Change it if you are ordering for
+                somebody else.
+              </span>
+            )}
           </label>
 
           {/* Booking a time for later is only offered to a signed-in diner, and

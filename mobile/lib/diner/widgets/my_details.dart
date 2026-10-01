@@ -9,7 +9,7 @@ import '../../theme.dart';
 ///
 /// The same six fields signup collects, read and written through the same
 /// database functions the website uses. Not a second implementation of the
-/// rules: `save_my_profile` decides what a username may be and whether one is
+/// rules: `save_my_profile` decides what a name may be and whether one is
 /// taken, so the phone and the site cannot come to different conclusions.
 ///
 /// Read through `my_profile()` rather than off the table, because the email
@@ -38,7 +38,6 @@ class _MyDetailsState extends State<MyDetails> {
   final _firstName = TextEditingController();
   final _middleName = TextEditingController();
   final _lastName = TextEditingController();
-  final _username = TextEditingController();
   final _nickname = TextEditingController();
   final _phone = TextEditingController();
 
@@ -53,7 +52,6 @@ class _MyDetailsState extends State<MyDetails> {
     _firstName.dispose();
     _middleName.dispose();
     _lastName.dispose();
-    _username.dispose();
     _nickname.dispose();
     _phone.dispose();
     super.dispose();
@@ -67,7 +65,6 @@ class _MyDetailsState extends State<MyDetails> {
       _firstName.text = p?.firstName ?? '';
       _middleName.text = p?.middleName ?? '';
       _lastName.text = p?.lastName ?? '';
-      _username.text = p?.username ?? '';
       _nickname.text = p?.nickname ?? '';
       _phone.text = p?.phone ?? '';
     });
@@ -84,7 +81,6 @@ class _MyDetailsState extends State<MyDetails> {
           firstName: _firstName.text,
           middleName: _middleName.text,
           lastName: _lastName.text,
-          username: _username.text,
           nickname: _nickname.text,
           phone: _phone.text,
         ),
@@ -96,7 +92,7 @@ class _MyDetailsState extends State<MyDetails> {
         _saved = true;
       });
     } catch (e) {
-      // The messages here are written for the diner — "That username is
+      // The messages here are written for the diner — "A first name is
       // taken", "A first name is needed" — so they pass through unchanged.
       if (mounted) setState(() => _error = humanError(e));
     } finally {
@@ -158,7 +154,6 @@ class _MyDetailsState extends State<MyDetails> {
                 p.lastName,
               ].where((v) => v != null && v.trim().isNotEmpty).join(' '),
             ),
-            _Line(label: 'Username', value: p.username),
             _Line(label: 'Nickname', value: p.nickname),
             _Line(label: 'Email', value: p.email),
             _Line(label: 'Mobile', value: p.phone),
@@ -191,11 +186,6 @@ class _MyDetailsState extends State<MyDetails> {
               ),
             ),
             const SizedBox(height: 10),
-            TextField(
-              controller: _username,
-              autocorrect: false,
-              decoration: const InputDecoration(labelText: 'Username'),
-            ),
             const SizedBox(height: 10),
             TextField(
               controller: _nickname,

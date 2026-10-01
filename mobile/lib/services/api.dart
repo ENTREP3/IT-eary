@@ -140,7 +140,7 @@ class Api {
       'first_name': details.firstName.trim(),
       'middle_name': details.middleName?.trim(),
       'last_name': details.lastName.trim(),
-      'username': details.username.trim(),
+
       'nickname': details.nickname?.trim(),
       'phone': details.phone?.trim(),
     }..removeWhere((_, v) => v == null || v.isEmpty);
@@ -425,26 +425,6 @@ class Api {
 
   // ---------------------------------------------------------------- profile
 
-  /// Whether a username is free and allowed.
-  ///
-  /// Answered for anybody, signed in or not, because the signup form needs it
-  /// before an account exists. It does reveal that a name is taken — but so
-  /// does the form the moment it is submitted, and a name people are greeted
-  /// by is public by its nature.
-  static Future<bool> usernameAvailable(String username) async {
-    try {
-      final ok = await _db.rpc(
-        'username_available',
-        params: {'p_username': username.trim()},
-      );
-      return ok == true;
-    } catch (_) {
-      // Offline, or the check failed. Let them submit: the database enforces
-      // this properly on the way in, so the worst case is being told then.
-      return true;
-    }
-  }
-
   /// This diner's own details, including the email.
   ///
   /// Read through a function rather than off the table, because the address
@@ -461,7 +441,7 @@ class Api {
     }
   }
 
-  /// Saves the diner's own name, username and number.
+  /// Saves the diner's own name, nickname and number.
   ///
   /// Goes through `save_my_profile` rather than updating the row, because
   /// `profiles` also holds `role`. A policy wide enough to let somebody fix
@@ -471,7 +451,7 @@ class Api {
     params: {
       'p_first_name': details.firstName.trim(),
       'p_last_name': details.lastName.trim(),
-      'p_username': details.username.trim(),
+
       'p_middle_name': details.middleName?.trim(),
       'p_nickname': details.nickname?.trim(),
       'p_phone': details.phone?.trim(),

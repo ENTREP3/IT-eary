@@ -244,6 +244,11 @@ class Ticket {
   final double subtotal;
   final double discount;
   final String? promoCode;
+
+  /// Who took the payment, stamped onto the order at the time rather than
+  /// looked up: a diner may not read another account, and the receipt
+  /// should say who served them that day.
+  final String? servedByName;
   final DateTime? completedAt;
 
   const Ticket({
@@ -262,6 +267,7 @@ class Ticket {
     this.subtotal = 0,
     this.discount = 0,
     this.promoCode,
+    this.servedByName,
     this.completedAt,
   });
 
@@ -285,6 +291,7 @@ class Ticket {
     subtotal: (m['subtotal'] as num?)?.toDouble() ?? 0,
     discount: (m['discount'] as num?)?.toDouble() ?? 0,
     promoCode: m['promo_code'] as String?,
+    servedByName: m['served_by_name'] as String?,
     completedAt: m['completed_at'] == null
         ? null
         : DateTime.parse(m['completed_at'] as String).toLocal(),
@@ -754,17 +761,17 @@ class NewAccount {
   final String? middleName;
   final String lastName;
 
-  /// What the shop greets them by. Unique without case, 3 to 20 characters.
-  final String username;
 
-  /// Preferred over the username in a greeting, when set.
+  /// What the shop greets them by. Optional: without one the first name is
+  /// used. A username sat above this once — nothing ever signed in with it,
+  /// so it was a second name to pick and keep unique, for nothing the
+  /// nickname was not already doing.
   final String? nickname;
   final String? phone;
 
   const NewAccount({
     required this.firstName,
     required this.lastName,
-    required this.username,
     this.middleName,
     this.nickname,
     this.phone,
@@ -777,7 +784,6 @@ class MyProfile {
   final String? firstName;
   final String? middleName;
   final String? lastName;
-  final String? username;
   final String? nickname;
   final String? phone;
   final String? fullName;
@@ -787,7 +793,6 @@ class MyProfile {
     this.firstName,
     this.middleName,
     this.lastName,
-    this.username,
     this.nickname,
     this.phone,
     this.fullName,
@@ -799,12 +804,20 @@ class MyProfile {
   /// staff list each picking a different one is how the same customer appears
   /// to be three people. Falls back to "there", so the worst case is "Welcome
   /// back, there" rather than a greeting with a hole in it.
-  String get displayName {
-    for (final candidate in [nickname, username, firstName, fullName]) {
+  String get displayName => realName ?? 'there';
+
+  /// The same choice, but admitting when there is no answer.
+  ///
+  /// `displayName` is for greeting somebody, where "there" is a fine stand-in.
+  /// Filling in a form field is the other case: a name box prefilled with the
+  /// word "there" would put it on a receipt, so a caller that is going to
+  /// *write* the name down needs to tell a name from a placeholder.
+  String? get realName {
+    for (final candidate in [nickname, firstName, fullName]) {
       final value = candidate?.trim();
       if (value != null && value.isNotEmpty) return value;
     }
-    return 'there';
+    return null;
   }
 
   factory MyProfile.fromMap(Map<String, dynamic> m) => MyProfile(
@@ -812,7 +825,6 @@ class MyProfile {
     firstName: m['first_name'] as String?,
     middleName: m['middle_name'] as String?,
     lastName: m['last_name'] as String?,
-    username: m['username'] as String?,
     nickname: m['nickname'] as String?,
     phone: m['phone'] as String?,
     fullName: m['full_name'] as String?,
@@ -830,7 +842,6 @@ class Person {
   final String? firstName;
   final String? middleName;
   final String? lastName;
-  final String? username;
   final String? nickname;
   final String displayName;
   final String? fullName;
@@ -857,7 +868,6 @@ class Person {
     this.firstName,
     this.middleName,
     this.lastName,
-    this.username,
     this.nickname,
     this.fullName,
     this.phone,
@@ -880,7 +890,6 @@ class Person {
     firstName: m['first_name'] as String?,
     middleName: m['middle_name'] as String?,
     lastName: m['last_name'] as String?,
-    username: m['username'] as String?,
     nickname: m['nickname'] as String?,
     displayName: (m['display_name'] as String?) ?? 'Somebody',
     fullName: m['full_name'] as String?,
