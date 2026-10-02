@@ -43,6 +43,14 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+
+        /*
+         * Required by flutter_local_notifications, which is what actually
+         * draws a notification on the handset. It uses java.time, and this is
+         * what backports that to the Android versions this app still supports.
+         * Without it the build fails outright rather than degrading.
+         */
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -140,6 +148,10 @@ android {
             }
         }
     }
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
 
 kotlin {
