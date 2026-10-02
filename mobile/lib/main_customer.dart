@@ -21,7 +21,10 @@ class DinerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => Cart()),
+        // Reads what was in the cart last time. Resolving those ids against
+        // a menu happens on the menu screen, which is the first place a
+        // menu exists.
+        ChangeNotifierProvider(create: (_) => Cart()..load()),
         // Loaded immediately so the heart on each dish is already correct on
         // first paint, rather than filling in a moment later.
         ChangeNotifierProvider(create: (_) => Favourites()..load()),

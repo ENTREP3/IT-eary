@@ -59,6 +59,60 @@ void main() {
       expect(cart.lines, isEmpty);
     });
 
+    test('a saved cart comes back for dishes still on the menu', () {
+      final cart = Cart();
+
+      // What load() would have read from the phone, without needing one.
+      cart.debugPending({_sago.id: 2, _tapsilog.id: 1, 'gone-dish': 4});
+
+      cart.hydrate([_sago, _tapsilog]);
+
+      expect(cart.qtyOf(_sago.id), 2);
+      expect(cart.qtyOf(_tapsilog.id), 1);
+
+      // The dish that is no longer on the menu does not come back, rather
+      // than reaching the counter as a ticket for food that does not exist.
+      expect(cart.qtyOf('gone-dish'), 0);
+      expect(cart.lines.length, 2);
+    });
+
+    test('hydrating never overwrites a cart somebody is already filling', () {
+      final cart = Cart()..add(_tapsilog);
+      cart.debugPending({_sago.id: 5});
+
+      cart.hydrate([_sago, _tapsilog]);
+
+      expect(cart.qtyOf(_tapsilog.id), 1);
+      expect(cart.qtyOf(_sago.id), 0);
+    });
+
+    test('a saved cart comes back for dishes still on the menu', () {
+      final cart = Cart();
+
+      // What load() would have read from the phone, without needing one.
+      cart.debugPending({_sago.id: 2, _tapsilog.id: 1, 'gone-dish': 4});
+
+      cart.hydrate([_sago, _tapsilog]);
+
+      expect(cart.qtyOf(_sago.id), 2);
+      expect(cart.qtyOf(_tapsilog.id), 1);
+
+      // The dish that is no longer on the menu does not come back, rather
+      // than reaching the counter as a ticket for food that does not exist.
+      expect(cart.qtyOf('gone-dish'), 0);
+      expect(cart.lines.length, 2);
+    });
+
+    test('hydrating never overwrites a cart somebody is already filling', () {
+      final cart = Cart()..add(_tapsilog);
+      cart.debugPending({_sago.id: 5});
+
+      cart.hydrate([_sago, _tapsilog]);
+
+      expect(cart.qtyOf(_tapsilog.id), 1);
+      expect(cart.qtyOf(_sago.id), 0);
+    });
+
     test('the x button drops a line however many are on it', () {
       final cart = Cart()
         ..add(_sago)

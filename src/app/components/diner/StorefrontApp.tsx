@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { displayPhoto } from '../../lib/photos';
 import { Link } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
@@ -44,12 +44,14 @@ import { useMyRating, refreshMyRatings } from '../../lib/myRatings';
 import { stillEditable } from '../../lib/ratingWindow';
 import { displayName, realName } from '../../lib/displayName';
 import {
+  getCart,
   getFavourites,
   getHistory,
   getMyRating,
   rememberOrder,
   forgetOrder,
   deviceToken,
+  saveCart,
   saveRating,
   subscribePrefs,
   type PastOrder,
@@ -157,6 +159,41 @@ export function StorefrontApp() {
   useEffect(() => {
     void syncFavourites();
   }, []);
+
+  /*
+   * The cart survives a refresh.
+   *
+   * Rebuilt from ids against the menu that has just loaded, so the names and
+   * prices are today’s rather than whatever was in storage. Anything that
+   * has since sold out or been taken off simply does not come back, which is
+   * the honest outcome — the alternative is a diner reaching the counter with
+   * a ticket for food that no longer exists.
+   */
+  const hydrated = useRef(false);
+
+  useEffect(() => {
+    if (hydrated.current || dishes.length === 0) return;
+    hydrated.current = true;
+
+    const saved = getCart();
+    if (saved.length === 0) return;
+
+    const lines = saved
+      .map(({ id, qty }) => {
+        const dish = dishes.find((d) => d.id === id && d.available);
+        return dish ? { dish, qty } : null;
+      })
+      .filter((l): l is CartLine => l !== null);
+
+    if (lines.length > 0) setCart(lines);
+  }, [dishes]);
+
+  // Written on every change, once the first rebuild has happened — otherwise
+  // the empty cart of a cold start would overwrite what was saved.
+  useEffect(() => {
+    if (!hydrated.current) return;
+    saveCart(cart.map((l) => ({ id: l.dish.id, qty: l.qty })));
+  }, [cart]);
 
   // Counted once a day per device, as the denominator for the conversion
   // figure on the dashboard. The row is a date and a device id, not a

@@ -103,6 +103,10 @@ class _MenuScreenState extends State<MenuScreen> {
       final shop = await Api.shop();
       final ratings = await Api.dishRatings();
       if (!mounted) return;
+      // Anything saved that is still on the menu comes back; anything sold
+      // out does not, which is the honest outcome.
+      if (mounted) context.read<Cart>().hydrate(dishes);
+
       setState(() {
         _dishes = dishes;
         _categories = cats;

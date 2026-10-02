@@ -8,6 +8,7 @@ const KEY = {
   history: 'bencris.history',
   ratings: 'bencris.ratings',
   device: 'bencris.device',
+  cart: 'bencris.cart',
 } as const;
 
 /**
@@ -173,4 +174,24 @@ export function saveRating(r: Rating) {
 /** Has this device bought this dish? Gates the "rate it" control. */
 export function hasOrdered(dishId: string): boolean {
   return getHistory().some((o) => o.items.some((i) => i.id === dishId));
+}
+
+/** What is in the cart, as ids and counts. */
+export type SavedLine = { id: string; qty: number };
+
+/**
+ * The cart, kept so a refresh does not empty it.
+ *
+ * Ids and counts only — never names or prices. Those come from the menu
+ * when the cart is rebuilt, so a dish that changed price or sold out
+ * overnight cannot be ordered at yesterday’s terms out of a stale copy
+ * sitting in somebody’s browser.
+ */
+export function getCart(): SavedLine[] {
+  const raw = read<SavedLine[]>(KEY.cart, []);
+  return Array.isArray(raw) ? raw.filter((l) => l && l.id && l.qty > 0) : [];
+}
+
+export function saveCart(lines: SavedLine[]) {
+  write(KEY.cart, lines);
 }
