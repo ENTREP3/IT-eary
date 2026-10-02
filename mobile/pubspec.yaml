@@ -23,7 +23,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 #
 # The part after the + is Android versionCode. It must increase on every
 # release or the install is refused as a downgrade, with no useful message.
-version: 1.0.3+4
+version: 1.0.4+5
 
 environment:
   # Widened from the ^3.12.2 that "flutter create" pinned. Nothing in this app
@@ -68,6 +68,9 @@ dependencies:
   package_info_plus: ^10.2.1
   firebase_core: ^4.15.0
   firebase_messaging: ^16.7.0
+  # Draws the notification. Firebase delivers the message but Android shows
+  # nothing for a data-only one, so without this a push arrives and is lost.
+  flutter_local_notifications: ^19.4.2
 
 dev_dependencies:
   flutter_test:

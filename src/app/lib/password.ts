@@ -4,6 +4,7 @@
 export function passwordProblem(password: string): string | null {
   if (!password || password.length < 8) return 'Use at least 8 characters.';
   if (password.length > 64) return 'Use 64 characters or fewer.';
+  if (!/[a-z]/.test(password)) return 'Add a small letter.';
   if (!/[A-Z]/.test(password)) return 'Add a capital letter.';
   if (!/[0-9]/.test(password)) return 'Add a number.';
   // Anything that is not a letter, a digit or a space, so somebody on a

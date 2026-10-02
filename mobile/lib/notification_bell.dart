@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'models/models.dart';
+import 'dart:async';
+
 import 'services/api.dart';
+import 'services/push.dart';
 import 'theme.dart';
 import 'tokens.dart';
 
@@ -29,13 +32,33 @@ class NotificationBell extends StatefulWidget {
   State<NotificationBell> createState() => _NotificationBellState();
 }
 
-class _NotificationBellState extends State<NotificationBell> {
+class _NotificationBellState extends State<NotificationBell>
+    with WidgetsBindingObserver {
   int _unread = 0;
+  StreamSubscription<void>? _arrivals;
 
   @override
   void initState() {
     super.initState();
     _refresh();
+
+    // The badge used to be read once and never again, so a notification
+    // arriving while the screen was open left it showing nothing.
+    _arrivals = Push.arrived.listen((_) => _refresh());
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    _arrivals?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Anything that arrived while the app was away is counted on the way back.
+    if (state == AppLifecycleState.resumed) _refresh();
   }
 
   Future<void> _refresh() async {

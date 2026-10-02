@@ -3,14 +3,84 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'api.dart';
+
+/// The tray channel every notification is posted to.
+///
+/// Android groups and silences by channel, so naming it after what it carries
+/// is what lets somebody turn off one kind without turning off all of them.
+const _channel = AndroidNotificationChannel(
+  'bencris_orders',
+  'Orders and shop news',
+  description: 'Your order, and anything the shop needs to tell you.',
+  importance: Importance.high,
+);
+
+final _tray = FlutterLocalNotificationsPlugin();
+
+/// Puts a received message in the notification tray.
+///
+/// The shop sends data-only messages, which Android never displays by itself —
+/// so this is the step that was missing. Without it Firebase accepted the
+/// message, the handset received it, and nothing was ever drawn, which looks
+/// exactly like notifications being broken no matter what the permission says.
+Future<void> _draw(RemoteMessage message) async {
+  final data = message.data;
+  final title = data['title'] ?? message.notification?.title ?? 'Bencris';
+  final body = data['body'] ?? message.notification?.body ?? '';
+  if ((title as String).isEmpty) return;
+
+  await _tray.initialize(
+    const InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+    ),
+  );
+  await _tray
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >()
+      ?.createNotificationChannel(_channel);
+
+  // The tag the shop sent, so a ticket going paid to preparing to ready
+  // replaces its own notification instead of stacking three.
+  final tag = data['tag'] as String? ?? 'bencris';
+
+  await _tray.show(
+    tag.hashCode,
+    title,
+    body as String,
+    NotificationDetails(
+      android: AndroidNotificationDetails(
+        _channel.id,
+        _channel.name,
+        channelDescription: _channel.description,
+        importance: Importance.high,
+        priority: Priority.high,
+        tag: tag,
+      ),
+    ),
+  );
+
+  Push.noteArrived();
+}
 
 /// Reaching a diner who has closed the app.
 class Push {
   const Push._();
 
   static bool _ready = false;
+
+  static final _arrived = StreamController<void>.broadcast();
+
+  /// Fires when a notification has just been drawn, so a bell on screen can
+  /// pick up its new count instead of waiting to be reopened.
+  static Stream<void> get arrived => _arrived.stream;
+
+  static void noteArrived() {
+    if (!_arrived.isClosed) _arrived.add(null);
+  }
 
   /// Starts Firebase. Safe to call more than once.
   ///
@@ -23,6 +93,12 @@ class Push {
     try {
       await Firebase.initializeApp();
       FirebaseMessaging.onBackgroundMessage(_whileClosed);
+
+      // Drawn while the app is open as well. The tray only shows a message by
+      // itself for a backgrounded app, and the one somebody is most likely to
+      // be waiting for arrives while they are staring at their ticket.
+      FirebaseMessaging.onMessage.listen(_draw);
+
       _ready = true;
     } catch (_) {
       _ready = false;
@@ -136,5 +212,17 @@ class Push {
 }
 
 /// Runs when a message arrives with the app closed.
+///
+/// Its own isolate, so nothing the app has set up is available here: Firebase
+/// has to be started again, and the tray plugin initialised again, before
+/// anything can be shown.
 @pragma('vm:entry-point')
-Future<void> _whileClosed(RemoteMessage message) async {}
+Future<void> _whileClosed(RemoteMessage message) async {
+  try {
+    await Firebase.initializeApp();
+    await _draw(message);
+  } catch (_) {
+    // Nothing useful can be done from here, and throwing in a background
+    // isolate takes the handler out for every later message too.
+  }
+}
