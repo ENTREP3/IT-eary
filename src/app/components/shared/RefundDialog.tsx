@@ -142,26 +142,45 @@ export function RefundDialog({
           </p>
         </div>
 
-        <label className="block mt-4">
-          <span className="text-[11px] opacity-55">Why</span>
-          <select value={reason} onChange={(e) => setReason(e.target.value)} className={`${field} mt-1`}>
-            {REASONS.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-            <option value="Other">Other</option>
-          </select>
-        </label>
+        {/* When the diner has already said what was wrong, the counter is
+            shown it rather than asked to pick from the shop’s own list. Two
+            accounts of one event is one too many, and the one worth keeping
+            is from the person who ate the food. */}
+        {statedReason ? (
+          <div className="mt-4">
+            <span className="text-[11px] opacity-55">Why — as the diner put it</span>
+            <p className="mt-1 rounded-lg border border-[#e8dfc8]/15 px-3 py-2 text-sm">
+              {statedReason}
+            </p>
+          </div>
+        ) : (
+          <>
+            <label className="block mt-4">
+              <span className="text-[11px] opacity-55">Why</span>
+              <select
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                className={`${field} mt-1`}
+              >
+                {REASONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+                <option value="Other">Other</option>
+              </select>
+            </label>
 
-        {reason === 'Other' && (
-          <input
-            autoFocus
-            value={other}
-            onChange={(e) => setOther(e.target.value)}
-            placeholder="Say what happened"
-            className={`${field} mt-2`}
-          />
+            {reason === 'Other' && (
+              <input
+                autoFocus
+                value={other}
+                onChange={(e) => setOther(e.target.value)}
+                placeholder="Say what happened"
+                className={`${field} mt-2`}
+              />
+            )}
+          </>
         )}
 
         <div className="mt-3">
