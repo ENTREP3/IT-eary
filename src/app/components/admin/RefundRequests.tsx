@@ -63,13 +63,14 @@ export function RefundRequests() {
     };
   }, [load]);
 
-  const decide = async (id: string, status: 'approved' | 'declined') => {
+  const decide = async (id: string, status: 'approved' | 'declined', note?: string) => {
     setBusy(id);
     setError(null);
     try {
       const { error: err } = await supabase.rpc('decide_refund_request', {
         p_id: id,
         p_status: status,
+        p_note: note ?? null,
       });
       if (err) throw err;
       await load();
@@ -176,7 +177,7 @@ function Row({
   r: Request;
   busy: boolean;
   onZoom: (url: string) => void;
-  onDecide: (id: string, status: 'approved' | 'declined') => void;
+  onDecide: (id: string, status: 'approved' | 'declined', note?: string) => void;
   onRefund: (code: string, requestId: string, reasons: string[]) => void;
 }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -260,7 +261,15 @@ function Row({
               </button>
               <button
                 disabled={busy}
-                onClick={() => onDecide(r.id, 'declined')}
+                onClick={() => {
+                  // The diner is told this word for word, so it is worth
+                  // asking for one rather than sending them silence.
+                  const why = window.prompt(
+                    'Why is this being turned down? The diner is shown exactly this.',
+                  );
+                  if (why === null) return;
+                  onDecide(r.id, 'declined', why.trim() || undefined);
+                }}
                 className="h-9 px-3 rounded-lg border border-[#e8dfc8]/15 text-sm inline-flex items-center gap-1.5 disabled:opacity-40"
               >
                 <X size={14} /> Turn down

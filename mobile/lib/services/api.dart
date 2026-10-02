@@ -892,6 +892,22 @@ class Api {
     });
   }
 
+  /// Where the diner’s own refund request stands, or null if none.
+  static Future<Map<String, dynamic>?> myRefundRequest(String ticketCode) async {
+    try {
+      final rows = await _db.rpc("my_refund_request", params: {
+        "p_ticket_code": ticketCode.trim().toUpperCase(),
+        "p_device_token": await DeviceToken.get(),
+      });
+      if (rows is List && rows.isNotEmpty) {
+        return Map<String, dynamic>.from(rows.first as Map);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// What the shop sent back, for the person who was refunded.
   static Future<Map<String, dynamic>?> myRefund(String ticketCode) async {
     try {

@@ -43,6 +43,9 @@ class _TicketScreenState extends State<TicketScreen> {
   /// The number they paid from, kept only so a GCash refund has a destination.
   final _sender = TextEditingController();
 
+  /// The diner’s own refund request, if they have made one.
+  Map<String, dynamic>? _request;
+
   late Ticket _ticket = widget.ticket;
   PaymentSettings? _settings;
   bool _uploading = false;
@@ -53,6 +56,7 @@ class _TicketScreenState extends State<TicketScreen> {
   @override
   void initState() {
     super.initState();
+    _loadRequest();
 
     // Pushed for anybody with an identity, which since anonymous sign-ins is
     // everybody — Realtime checks the row against the caller's own id, and a
@@ -135,9 +139,60 @@ class _TicketScreenState extends State<TicketScreen> {
   /// There is no undo: the ticket code dies with it, and re-ordering means
   /// going through the menu again. The dialog says that plainly instead of
   /// asking "are you sure?", which tells nobody anything.
+  /// Where a request stands, so the ticket does not look as though nothing
+  /// was ever sent. Agreed is said by the refund itself, so it is not
+  /// repeated here.
+  Widget _requestState(Map<String, dynamic> r) {
+    final status = r['status'] as String? ?? 'open';
+    if (status == 'approved') return const SizedBox.shrink();
+
+    final waiting = status == 'open';
+    final tint = waiting ? Palette.ink : Palette.red;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: tint.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: tint.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            waiting ? 'REFUND ASKED' : 'REFUND NOT AGREED',
+            style: TextStyle(
+              fontSize: 10,
+              letterSpacing: 2,
+              fontWeight: FontWeight.w600,
+              color: tint.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            waiting
+                ? 'The counter has your photo and reasons. You will be told '
+                      'once somebody has looked at it.'
+                : (r['decision_note'] as String?)?.trim().isNotEmpty == true
+                      ? r['decision_note'] as String
+                      : 'Ask at the counter if you would like to talk about it.',
+            style: const TextStyle(fontSize: 13, height: 1.4),
+          ),
+        ],
+      ),
+    );
+  }
+  Future<void> _loadRequest() async {
+    final r = await Api.myRefundRequest(_ticket.ticketCode);
+    if (mounted) setState(() => _request = r);
+  }
+
   Future<void> _askRefund() async {
     final sent = await RefundRequestSheet.open(context, _ticket);
     if (!sent || !mounted) return;
+    await _loadRequest();
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Sent. The counter will look at it and decide.'),
@@ -606,6 +661,8 @@ class _TicketScreenState extends State<TicketScreen> {
 
             if (_ticket.status == 'refunded')
               RefundNotice(ticketCode: _ticket.ticketCode),
+
+            if (_request != null) _requestState(_request!),
             const SizedBox(height: 16),
             // Two different things, so two buttons. Saving puts a picture in
             // the phone's files; sharing hands it to somebody else along with
@@ -663,7 +720,10 @@ class _TicketScreenState extends State<TicketScreen> {
             // the food is ready there is nothing left to call off.
             // Once the food has been handed over there is nothing left to
             // call off — only a complaint about what was received.
+            // One at a time: a second request is the same complaint twice,
+            // and the database refuses it anyway.
             if (paid &&
+                _request == null &&
                 (_ticket.status == 'ready' ||
                     _ticket.status == 'completed')) ...[
               const SizedBox(height: 10),

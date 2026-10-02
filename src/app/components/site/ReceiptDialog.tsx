@@ -7,6 +7,10 @@ import { humanError } from '../../lib/errors';
 import { useConfirm } from '../shared/useConfirm';
 import { RefundRequestDialog } from './RefundRequestDialog';
 import { RefundNotice, maybeRefunded } from './RefundNotice';
+import {
+  RefundRequestStatus,
+  useMyRefundRequest,
+} from './RefundRequestStatus';
 import { receiptPng, saveBlob } from '../../lib/receiptImage';
 import { dinerOrigin } from '../../lib/surface';
 
@@ -23,7 +27,11 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
   /** Said when something quietly succeeded, like a link reaching the clipboard. */
   const [note, setNote] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
-  const [asked, setAsked] = useState(false);
+  const [asked, setAsked] = useState(0);
+
+  // Re-read after sending, so the ticket stops offering a request that has
+  // already gone and starts showing its state instead.
+  const request = useMyRefundRequest(order, asked);
 
   const paid = Boolean(order.paid_at);
   const settled = ['cancelled', 'refunded', 'expired'].includes(order.status);
@@ -40,7 +48,9 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
    */
   const cooked = order.status === 'ready' || order.status === 'completed';
   const canCancel = !settled && !cooked;
-  const canAskRefund = paid && !settled && cooked;
+  // One at a time: a second request is the same complaint twice, and the
+  // database refuses it anyway.
+  const canAskRefund = paid && !settled && cooked && !request;
 
   const peso = (n: number) => `PHP ${Number(n ?? 0).toFixed(2)}`;
 
@@ -239,16 +249,13 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
 
           {/* Shown where the money is: under the receipt it belongs to. */}
           {maybeRefunded(order) && <RefundNotice order={order} />}
+          {request && <RefundRequestStatus request={request} />}
         </div>
 
         <div className="shrink-0 border-t border-diner-ink/10 p-4 space-y-2">
           {error && <p className="text-sm text-diner-accent">{error}</p>}
           {note && <p className="text-sm text-diner-ink/70">{note}</p>}
-          {asked && (
-            <p className="text-sm text-diner-ink/70">
-              Sent. The counter will look at it and decide.
-            </p>
-          )}
+
           {/* Two different things, so two buttons. Saving puts a picture in
               the downloads folder; sharing hands it to somebody else with a
               way back to the shop. */}
@@ -319,7 +326,7 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
         <RefundRequestDialog
           order={order}
           onClose={() => setAsking(false)}
-          onSent={() => setAsked(true)}
+          onSent={() => setAsked((n) => n + 1)}
         />
       )}
     </div>
