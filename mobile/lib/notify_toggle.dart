@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'services/api.dart';
 import 'services/push.dart';
 import 'theme.dart';
 import 'tokens.dart';
@@ -158,6 +159,94 @@ class _NotifyToggleState extends State<NotifyToggle> {
             )
           else
             Switch(value: _on, onChanged: (_) => _flip()),
+        ],
+      ),
+    );
+  }
+}
+
+/// Whether the bell shows anything, as the diner decides.
+///
+/// Separate from the push switch beside it, because they are different
+/// questions: one is whether the phone may interrupt you, the other is whether
+/// the shop keeps a list for you to look at. Somebody who refuses to be buzzed
+/// usually still wants to see what happened when they open the app.
+class InAppNotifyToggle extends StatefulWidget {
+  const InAppNotifyToggle({super.key});
+
+  @override
+  State<InAppNotifyToggle> createState() => _InAppNotifyToggleState();
+}
+
+class _InAppNotifyToggleState extends State<InAppNotifyToggle> {
+  bool? _on;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Api.myProfile().then((me) {
+      if (mounted) setState(() => _on = me?.notifyInApp ?? true);
+    });
+  }
+
+  Future<void> _flip(bool next) async {
+    setState(() {
+      _on = next;
+      _busy = true;
+    });
+    await Api.setNotifyInApp(next);
+    if (mounted) setState(() => _busy = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final on = _on;
+    // Nothing while it is unknown: a switch that paints off and corrects itself
+    // a moment later reads as having been turned off by somebody.
+    if (on == null) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      decoration: BoxDecoration(
+        color: Palette.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Palette.ink.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            on ? Icons.inbox_outlined : Icons.inbox,
+            size: 18,
+            color: on ? Palette.red : Palette.ink.withValues(alpha: 0.5),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Show notifications in the app',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  on
+                      ? 'Your orders and anything the shop announces appear '
+                            'under the bell.'
+                      : 'The bell stays empty. The shop still keeps a record of '
+                            'what it sent you.',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    height: 1.4,
+                    color: Palette.ink.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(value: on, onChanged: _busy ? null : _flip),
         ],
       ),
     );

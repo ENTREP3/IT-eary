@@ -1,7 +1,9 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
+  clearNotifications,
+  dismissNotification,
   loadNotifications,
   markNotificationsRead,
   useNotifications,
@@ -12,7 +14,7 @@ import {
  * The bell, for whoever is signed in.
  */
 export function NotificationBell({ tone = 'staff' }: { tone?: 'staff' | 'diner' }) {
-  const { items, unread } = useNotifications();
+  const { items, unread, enabled } = useNotifications();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -30,6 +32,11 @@ export function NotificationBell({ tone = 'staff' }: { tone?: 'staff' | 'diner' 
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
+
+  // Hidden rather than empty when they have switched it off, so there is no
+  // bell to press that never has anything in it. After every hook: an early
+  // return above one changes how many run between renders, which React counts.
+  if (!enabled) return null;
 
   const dark = tone === 'staff';
   const skin = dark
@@ -82,9 +89,24 @@ export function NotificationBell({ tone = 'staff' }: { tone?: 'staff' | 'diner' 
             className={`absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] border rounded-2xl overflow-hidden shadow-2xl z-40 ${skin.panel}`}
           >
             <div
-              className={`px-4 py-3 border-b text-[10px] tracking-[0.25em] uppercase ${skin.divide} ${skin.muted}`}
+              className={`flex items-center justify-between gap-2 px-4 py-3 border-b ${skin.divide}`}
             >
-              Notifications
+              <span className={`text-[10px] tracking-[0.25em] uppercase ${skin.muted}`}>
+                Notifications
+              </span>
+
+              {/* Clearing hides them from this list and keeps the shop's own
+                  record of what it sent. Offered only when there is something
+                  to clear, so the header is not half buttons on an empty
+                  list. */}
+              {items.length > 0 && (
+                <button
+                  onClick={() => clearNotifications()}
+                  className={`text-[11px] ${skin.muted} hover:opacity-100 underline underline-offset-2`}
+                >
+                  Clear
+                </button>
+              )}
             </div>
 
             <div className="max-h-[22rem] overflow-auto">
@@ -94,7 +116,13 @@ export function NotificationBell({ tone = 'staff' }: { tone?: 'staff' | 'diner' 
                 </p>
               ) : (
                 items.map((n) => (
-                  <Row key={n.id} divide={skin.divide} muted={skin.muted} notification={n} />
+                  <Row
+                    key={n.id}
+                    divide={skin.divide}
+                    muted={skin.muted}
+                    notification={n}
+                    onDismiss={() => dismissNotification(n.id)}
+                  />
                 ))
               )}
             </div>
@@ -109,7 +137,9 @@ function Row({
   notification: n,
   divide,
   muted,
+  onDismiss,
 }: {
+  onDismiss: () => void;
   notification: {
     id: string;
     title: string;
@@ -131,12 +161,23 @@ function Row({
 
   // Only linked when there is somewhere to go. A row that looks clickable and
   // does nothing is worse than one that plainly does not.
-  return n.url ? (
-    <a href={n.url} className={`block px-4 py-3 border-b last:border-0 hover:bg-black/10 ${divide}`}>
-      {body}
-    </a>
-  ) : (
-    <div className={`px-4 py-3 border-b last:border-0 ${divide}`}>{body}</div>
+  return (
+    <div className={`flex items-start gap-1 border-b last:border-0 ${divide}`}>
+      {n.url ? (
+        <a href={n.url} className="flex-1 min-w-0 px-4 py-3 hover:bg-black/10">
+          {body}
+        </a>
+      ) : (
+        <div className="flex-1 min-w-0 px-4 py-3">{body}</div>
+      )}
+      <button
+        onClick={onDismiss}
+        aria-label="Clear this notification"
+        className={`mt-3 mr-2 p-1 rounded ${muted} hover:opacity-100`}
+      >
+        <X size={13} />
+      </button>
+    </div>
   );
 }
 

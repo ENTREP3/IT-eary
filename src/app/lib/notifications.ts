@@ -18,9 +18,11 @@ type State = {
   items: Notification[];
   unread: number;
   loading: boolean;
+  /** Whether this person wants a bell at all. Off hides it entirely. */
+  enabled: boolean;
 };
 
-let state: State = { items: [], unread: 0, loading: false };
+let state: State = { items: [], unread: 0, loading: false, enabled: true };
 const listeners = new Set<() => void>();
 
 function set(next: Partial<State>) {
@@ -41,19 +43,27 @@ export function useNotifications(): State {
 export async function loadNotifications() {
   const { data: session } = await supabase.auth.getUser();
   if (!session.user) {
-    set({ items: [], unread: 0, loading: false });
+    set({ items: [], unread: 0, loading: false, enabled: true });
     return;
   }
 
   set({ loading: true });
-  const [list, count] = await Promise.all([
+  const [list, count, profile] = await Promise.all([
     supabase.rpc('my_notifications', { p_limit: 30 }),
     supabase.rpc('my_unread_count'),
+    supabase.rpc('my_profile'),
   ]);
 
+  const row = Array.isArray(profile.data) ? profile.data[0] : profile.data;
+  const enabled = row ? row.notify_in_app !== false : true;
+
   set({
-    items: (list.data as Notification[]) ?? [],
-    unread: Number(count.data ?? 0),
+    // Nothing is fetched away when the bell is off; it is simply not shown.
+    // The rows stay, so turning it back on returns the history rather than
+    // starting from empty.
+    items: enabled ? ((list.data as Notification[]) ?? []) : [],
+    unread: enabled ? Number(count.data ?? 0) : 0,
+    enabled,
     loading: false,
   });
 }
@@ -73,6 +83,28 @@ export async function markNotificationsRead() {
     items: state.items.map((n) => (n.read_at ? n : { ...n, read_at: now })),
   });
   await supabase.rpc('mark_notifications_read');
+}
+
+/**
+ * Clears the bell without losing the record.
+ *
+ * The rows stay; only this person's view of them is hidden. What the shop told
+ * somebody is the shop's record, and tidying a list should not erase it.
+ */
+export async function clearNotifications() {
+  set({ items: [], unread: 0 });
+  await supabase.rpc('dismiss_notifications', { p_id: null });
+}
+
+/** Hides one entry, for the x on a single row. */
+export async function dismissNotification(id: string) {
+  set({
+    items: state.items.filter((n) => n.id !== id),
+    unread: state.items.find((n) => n.id === id && !n.read_at)
+      ? Math.max(0, state.unread - 1)
+      : state.unread,
+  });
+  await supabase.rpc('dismiss_notifications', { p_id: id });
 }
 
 /**

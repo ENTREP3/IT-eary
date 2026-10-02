@@ -365,6 +365,28 @@ class Api {
     }
   }
 
+  /// Clears the bell without losing the record.
+  ///
+  /// The rows stay; only this person's view of them is hidden. What the shop
+  /// told somebody is the shop's record, and tidying a list should not erase
+  /// it. Null clears everything; an id clears one.
+  static Future<void> dismissNotifications({String? id}) async {
+    try {
+      await _db.rpc('dismiss_notifications', params: {'p_id': id});
+    } catch (_) {
+      // The next load reads the truth back.
+    }
+  }
+
+  /// Whether the bell shows anything, as the diner decides.
+  static Future<void> setNotifyInApp(bool on) async {
+    try {
+      await _db.rpc('set_my_notify_in_app', params: {'p_on': on});
+    } catch (_) {
+      /* the switch reads its state back on the next load */
+    }
+  }
+
   /// Marks them all read, which is what opening the bell means.
   static Future<void> markNotificationsRead() async {
     try {

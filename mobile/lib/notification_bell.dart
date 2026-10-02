@@ -37,6 +37,10 @@ class _NotificationBellState extends State<NotificationBell>
   int _unread = 0;
   StreamSubscription<void>? _arrivals;
 
+  /// Whether this person wants a bell at all. Assumed on until told otherwise,
+  /// so it does not flicker away on a slow first load.
+  bool _enabled = true;
+
   @override
   void initState() {
     super.initState();
@@ -63,7 +67,12 @@ class _NotificationBellState extends State<NotificationBell>
 
   Future<void> _refresh() async {
     final n = await Api.unreadCount();
-    if (mounted) setState(() => _unread = n);
+    final me = await Api.myProfile();
+    if (!mounted) return;
+    setState(() {
+      _unread = n;
+      _enabled = me?.notifyInApp ?? true;
+    });
   }
 
   Future<void> _open() async {
@@ -88,6 +97,10 @@ class _NotificationBellState extends State<NotificationBell>
 
   @override
   Widget build(BuildContext context) {
+    // Hidden rather than empty, so there is no bell to press that never has
+    // anything in it.
+    if (!_enabled) return const SizedBox.shrink();
+
     final ink = widget._onPhoto
         ? Colors.white
         : (widget._dark ? Tokens.staffInk : Palette.ink);
@@ -145,15 +158,38 @@ class _Sheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Text(
-                'NOTIFICATIONS',
-                style: TextStyle(
-                  fontSize: 11,
-                  letterSpacing: 2,
-                  fontWeight: FontWeight.w600,
-                  color: ink.withValues(alpha: 0.55),
-                ),
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'NOTIFICATIONS',
+                      style: TextStyle(
+                        fontSize: 11,
+                        letterSpacing: 2,
+                        fontWeight: FontWeight.w600,
+                        color: ink.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  ),
+
+                  // Hides them from this list and keeps the shop's own record
+                  // of what it sent.
+                  if (items.isNotEmpty)
+                    TextButton(
+                      onPressed: () async {
+                        await Api.dismissNotifications();
+                        if (context.mounted) Navigator.of(context).pop();
+                      },
+                      child: Text(
+                        'Clear',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: ink.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             if (items.isEmpty)
@@ -182,6 +218,15 @@ class _Sheet extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                           color: ink,
                         ),
+                      ),
+                      trailing: IconButton(
+                        onPressed: () async {
+                          await Api.dismissNotifications(id: n.id);
+                          if (context.mounted) Navigator.of(context).pop();
+                        },
+                        icon: const Icon(Icons.close, size: 16),
+                        color: ink.withValues(alpha: 0.4),
+                        tooltip: 'Clear this one',
                       ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

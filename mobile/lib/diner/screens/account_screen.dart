@@ -426,6 +426,7 @@ class _SignedInState extends State<_SignedIn> {
             // arrival: Android will not ask twice, so a refusal by reflex
             // costs the shop that customer for good.
             const NotifyToggle.diner(),
+            const InAppNotifyToggle(),
 
             const SizedBox(height: 22),
             const Text(

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Check, Loader2, Megaphone, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useConfirm } from '../shared/useConfirm';
+import { Toggle } from '../shared/Toggle';
 import { humanError } from '../../lib/errors';
 import { notifyAnnouncement } from '../../lib/notify';
 
@@ -223,22 +224,17 @@ export function AnnouncementSection() {
         </span>
       </div>
 
-      <label className="mt-3 flex items-start gap-2.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={notify}
-          onChange={(e) => setNotify(e.target.checked)}
-          className="mt-0.5 accent-[#e8a84a]"
-        />
-        <span className="text-xs leading-relaxed">
-          <span className="font-medium">Also send a notification</span>
-          <span className="block opacity-55">
-            Buzzes the phone of everyone who allowed notifications, even with the app closed.
+      <div className="mt-3">
+        <Toggle
+          on={notify}
+          onChange={setNotify}
+          label="Also send a notification"
+          hint={<>Buzzes the phone of everyone who allowed notifications, even with the app closed.
             Worth it for closing early. Not worth it for today&rsquo;s ulam &mdash; people who
             are buzzed about everything stop reading any of it.
-          </span>
-        </span>
-      </label>
+          </>}
+        />
+      </div>
 
       {error && <p className="mt-3 text-sm text-[#e87a5c]">{error}</p>}
 

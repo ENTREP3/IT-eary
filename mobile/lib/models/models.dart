@@ -780,6 +780,9 @@ class NewAccount {
 /// A diner's own details, as the shop holds them.
 class MyProfile {
   final String? email;
+
+  /// Whether the bell shows anything. On unless they turned it off.
+  final bool notifyInApp;
   final String? firstName;
   final String? middleName;
   final String? lastName;
@@ -789,6 +792,7 @@ class MyProfile {
 
   const MyProfile({
     this.email,
+    this.notifyInApp = true,
     this.firstName,
     this.middleName,
     this.lastName,
@@ -821,6 +825,7 @@ class MyProfile {
 
   factory MyProfile.fromMap(Map<String, dynamic> m) => MyProfile(
     email: m['email'] as String?,
+    notifyInApp: m['notify_in_app'] as bool? ?? true,
     firstName: m['first_name'] as String?,
     middleName: m['middle_name'] as String?,
     lastName: m['last_name'] as String?,

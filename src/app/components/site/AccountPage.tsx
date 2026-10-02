@@ -20,6 +20,7 @@ import type { Order } from '../../lib/types';
 import { humanError } from '../../lib/errors';
 import { passwordProblem } from '../../lib/password';
 import { NotifyToggle } from './NotifyToggle';
+import { InAppNotifyToggle } from './InAppNotifyToggle';
 import { refreshPushRegistration } from '../../lib/push';
 import { syncFavourites } from '../../lib/favourites';
 import { displayName } from '../../lib/displayName';
@@ -645,6 +646,7 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
       <MyDetails />
 
       <NotifyToggle />
+      <InAppNotifyToggle />
 
       {/* A staff account is not a customer. create_ticket() deliberately leaves
           customer_id empty when a signed-in member of staff checks out, so a
