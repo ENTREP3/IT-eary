@@ -177,3 +177,72 @@ String shortTime(DateTime d) {
   final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
   return '$h:${d.minute.toString().padLeft(2, '0')} ${d.hour < 12 ? 'AM' : 'PM'}';
 }
+
+class SectionTitle extends StatelessWidget {
+  const SectionTitle({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 17, color: Tokens.staffAccent),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: Tokens.staffInk,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 12,
+            height: 1.45,
+            color: Tokens.staffInk.withValues(alpha: 0.55),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class AdminNote extends StatelessWidget {
+  const AdminNote({
+    super.key,
+    required this.text,
+    required this.tone,
+  });
+
+  final String text;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(text, style: TextStyle(fontSize: 13, color: tone)),
+    );
+  }
+}

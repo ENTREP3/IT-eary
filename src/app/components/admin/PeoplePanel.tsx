@@ -15,6 +15,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { humanError } from '../../lib/errors';
 import { useConfirm } from '../shared/useConfirm';
+import { StaffLogins } from './StaffLogins';
 
 /**
  * Everyone with an account, and what the owner can do about them.
@@ -137,6 +138,11 @@ export function PeoplePanel() {
 
   return (
     <div className="space-y-4">
+      {/* Making a login and managing the person who uses it are the same
+          job, so they are on the same page. This used to sit under Shop
+          beside the opening hours. */}
+      <StaffLogins />
+
       <div className="flex flex-wrap items-center gap-2">
         {GROUPS.map(({ key, label, icon: Icon }) => (
           <button

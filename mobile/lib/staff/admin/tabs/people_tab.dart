@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../errors.dart';
 import '../../../models/models.dart';
 import '../../../tokens.dart';
+import 'staff_logins.dart';
 import '../../../confirm.dart';
 import '../admin_api.dart';
 import 'widgets.dart';
@@ -106,6 +107,12 @@ class _PeopleTabState extends State<PeopleTab> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // Making a login and managing the person who uses it are the same
+        // job, so they are on the same page. This used to sit under Shop
+        // beside the opening hours.
+        const StaffLogins(),
+        const SizedBox(height: 16),
+
         if (_error != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
