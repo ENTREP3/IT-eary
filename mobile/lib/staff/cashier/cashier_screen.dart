@@ -34,6 +34,16 @@ class _CashierScreenState extends State<CashierScreen> {
 
   /// The shop's GCash details, for the panel the customer is shown.
   PaymentSettings? _settings;
+
+  /// What the customer has just said they will pay with, before paying.
+  ///
+  /// Null means go by the ticket. Switching to GCash is not a payment — the
+  /// money still has to be sent — so it changes what the screen offers and
+  /// nothing else. What lands on the order is whatever mark_ticket_paid is
+  /// told when it is actually settled.
+  String? _intent;
+
+  String _payingBy(Ticket t) => _intent ?? t.paymentMethod ?? 'cash';
   String? _proofUrl;
   bool _busy = false;
   bool _proofLoading = false;
@@ -97,6 +107,7 @@ class _CashierScreenState extends State<CashierScreen> {
       }
       setState(() {
         _ticket = t;
+        _intent = null;
         _busy = false;
       });
       _loadProof(t);
@@ -173,6 +184,7 @@ class _CashierScreenState extends State<CashierScreen> {
   void _reset() {
     setState(() {
       _ticket = null;
+      _intent = null;
       _proofUrl = null;
       _codeCtrl.clear();
       _error = null;
@@ -364,7 +376,7 @@ class _CashierScreenState extends State<CashierScreen> {
   /// outward. Gone once the ticket is settled, since there is nothing left to
   /// do with it.
   Widget _showToCustomer(Ticket t) {
-    final gcash = t.paymentMethod == 'gcash';
+    final gcash = _payingBy(t) == 'gcash';
     final s = _settings;
 
     return Container(
@@ -606,7 +618,7 @@ class _CashierScreenState extends State<CashierScreen> {
                     color: Tokens.semanticAlert.withValues(alpha: 0.9)),
               ),
             ],
-          ] else if (t.isGcash) ...[
+          ] else if (_payingBy(t) == 'gcash') ...[
             const SizedBox(height: 16),
             _proofPanel(t),
             const SizedBox(height: 16),
@@ -625,8 +637,11 @@ class _CashierScreenState extends State<CashierScreen> {
               ),
             ),
             const SizedBox(height: 8),
+            // Switches what the screen offers; it does not settle. The money
+            // has not moved yet, and this used to mark the ticket paid and
+            // verified the moment it was pressed.
             OutlinedButton.icon(
-              onPressed: _busy ? null : () => _settle('gcash'),
+              onPressed: _busy ? null : () => setState(() => _intent = 'gcash'),
               icon: const Icon(Icons.smartphone_outlined, size: 16),
               label: const Text("They're paying by GCash instead"),
               style: OutlinedButton.styleFrom(

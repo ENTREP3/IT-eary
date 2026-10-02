@@ -14,11 +14,18 @@ import type { Order } from '../../lib/types';
  * Shown only while the ticket is unpaid, because afterwards there is nothing
  * for the customer to do with it.
  */
-export function ShowToCustomer({ order }: { order: Order }) {
+export function ShowToCustomer({
+  order,
+  method,
+}: {
+  order: Order;
+  /** What they have said they will pay with, which may differ from the ticket. */
+  method?: Order['payment_method'] | null;
+}) {
   const settings = usePaymentStore((s) => s.settings);
   if (order.paid_at) return null;
 
-  const gcash = order.payment_method === 'gcash';
+  const gcash = (method ?? order.payment_method) === 'gcash';
 
   return (
     <div className="mt-4 rounded-2xl border border-[#e8a84a]/35 bg-[#e8a84a]/5 p-4">

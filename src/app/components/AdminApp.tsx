@@ -587,7 +587,14 @@ function KitchenPage({ orders }: { orders: Order[] }) {
         ).map(([k, label]) => (
           <button
             key={k}
-            onClick={() => setView(k)}
+            onClick={() => {
+              // Pressing a tab starts clean. The handed-over ticket is only
+              // ever meant for the one hop out of Take an order; left in
+              // place it reopened a receipt that had already been closed,
+              // every time the till was opened again.
+              setHandoff(null);
+              setView(k);
+            }}
             className={`px-4 py-2 transition-colors ${
               view === k ? 'bg-[#e8a84a] text-[#0a0d0a]' : 'hover:bg-[#e8dfc8]/5'
             }`}
@@ -611,7 +618,13 @@ function KitchenPage({ orders }: { orders: Order[] }) {
         />
       )}
 
-      {view === 'ticket' && <CashierApp chrome={false} openTicket={handoff} />}
+      {view === 'ticket' && (
+        <CashierApp
+          chrome={false}
+          openTicket={handoff}
+          onTicketOpened={() => setHandoff(null)}
+        />
+      )}
     </div>
   );
 }

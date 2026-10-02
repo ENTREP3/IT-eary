@@ -39,14 +39,21 @@ type Stage = 'lookup' | 'review' | 'receipt';
 export function CashierApp({
   chrome = true,
   openTicket,
+  onTicketOpened,
 }: {
   chrome?: boolean;
   /** A ticket to open straight away, for a counter order just raised elsewhere. */
   openTicket?: string | null;
+  /** Called once it has been opened, so the caller can forget it. */
+  onTicketOpened?: () => void;
 }) {
   return (
     <ConfirmProvider>
-      <CashierCounter chrome={chrome} openTicket={openTicket ?? null} />
+      <CashierCounter
+        chrome={chrome}
+        openTicket={openTicket ?? null}
+        onTicketOpened={onTicketOpened}
+      />
     </ConfirmProvider>
   );
 }
@@ -57,9 +64,11 @@ export function CashierApp({
 function CashierCounter({
   chrome,
   openTicket = null,
+  onTicketOpened,
 }: {
   chrome: boolean;
   openTicket?: string | null;
+  onTicketOpened?: () => void;
 }) {
   // In a karinderya this size the person on the till is also the person calling
   // to the kitchen, so the counter screen carries the order queue too.
@@ -73,6 +82,16 @@ function CashierCounter({
   const [proofLoading, setProofLoading] = useState(false);
   const [zoomed, setZoomed] = useState(false);
   const [refunding, setRefunding] = useState<Order | null>(null);
+
+  /**
+   * The method the customer has just said they will use, before paying.
+   *
+   * Null means go by the ticket. Switching to GCash is not a payment — the
+   * money still has to be sent — so it changes what the screen offers and
+   * nothing else. What finally lands on the order is whatever mark_ticket_paid
+   * is told at the moment it is settled.
+   */
+  const [intent, setIntent] = useState<PaymentMethod | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const profile = useAuthStore((s) => s.profile);
@@ -127,6 +146,7 @@ function CashierCounter({
     setStage('lookup');
     setCode('');
     setOrder(null);
+    setIntent(null);
     setError(null);
     setProofUrl(null);
     setZoomed(false);
@@ -144,11 +164,15 @@ function CashierCounter({
       setOrder(found);
       setCode(found.ticket_code);
       setStage(found.paid_at ? 'receipt' : 'review');
+      // Used up. Without this the same ticket reopened every time the till
+      // was mounted again — the lookup screen for an instant, then a receipt
+      // that had already been closed.
+      onTicketOpened?.();
     })();
     return () => {
       alive = false;
     };
-  }, [openTicket, findByTicket]);
+  }, [openTicket, findByTicket, onTicketOpened]);
 
   const lookup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,6 +185,7 @@ function CashierCounter({
       if (!found) {
         setError(`No ticket "${trimmed.toUpperCase()}". Check the code and try again.`);
       } else {
+        setIntent(null);
         setOrder(found);
         setStage(found.paid_at ? 'receipt' : 'review');
       }
@@ -170,6 +195,8 @@ function CashierCounter({
       setBusy(false);
     }
   };
+
+  const payingBy: PaymentMethod | null = intent ?? order?.payment_method ?? null;
 
   const settle = async (
     method: PaymentMethod,
@@ -397,12 +424,12 @@ function CashierCounter({
                           : 'bg-semantic-cash/25 text-semantic-good'
                       }`}
                     >
-                      {order.payment_method === 'gcash' ? (
+                      {payingBy === 'gcash' ? (
                         <Smartphone size={12} />
                       ) : (
                         <Banknote size={12} />
                       )}
-                      {order.payment_method === 'gcash' ? 'GCash' : 'Cash'}
+                      {payingBy === 'gcash' ? 'GCash' : 'Cash'}
                     </span>
                     <span className="text-[11px] opacity-40 flex items-center gap-1">
                       <Clock size={12} />
@@ -438,7 +465,7 @@ function CashierCounter({
                 </div>
               </div>
 
-              <ShowToCustomer order={order} />
+              <ShowToCustomer order={order} method={payingBy} />
 
               <AddToOrder order={order} onChanged={setOrder} />
 
@@ -553,6 +580,7 @@ function CashierCounter({
                       </span>
                     </button>
 
+                    {/* Cash in hand is the payment, so this one does settle. */}
                     <button
                       onClick={() => settle('cash')}
                       disabled={busy}
@@ -583,8 +611,11 @@ function CashierCounter({
                       Confirm ₱{Number(order.total).toFixed(2)} in cash
                     </span>
                   </button>
+                  {/* Switches what the screen offers; it does not settle. The
+                      money has not moved yet, and this used to mark the ticket
+                      paid and verified the moment it was pressed. */}
                   <button
-                    onClick={() => settle('gcash')}
+                    onClick={() => setIntent('gcash')}
                     disabled={busy}
                     className="mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-[#e8dfc8]/15 text-sm hover:bg-[#e8dfc8]/5 disabled:opacity-40"
                   >
