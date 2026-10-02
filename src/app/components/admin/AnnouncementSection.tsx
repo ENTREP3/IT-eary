@@ -32,15 +32,25 @@ const WHO: Record<Audience, string> = {
   both: 'Everyone',
 };
 
-/**
- * How long it runs, in wording the owner thinks in.
- */
-const RUNS = [
-  { label: 'Rest of today', until: () => endOfToday() },
-  { label: '2 hours', until: () => new Date(Date.now() + 2 * 3600e3) },
-  { label: '3 days', until: () => new Date(Date.now() + 3 * 86400e3) },
-  { label: '7 days', until: () => new Date(Date.now() + 7 * 86400e3) },
-];
+/** How long it runs: a number the owner types, and a unit. */
+const UNITS = {
+  minutes: { label: 'minutes', ms: 60e3 },
+  hours: { label: 'hours', ms: 3600e3 },
+  days: { label: 'days', ms: 86400e3 },
+  weeks: { label: 'weeks', ms: 7 * 86400e3 },
+  months: { label: 'months', ms: 30 * 86400e3 },
+} as const;
+
+type Unit = keyof typeof UNITS | 'today';
+
+/** The longest an announcement may run, so none of them becomes furniture. */
+const MAX_MS = 180 * 86400e3;
+
+function endsAt(unit: Unit, amount: number): Date {
+  if (unit === 'today') return endOfToday();
+  const ms = Math.min(Math.max(amount, 1) * UNITS[unit].ms, MAX_MS);
+  return new Date(Date.now() + ms);
+}
 
 function endOfToday(): Date {
   const d = new Date();
@@ -65,7 +75,8 @@ export function AnnouncementSection() {
   const [tone, setTone] = useState<'notice' | 'warning'>('notice');
   const [audience, setAudience] = useState<Audience>('diners');
   const [notify, setNotify] = useState(false);
-  const [run, setRun] = useState(0);
+  const [unit, setUnit] = useState<Unit>('today');
+  const [amount, setAmount] = useState(2);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +111,7 @@ export function AnnouncementSection() {
         tone,
         audience,
         notify,
-        ends_at: RUNS[run].until().toISOString(),
+        ends_at: endsAt(unit, amount).toISOString(),
       });
       if (e) throw e;
 
@@ -176,17 +187,35 @@ export function AnnouncementSection() {
 
         <label className="block">
           <span className="text-[11px] opacity-55">Show for</span>
-          <select
-            value={run}
-            onChange={(e) => setRun(Number(e.target.value))}
-            className={`${field} h-10 mt-1`}
-          >
-            {RUNS.map((r, i) => (
-              <option key={r.label} value={i}>
-                {r.label}
-              </option>
-            ))}
-          </select>
+          <div className="flex gap-2 mt-1">
+            {/* Hidden for "rest of today", which is the one choice with no
+                number to type. */}
+            {unit !== 'today' && (
+              <input
+                type="number"
+                min={1}
+                value={amount}
+                onChange={(e) => setAmount(Math.max(1, Number(e.target.value) || 1))}
+                className={`${field} h-10 w-16 text-center`}
+                aria-label="How many"
+              />
+            )}
+            <select
+              value={unit}
+              onChange={(e) => setUnit(e.target.value as Unit)}
+              className={`${field} h-10`}
+            >
+              <option value="today">Rest of today</option>
+              {Object.entries(UNITS).map(([key, u]) => (
+                <option key={key} value={key}>
+                  {u.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <span className="block mt-1 text-[11px] opacity-45">
+            Ends {endsAt(unit, amount).toLocaleString()}
+          </span>
         </label>
 
         <span className={`text-[11px] ml-auto ${left < 30 ? 'text-[#e8a84a]' : 'opacity-45'}`}>

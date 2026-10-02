@@ -20,15 +20,26 @@ class AnnouncementCard extends StatefulWidget {
 /// ends at midnight rather than N hours from now, because "closing early
 /// today" should stop being true when today does, whether it was written at
 /// seven in the morning or at four in the afternoon.
-final _runs = <String, DateTime Function()>{
-  'Rest of today': () {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day, 23, 59, 59);
-  },
-  '2 hours': () => DateTime.now().add(const Duration(hours: 2)),
-  '3 days': () => DateTime.now().add(const Duration(days: 3)),
-  '7 days': () => DateTime.now().add(const Duration(days: 7)),
+/// Units an announcement can run for, with how long each one is.
+const _units = <String, Duration>{
+  'minutes': Duration(minutes: 1),
+  'hours': Duration(hours: 1),
+  'days': Duration(days: 1),
+  'weeks': Duration(days: 7),
+  'months': Duration(days: 30),
 };
+
+/// The longest one may run, so none of them becomes furniture.
+const _maxRun = Duration(days: 180);
+
+DateTime _endsAt(String unit, int amount) {
+  if (unit == 'today') {
+    final n = DateTime.now();
+    return DateTime(n.year, n.month, n.day, 23, 59, 59);
+  }
+  final span = _units[unit]! * (amount < 1 ? 1 : amount);
+  return DateTime.now().add(span > _maxRun ? _maxRun : span);
+}
 
 const _limit = 280;
 
@@ -39,7 +50,8 @@ class _AnnouncementCardState extends State<AnnouncementCard> {
   String _tone = 'notice';
   String _audience = 'diners';
   bool _notify = false;
-  String _run = 'Rest of today';
+  String _unit = 'today';
+  final _amount = TextEditingController(text: '2');
   bool _busy = false;
   String? _error;
   String? _saved;
@@ -79,7 +91,7 @@ class _AnnouncementCardState extends State<AnnouncementCard> {
         tone: _tone,
         audience: _audience,
         notify: _notify,
-        endsAt: _runs[_run]!(),
+        endsAt: _endsAt(_unit, int.tryParse(_amount.text.trim()) ?? 1),
       );
 
       // Only once the row is safely in. A notification for an announcement
@@ -183,19 +195,43 @@ class _AnnouncementCardState extends State<AnnouncementCard> {
                 ),
               ),
               const SizedBox(width: 10),
+              // A typed number beside the unit, so "two weeks" is possible
+              // without a list that has to guess every span in advance.
+              if (_unit != 'today')
+                SizedBox(
+                  width: 54,
+                  child: TextField(
+                    controller: _amount,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(
+                      labelText: 'For',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+              if (_unit != 'today') const SizedBox(width: 8),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  initialValue: _run,
+                  initialValue: _unit,
                   isDense: true,
                   decoration: const InputDecoration(
                     labelText: 'Show for',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
-                  items: _runs.keys
-                      .map((k) => DropdownMenuItem(value: k, child: Text(k)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _run = v ?? 'Rest of today'),
+                  items: [
+                    const DropdownMenuItem(
+                      value: 'today',
+                      child: Text('Rest of today'),
+                    ),
+                    ..._units.keys.map(
+                      (k) => DropdownMenuItem(value: k, child: Text(k)),
+                    ),
+                  ],
+                  onChanged: (v) => setState(() => _unit = v ?? 'today'),
                 ),
               ),
             ],

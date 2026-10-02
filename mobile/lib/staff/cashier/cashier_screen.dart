@@ -7,6 +7,7 @@ import '../../notification_bell.dart';
 import '../../notify_toggle.dart';
 import '../admin/tabs/kitchen_tab.dart';
 import '../widgets/refund_sheet.dart';
+import '../widgets/staff_announcement.dart';
 import 'add_to_order_sheet.dart';
 import '../live_refresh.dart';
 import '../staff_api.dart';
@@ -232,14 +233,21 @@ class _CashierScreenState extends State<CashierScreen> {
         ),
       ),
       body: SafeArea(
-        child: _view == _CounterView.kitchen
-            ? const SelfLoadingKitchenQueue()
-            : Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 520),
-                  child: t == null ? _lookupView() : _ticketView(t),
-                ),
-              ),
+        child: Column(
+          children: [
+            const StaffAnnouncement(),
+            Expanded(
+              child: _view == _CounterView.kitchen
+                      ? const SelfLoadingKitchenQueue()
+                  : Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 520),
+                        child: t == null ? _lookupView() : _ticketView(t),
+                      ),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

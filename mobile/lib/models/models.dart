@@ -719,11 +719,16 @@ class Announcement {
   final String tone;
   final DateTime endsAt;
 
+  /// 'diners', 'staff' or 'both'. Staff screens show the customers' ones too,
+  /// labelled, so the counter knows what is on the menu page.
+  final String audience;
+
   const Announcement({
     required this.id,
     required this.message,
     required this.tone,
     required this.endsAt,
+    this.audience = 'diners',
   });
 
   bool get isWarning => tone == 'warning';
@@ -732,6 +737,7 @@ class Announcement {
     id: m['id'] as String? ?? '',
     message: m['message'] as String? ?? '',
     tone: m['tone'] as String? ?? 'notice',
+    audience: m['audience'] as String? ?? 'diners',
     endsAt:
         DateTime.tryParse(m['ends_at'] as String? ?? '')?.toLocal() ??
         DateTime.now(),

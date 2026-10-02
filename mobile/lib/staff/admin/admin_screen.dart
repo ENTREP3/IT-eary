@@ -4,6 +4,7 @@ import '../../errors.dart';
 import '../../models/models.dart';
 import '../../tokens.dart';
 import '../../notification_bell.dart';
+import '../widgets/staff_announcement.dart';
 import '../live_refresh.dart';
 import 'admin_api.dart';
 import 'tabs/analytics_tab.dart';
@@ -156,9 +157,18 @@ class _AdminScreenState extends State<AdminScreen> {
           ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
           : _error != null
               ? _errorView()
-              : RefreshIndicator(
-                  onRefresh: _loadAll,
-                  child: _body(),
+              : Column(
+                  children: [
+                    // Above every tab, so it is seen whichever screen the
+                    // owner happens to be on.
+                    const StaffAnnouncement(),
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: _loadAll,
+                        child: _body(),
+                      ),
+                    ),
+                  ],
                 ),
     );
   }

@@ -138,6 +138,41 @@ function callerIsTheDatabase(authorization: string): boolean {
   return diff === 0;
 }
 
+/** Everyone with a real account. Guests have nowhere to keep a notification. */
+async function accountHolders(): Promise<string[]> {
+  const res = await db('rpc/account_holder_ids', { method: 'POST', body: '{}' });
+  if (!res.ok) return [];
+  const rows = await res.json();
+  return Array.isArray(rows) ? rows.filter((r) => typeof r === 'string') : [];
+}
+
+/** Writes the notification so it can be read later, and says how many got one. */
+async function record(
+  userIds: string[],
+  n: { title: unknown; body?: unknown; url?: unknown; tag?: unknown },
+): Promise<number> {
+  if (!userIds.length) return 0;
+  try {
+    const res = await db('notifications', {
+      method: 'POST',
+      body: JSON.stringify(
+        userIds.map((user_id) => ({
+          user_id,
+          title: String(n.title),
+          body: n.body == null ? null : String(n.body),
+          url: n.url == null ? null : String(n.url),
+          tag: n.tag == null ? null : String(n.tag),
+        })),
+      ),
+    });
+    return res.ok ? userIds.length : 0;
+  } catch {
+    // Never fails the send. A notification that reaches a phone but not the
+    // bell is worse than one that reaches both, and better than neither.
+    return 0;
+  }
+}
+
 type Audience =
   | { kind: 'everyone' }
   | { kind: 'ticket'; ticket_code: string }
@@ -205,24 +240,36 @@ Deno.serve(async (req) => {
     const { to, title, body, url, tag } = await req.json();
     if (!to || !title) return json({ error: 'to and title are required' }, 400);
 
-    /*
-     * Everyone is its own path rather than a list of every user id.
-     */
+    const audience = to as Audience;
+    const everyone = audience?.kind === 'everyone';
+
+    // Duplicates would tell the same person twice — a diner who is also on a
+    // waiting list, say.
+    const { userIds, note } = everyone
+      ? { userIds: await accountHolders(), note: undefined }
+      : await resolve(audience);
+    const unique = [...new Set(userIds)].filter(Boolean);
+
+    // Recorded before anything is sent, and whatever happens next. A bell
+    // entry is the copy that survives a phone being face down, so it must not
+    // depend on a push succeeding — or on one being wanted at all.
+    const recorded = await record(unique, { title, body, url, tag });
+
     let tokensRes: Response;
-    if ((to as Audience)?.kind === 'everyone') {
+    if (everyone) {
+      // Every registered device, guests included. A shout reaches phones that
+      // have nowhere to keep the message afterwards, which is the difference
+      // between this and the list recorded above.
       tokensRes = await db('push_tokens?failed_at=is.null&select=token');
     } else {
-      const { userIds, note } = await resolve(to as Audience);
-      // Duplicates would send the same person the same thing twice — a diner
-      // who is also on the waiting list, say.
-      const unique = [...new Set(userIds)];
-      if (!unique.length) return json({ sent: 0, reason: note ?? 'nobody to tell' });
-
+      if (!unique.length) {
+        return json({ sent: 0, recorded, reason: note ?? 'nobody to tell' });
+      }
       const list = unique.map((id) => `"${id}"`).join(',');
       tokensRes = await db(`push_tokens?user_id=in.(${list})&failed_at=is.null&select=token`);
     }
     const rows: Array<{ token: string }> = await tokensRes.json();
-    if (!rows.length) return json({ sent: 0, reason: 'no devices registered' });
+    if (!rows.length) return json({ sent: 0, recorded, reason: 'no devices registered' });
 
     const sa = serviceAccount();
     const auth = await accessToken(sa);
@@ -279,7 +326,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    return json({ sent, retired: dead.length });
+    return json({ sent, recorded, retired: dead.length });
   } catch (e) {
     // A caught value is `unknown`, not an Error: `throw 'nope'` is legal and
     // anything reaching here may have come from a library that does it.

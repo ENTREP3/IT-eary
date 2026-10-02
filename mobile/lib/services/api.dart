@@ -477,7 +477,7 @@ class Api {
     try {
       final rows = await _db
           .from('announcements')
-          .select('id, message, tone, ends_at')
+          .select('id, message, tone, audience, ends_at')
           .order('created_at', ascending: false)
           .limit(1);
       if (rows.isEmpty) return null;
@@ -495,7 +495,7 @@ class Api {
   static Future<List<Announcement>> allAnnouncements() async {
     final rows = await _db
         .from('announcements')
-        .select('id, message, tone, ends_at')
+        .select('id, message, tone, audience, ends_at')
         .order('created_at', ascending: false)
         .limit(20);
     return rows.map<Announcement>((r) => Announcement.fromMap(r)).toList();
