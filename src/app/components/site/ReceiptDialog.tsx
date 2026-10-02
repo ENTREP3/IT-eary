@@ -5,6 +5,7 @@ import { useOrdersStore } from '../../store/ordersStore';
 import { useBusinessStore } from '../../store/businessStore';
 import { humanError } from '../../lib/errors';
 import { useConfirm } from '../shared/useConfirm';
+import { RefundRequestDialog } from './RefundRequestDialog';
 import { receiptPng, saveBlob } from '../../lib/receiptImage';
 import { dinerOrigin } from '../../lib/surface';
 
@@ -20,12 +21,25 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
   const [error, setError] = useState<string | null>(null);
   /** Said when something quietly succeeded, like a link reaching the clipboard. */
   const [note, setNote] = useState<string | null>(null);
+  const [asking, setAsking] = useState(false);
+  const [asked, setAsked] = useState(false);
 
   const paid = Boolean(order.paid_at);
   const settled = ['cancelled', 'refunded', 'expired'].includes(order.status);
 
-  /** Only while nothing has been paid and nothing has been settled. */
-  const canCancel = !paid && !settled && order.status === 'pending';
+  /*
+   * Which of the two a diner is offered, decided by the kitchen rather than
+   * by the money.
+   *
+   * An order the kitchen has not finished can simply be stopped, whoever
+   * has paid; anything already taken goes back as an ordinary refund. Once
+   * the food is ready or handed over there is nothing left to call off —
+   * only a complaint about what was received, which needs a reason and a
+   * photograph.
+   */
+  const cooked = order.status === 'ready' || order.status === 'completed';
+  const canCancel = !settled && !cooked;
+  const canAskRefund = paid && !settled && cooked;
 
   const peso = (n: number) => `PHP ${Number(n ?? 0).toFixed(2)}`;
 
@@ -226,6 +240,11 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
         <div className="shrink-0 border-t border-diner-ink/10 p-4 space-y-2">
           {error && <p className="text-sm text-diner-accent">{error}</p>}
           {note && <p className="text-sm text-diner-ink/70">{note}</p>}
+          {asked && (
+            <p className="text-sm text-diner-ink/70">
+              Sent. The counter will look at it and decide.
+            </p>
+          )}
           {/* Two different things, so two buttons. Saving puts a picture in
               the downloads folder; sharing hands it to somebody else with a
               way back to the shop. */}
@@ -257,7 +276,9 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
               onClick={() =>
                 confirm({
                   title: `Cancel ${order.ticket_code}?`,
-                  body: 'The food goes back on the shelf and the ticket is closed. You can order again any time.',
+                  body: paid
+                    ? 'The kitchen has not finished it, so it can still be stopped. The counter sends your money back.'
+                    : 'The food goes back on the shelf and the ticket is closed. You can order again any time.',
                   action: 'Cancel order',
                   danger: true,
                   onConfirm: doCancel,
@@ -270,13 +291,33 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
             </button>
           )}
 
-          {paid && !settled && (
-            <p className="text-xs opacity-45 text-center leading-relaxed">
-              Already paid for. Ask at the counter if something is wrong with this order.
-            </p>
+          {/* Was a sentence telling them to go and ask somebody. A diner
+              holding a cold or spoiled meal can say so here instead, and a
+              complaint with a photograph attached is one the counter can
+              actually act on. */}
+          {canAskRefund && (
+            <>
+              <button
+                onClick={() => setAsking(true)}
+                className="w-full h-11 rounded-full border border-diner-accent/40 text-diner-accent text-sm"
+              >
+                Something was wrong — ask for a refund
+              </button>
+              <p className="text-xs opacity-45 text-center leading-relaxed">
+                Or ask at the counter.
+              </p>
+            </>
           )}
         </div>
       </div>
+
+      {asking && (
+        <RefundRequestDialog
+          order={order}
+          onClose={() => setAsking(false)}
+          onSent={() => setAsked(true)}
+        />
+      )}
     </div>
   );
 }

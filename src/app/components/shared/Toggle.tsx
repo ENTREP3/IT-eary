@@ -26,18 +26,39 @@ export function Toggle({
     <label
       className={`flex items-start gap-3 ${disabled ? 'opacity-50' : 'cursor-pointer'}`}
     >
+      {/* Geometry in inline styles, not utilities. A global button rule was
+          padding this one, which widened the track, pushed the knob out of it
+          and left the label sitting on top of the result. */}
       <button
         type="button"
         role="switch"
         aria-checked={on}
         disabled={disabled}
         onClick={() => !disabled && onChange(!on)}
-        className="mt-0.5 relative w-9 h-5 rounded-full shrink-0 transition-colors"
-        style={{ background: track }}
+        className="shrink-0 transition-colors"
+        style={{
+          position: 'relative',
+          width: 36,
+          height: 20,
+          padding: 0,
+          border: 'none',
+          borderRadius: 999,
+          marginTop: 2,
+          background: track,
+          cursor: disabled ? 'default' : 'pointer',
+        }}
       >
         <span
-          className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
-          style={{ transform: on ? 'translateX(1.15rem)' : 'translateX(0.15rem)' }}
+          className="transition-transform"
+          style={{
+            position: 'absolute',
+            top: 2,
+            left: on ? 18 : 2,
+            width: 16,
+            height: 16,
+            borderRadius: 999,
+            background: '#fff',
+          }}
         />
       </button>
 

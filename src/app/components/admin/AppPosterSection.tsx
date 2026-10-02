@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import QRCode from 'qrcode';
 import { Loader2, Printer, QrCode } from 'lucide-react';
 import { useBusinessStore } from '../../store/businessStore';
@@ -203,95 +204,157 @@ function Poster({
       <style>{`
         @media print {
           @page { size: A5 landscape; margin: 0; }
-          body * { visibility: hidden; }
-          #app-poster, #app-poster * { visibility: visible; }
+
+          /* Hiding the dashboard is not enough: invisible content is still
+             laid out, so it kept paginating and the preview offered eight
+             sheets with one poster on the first. Taking the app out of the
+             flow entirely leaves exactly one page. */
+          html, body { height: auto !important; margin: 0 !important; }
+          #root { display: none !important; }
+
           #app-poster {
-            position: absolute; inset: 0; margin: 0;
-            width: 100%; height: 100%;
-            border: none !important; box-shadow: none !important;
+            display: flex !important;
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: none !important;
+            box-shadow: none !important;
             border-radius: 0 !important;
           }
-          /* Printers drop background colour and images by default, which would
-             leave the photograph half of this sheet blank. */
+
+          /* Printers drop background colour and images by default, which
+             would leave the photograph half of this sheet blank. */
           #app-poster, #app-poster * {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
         }
+
+        /* The printable copy lives outside #root and is only ever seen on
+           paper. The preview below is the one on screen. */
+        #app-poster { display: none; }
       `}</style>
 
-      <div
-        id="app-poster"
-        className="flex overflow-hidden rounded-xl bg-[#f4ead5] text-[#1a1410] w-full max-w-[640px] aspect-[1.414/1]"
-      >
-        {/* The food, as big as the sheet allows. */}
-        {photo ? (
-          <div className="relative w-[46%] shrink-0">
-            <img src={photo} alt="" className="absolute inset-0 w-full h-full object-cover" />
-            {/* Keeps the name legible whatever the photograph is doing. */}
-            <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/75 to-transparent">
-              <div
-                style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}
-                className="text-white text-2xl leading-none"
-              >
-                {shopName}
-              </div>
-              {district && (
-                <div className="text-white/80 text-[9px] tracking-[0.3em] uppercase mt-1">
-                  {district}
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="w-[46%] shrink-0 bg-[#c8442a] grid place-items-center p-6 text-center">
-            <div>
-              <div
-                style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}
-                className="text-white text-3xl leading-none"
-              >
-                {shopName}
-              </div>
-              {district && (
-                <div className="text-white/80 text-[9px] tracking-[0.3em] uppercase mt-2">
-                  {district}
-                </div>
-              )}
-            </div>
-          </div>
+      {/* On screen. */}
+      <PosterSheet
+        svg={svg}
+        shopName={shopName}
+        district={district}
+        photo={photo}
+        address={address}
+        className="rounded-xl w-full max-w-[640px] aspect-[1.414/1]"
+      />
+
+      {/* On paper. Portalled to <body> so it survives #root being taken out
+          of the flow, which is what stops the dashboard paginating behind
+          it. */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <div id="app-poster">
+            <PosterSheet
+              svg={svg}
+              shopName={shopName}
+              district={district}
+              photo={photo}
+              address={address}
+              className="w-full h-full"
+            />
+          </div>,
+          document.body,
         )}
-
-        {/* The code, and everything somebody needs to act on it. */}
-        <div className="flex-1 flex flex-col items-center justify-center text-center px-5 py-6">
-          <div
-            style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}
-            className="text-xl leading-tight"
-          >
-            Order from your phone
-          </div>
-          <p className="text-[11px] opacity-70 leading-relaxed mt-1 max-w-[15rem]">
-            See what is cooking today, order ahead, and show your ticket at the
-            counter.
-          </p>
-
-          <div
-            className="mt-3 w-[142px] h-[142px] bg-white rounded-lg p-1.5 [&>svg]:w-full [&>svg]:h-full"
-            dangerouslySetInnerHTML={{ __html: svg }}
-          />
-
-          <div className="mt-2 text-[10px] tracking-[0.18em] uppercase opacity-55">
-            Scan to get the app
-          </div>
-
-          {/* For the people who will not scan a square. */}
-          <div className="mt-2 text-[12px] font-medium tracking-wide">{address}</div>
-
-          <div className="mt-3 text-[10px] opacity-45">Walang account na kailangan.</div>
-        </div>
-      </div>
     </>
   );
 }
+
+/** The sheet itself, drawn the same way on screen and on paper. */
+function PosterSheet({
+  svg,
+  shopName,
+  district,
+  photo,
+  address,
+  className = '',
+}: {
+  svg: string;
+  shopName: string;
+  district: string;
+  photo: string | null;
+  address: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex overflow-hidden bg-[#f4ead5] text-[#1a1410] ${className}`}
+    >
+      {/* The food, as big as the sheet allows. */}
+      {photo ? (
+        <div className="relative w-[46%] shrink-0">
+          <img src={photo} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          {/* Keeps the name legible whatever the photograph is doing. */}
+          <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/75 to-transparent">
+            <div
+              style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}
+              className="text-white text-2xl leading-none"
+            >
+              {shopName}
+            </div>
+            {district && (
+              <div className="text-white/80 text-[9px] tracking-[0.3em] uppercase mt-1">
+                {district}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="w-[46%] shrink-0 bg-[#c8442a] grid place-items-center p-6 text-center">
+          <div>
+            <div
+              style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}
+              className="text-white text-3xl leading-none"
+            >
+              {shopName}
+            </div>
+            {district && (
+              <div className="text-white/80 text-[9px] tracking-[0.3em] uppercase mt-2">
+                {district}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* The code, and everything somebody needs to act on it. */}
+      <div className="flex-1 flex flex-col items-center justify-center text-center px-5 py-6">
+        <div
+          style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}
+          className="text-xl leading-tight"
+        >
+          Order from your phone
+        </div>
+        <p className="text-[11px] opacity-70 leading-relaxed mt-1 max-w-[15rem]">
+          See what is cooking today, order ahead, and show your ticket at the
+          counter.
+        </p>
+
+        <div
+          className="mt-3 w-[142px] h-[142px] bg-white rounded-lg p-1.5 [&>svg]:w-full [&>svg]:h-full"
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+
+        <div className="mt-2 text-[10px] tracking-[0.18em] uppercase opacity-55">
+          Scan to get the app
+        </div>
+
+        {/* For the people who will not scan a square. */}
+        <div className="mt-2 text-[12px] font-medium tracking-wide">{address}</div>
+
+        <div className="mt-3 text-[10px] opacity-45">Walang account na kailangan.</div>
+      </div>
+    </div>
+  );
+}
+
 
 /**
  * Codes for the two staff apps.

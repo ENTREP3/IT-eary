@@ -142,10 +142,13 @@ class _TicketScreenState extends State<TicketScreen> {
           'Cancel order ${_ticket.ticketCode}?',
           style: const TextStyle(fontSize: 18),
         ),
-        content: const Text(
-          'The kitchen stops seeing it and the code stops working. If you '
-          'still want the food you will have to order again.',
-          style: TextStyle(height: 1.45),
+        content: Text(
+          _ticket.isPaid
+              ? 'The kitchen has not finished it, so it can still be stopped. '
+                    'The counter sends your money back.'
+              : 'The kitchen stops seeing it and the code stops working. If '
+                    'you still want the food you will have to order again.',
+          style: const TextStyle(height: 1.45),
         ),
         actions: [
           TextButton(
@@ -639,10 +642,13 @@ class _TicketScreenState extends State<TicketScreen> {
               ),
             ),
 
-            // Calling it off. Only while it is unpaid and the kitchen has not
-            // started — the database enforces both, and past either point this
-            // is a conversation with a person rather than a button.
-            if (!paid && _ticket.status == 'pending') ...[
+            // Calling it off, decided by the kitchen rather than the money.
+            // An order nobody has finished cooking can be stopped whoever
+            // has paid; anything already taken goes back as a refund. Once
+            // the food is ready there is nothing left to call off.
+            if (_ticket.status == 'pending' ||
+                _ticket.status == 'paid' ||
+                _ticket.status == 'preparing') ...[
               const SizedBox(height: 10),
               TextButton(
                 onPressed: _cancelling ? null : _cancel,

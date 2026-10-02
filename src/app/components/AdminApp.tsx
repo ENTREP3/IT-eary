@@ -25,6 +25,7 @@ import {
   X,
   ChefHat,
   Receipt,
+  HandCoins,
   Star,
   Store,
   Users,
@@ -74,6 +75,7 @@ import { ShopPanel } from './admin/ShopPanel';
 import { OrderHistory, OrderDetail } from './admin/OrderHistory';
 import { PriceSuggestions } from './admin/PriceSuggestions';
 import { ShopMetrics } from './admin/ShopMetrics';
+import { RefundRequests } from './admin/RefundRequests';
 import { BestsellerSuggestions } from './admin/BestsellerSuggestions';
 import { CogsPanel } from './admin/CogsPanel';
 import { KitchenInsights } from './admin/KitchenInsights';
@@ -108,6 +110,7 @@ type Tab =
   | 'dashboard'
   | 'kitchen'
   | 'history'
+  | 'refunds'
   | 'inventory'
   | 'analytics'
   | 'menu'
@@ -218,6 +221,7 @@ function AdminDashboard() {
             ['dashboard', 'Dashboard', LayoutDashboard],
             ['kitchen', 'Kitchen', ChefHat],
             ['history', 'Order History', Receipt],
+            ['refunds', 'Refund Requests', HandCoins],
             ['inventory', 'Inventory', Package],
             ['analytics', 'Sales & Profit', LineIcon],
             ['menu', 'Menu', UtensilsCrossed],
@@ -301,7 +305,9 @@ function AdminDashboard() {
               <div className="text-[10px] tracking-[0.3em] uppercase opacity-50">
                 {tab === 'dashboard' && '— Overview'}
                 {tab === 'kitchen' && '— Order queue'}
+                {tab === 'refunds' && '— Refund requests'}
                 {tab === 'history' && '— Order history'}
+          {tab === 'refunds' && <RefundRequests />}
                 {tab === 'inventory' && '— Stock room'}
                 {tab === 'analytics' && '— Sales & Profit'}
                 {tab === 'menu' && '— Menu control'}
@@ -316,6 +322,7 @@ function AdminDashboard() {
               >
                 {tab === 'dashboard' && `Magandang hapon, ${(profile?.full_name ?? 'Mary').split(' ')[0]}.`}
                 {tab === 'kitchen' && 'Orders on the line'}
+                {tab === 'refunds' && 'What somebody says went wrong'}
                 {tab === 'history' && 'Every order you have taken'}
                 {tab === 'inventory' && 'What we have in stock'}
                 {tab === 'analytics' && 'The numbers, in plain sight'}
