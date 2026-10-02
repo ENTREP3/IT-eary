@@ -142,34 +142,6 @@ android {
     }
 }
 
-/*
- * Firebase belongs to the customer build only.
- *
- * google-services.json registers one package name, and the Gradle plugin fails
- * any variant whose applicationId is not in it — so the moment the counter and
- * owner flavors got their own ids, their builds stopped with "No matching
- * client found".
- *
- * The honest fix is not to register them. Push is started from bootstrap only
- * for the app that takes an anonymous identity, which is the customer one; the
- * counter and the dashboard never call Firebase at all. Generating Firebase
- * config for them would be config for something that is never used, and it
- * would mean adding two Android apps to the shop's Firebase project to work
- * around a build error rather than because anything needed them.
- *
- * If staff phones should ever receive push, this is the thing to undo: register
- * both package names in Firebase, replace google-services.json with the one it
- * generates, and delete this block. Until then, skipping the task is what keeps
- * the two builds honest about using no Firebase.
- */
-tasks.whenTaskAdded {
-    if (name.startsWith("process") && name.endsWith("GoogleServices") &&
-        !name.contains("Customer")
-    ) {
-        enabled = false
-    }
-}
-
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17

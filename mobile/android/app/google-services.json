@@ -23,6 +23,44 @@
           "other_platform_oauth_client": []
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:600601314211:android:8dd16a3bbf7b7aa64b5016",
+        "android_client_info": {
+          "package_name": "site.iteary.bencris.counter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEx41a2uEyNN7mK9Dz7CEmJ2UwtQN4UXs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:600601314211:android:b18176c6b59b78b34b5016",
+        "android_client_info": {
+          "package_name": "site.iteary.bencris.owner"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEx41a2uEyNN7mK9Dz7CEmJ2UwtQN4UXs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
     }
   ],
   "configuration_version": "1"

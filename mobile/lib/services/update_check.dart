@@ -73,15 +73,36 @@ class UpdateCheck {
     }
   }
 
+  /// The customer APK attached to a release, by name rather than by luck.
+  ///
+  /// This used to take the first asset ending in `.apk`, which was safe only
+  /// while exactly one existed. There are now three — the diner's, the
+  /// counter's and the owner's — and they are built from the same project, so
+  /// one landing in the wrong release is an ordinary slip rather than an
+  /// unthinkable one. Taking the first match would then hand a diner the
+  /// owner's dashboard as an update to their menu, signed with the same key and
+  /// therefore perfectly installable.
+  ///
+  /// So the exact filename wins. Any other `.apk` is a last resort, kept
+  /// because a release named `bencris-1.0.3.apk` should still work, and only
+  /// reached when nothing is named properly.
   static String? _apkUrl(Map<String, dynamic> body) {
     final assets = body['assets'];
     if (assets is! List) return null;
+
+    String? fallback;
     for (final a in assets) {
-      if (a is Map && (a['name'] as String? ?? '').toLowerCase().endsWith('.apk')) {
-        return a['browser_download_url'] as String?;
-      }
+      if (a is! Map) continue;
+      final name = (a['name'] as String? ?? '').toLowerCase();
+      if (!name.endsWith('.apk')) continue;
+
+      // Never offer a staff build to a diner, whatever else is attached.
+      if (name.contains('counter') || name.contains('owner')) continue;
+
+      if (name == 'bencris.apk') return a['browser_download_url'] as String?;
+      fallback ??= a['browser_download_url'] as String?;
     }
-    return null;
+    return fallback;
   }
 
   /// Strips a leading v and anything after the version, so `v1.2.0` and

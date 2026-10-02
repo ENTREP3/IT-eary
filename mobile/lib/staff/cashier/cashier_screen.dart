@@ -3,6 +3,7 @@ import '../../errors.dart';
 
 import '../../models/models.dart';
 import '../../tokens.dart';
+import '../../notify_toggle.dart';
 import '../admin/tabs/kitchen_tab.dart';
 import '../widgets/refund_sheet.dart';
 import 'add_to_order_sheet.dart';
@@ -308,6 +309,11 @@ class _CashierScreenState extends State<CashierScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
           ),
+
+          // On the idle screen, which is where the counter actually looks
+          // between customers. Buried in a settings page it would never be
+          // found, and the whole point is that somebody turns it on once.
+          const NotifyToggle.staff(),
         ],
       ),
     );

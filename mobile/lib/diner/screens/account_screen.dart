@@ -10,7 +10,7 @@ import '../../tokens.dart';
 import 'ticket_screen.dart';
 import '../../services/push.dart';
 import '../widgets/my_details.dart';
-import '../widgets/notify_toggle.dart';
+import '../../notify_toggle.dart';
 import 'confirm_signup_screen.dart';
 import 'forgot_password_screen.dart';
 
@@ -451,7 +451,7 @@ class _SignedInState extends State<_SignedIn> {
             // a ticket they are waiting on. Offered here rather than raised on
             // arrival: Android will not ask twice, so a refusal by reflex
             // costs the shop that customer for good.
-            const NotifyToggle(),
+            const NotifyToggle.diner(),
 
             const SizedBox(height: 22),
             const Text(

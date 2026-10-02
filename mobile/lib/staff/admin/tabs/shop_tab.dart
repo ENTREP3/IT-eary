@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../models/models.dart';
 import '../../../tokens.dart';
+import '../../../notify_toggle.dart';
 import '../admin_api.dart';
 import 'announcement_card.dart';
 import 'widgets.dart';
@@ -243,6 +244,14 @@ class _ShopTabState extends State<ShopTab> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // Near the top of the settings the owner already visits, because it is
+        // the one switch that decides whether any of the shop's own alerts —
+        // sold out, low stock, a GCash proof waiting — reach them away from
+        // the counter.
+        const Padding(
+          padding: EdgeInsets.only(bottom: 4),
+          child: NotifyToggle.staff(),
+        ),
         if (_error != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),

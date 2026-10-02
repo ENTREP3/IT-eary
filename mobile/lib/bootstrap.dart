@@ -46,14 +46,22 @@ Future<void> bootstrap(Widget app, {bool anonymousIdentity = false}) async {
    *
    * Starting it is what lets a notification arriving with the app closed be
    * handled at all, and it has to happen before runApp. Asking permission is a
-   * separate step behind a button the diner presses, because a prompt that
-   * appears before somebody has done anything is why people refuse — and a
-   * refusal on Android is close to permanent.
+   * separate step behind a button somebody presses, because a prompt that
+   * appears before anything has happened is why people refuse — and a refusal
+   * on Android is close to permanent.
    *
-   * Not awaited: it reaches the network, and the menu must not wait on
-   * Firebase to paint. Failure is already swallowed inside.
+   * Every build, not only the diner's. This used to be behind the same flag as
+   * the anonymous identity, which tied two unrelated things together: whether a
+   * device gets an identity of its own, and whether it can be told something.
+   * The consequence was that the shop's own staff were the only people the
+   * notification system could not reach on a phone — the sold-out warnings, the
+   * GCash proofs and the poor-rating alerts all exist for them, and all of them
+   * stopped at the counter's web browser.
+   *
+   * Not awaited: it reaches the network, and no screen should wait on Firebase
+   * to paint. Failure is already swallowed inside.
    */
-  if (anonymousIdentity) unawaited(Push.start());
+  unawaited(Push.start());
 
   runApp(app);
 }
