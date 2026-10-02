@@ -307,7 +307,6 @@ function AdminDashboard() {
                 {tab === 'kitchen' && '— Order queue'}
                 {tab === 'refunds' && '— Refund requests'}
                 {tab === 'history' && '— Order history'}
-          {tab === 'refunds' && <RefundRequests />}
                 {tab === 'inventory' && '— Stock room'}
                 {tab === 'analytics' && '— Sales & Profit'}
                 {tab === 'menu' && '— Menu control'}
@@ -400,6 +399,7 @@ function AdminDashboard() {
           {tab === 'dashboard' && <Dashboard orders={orders} onSeeHistory={() => setTab('history')} />}
           {tab === 'kitchen' && <KitchenPage orders={orders} />}
           {tab === 'history' && <OrderHistory />}
+          {tab === 'refunds' && <RefundRequests />}
           {tab === 'inventory' && <InventoryPanel />}
           {tab === 'analytics' && <AnalyticsPanel orders={orders} />}
           {tab === 'menu' && <MenuControl />}
