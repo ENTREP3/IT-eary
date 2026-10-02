@@ -108,6 +108,34 @@ function db(path: string, init: RequestInit = {}): Promise<Response> {
   });
 }
 
+/**
+ * Whether the caller holds the service role, asked of PostgREST.
+ *
+ * The constant-time comparison above only recognises the exact string in this
+ * function's own environment. This project issues new-style keys while the key
+ * in Vault is the legacy service_role JWT — both valid, both working, simply
+ * different text — so every call from a database trigger was turned away.
+ * PostgREST validates whatever token arrives and reports its claim, which
+ * settles it without either side holding the other's secret.
+ */
+async function callerIsServiceRole(authorization: string): Promise<boolean> {
+  if (!authorization) return false;
+  try {
+    const res = await fetch(`${Deno.env.get('SUPABASE_URL')}/rest/v1/rpc/is_service_role`, {
+      method: 'POST',
+      headers: {
+        apikey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        Authorization: authorization,
+        'Content-Type': 'application/json',
+      },
+      body: '{}',
+    });
+    return res.ok && (await res.json()) === true;
+  } catch {
+    return false;
+  }
+}
+
 /** Whether the caller's own session belongs to staff. */
 async function callerIsStaff(authorization: string): Promise<boolean> {
   const url = Deno.env.get('SUPABASE_URL')!;
@@ -234,7 +262,9 @@ Deno.serve(async (req) => {
   try {
     const authorization = req.headers.get('Authorization') ?? '';
     const allowed =
-      callerIsTheDatabase(authorization) || (await callerIsStaff(authorization));
+      callerIsTheDatabase(authorization) ||
+      (await callerIsServiceRole(authorization)) ||
+      (await callerIsStaff(authorization));
     if (!allowed) return json({ error: 'staff only' }, 403);
 
     const { to, title, body, url, tag } = await req.json();
