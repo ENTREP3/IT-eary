@@ -858,6 +858,65 @@ class Api {
     return Ticket.fromMap(Map<String, dynamic>.from(row as Map));
   }
 
+  /// Asks for money back, with a reason and a photograph of the food.
+  ///
+  /// The photograph is uploaded first and its path handed to the function,
+  /// which refuses the request without one — a complaint about food nobody
+  /// can see is one the counter cannot judge.
+  static Future<void> requestRefund({
+    required String ticketCode,
+    required List<String> reasons,
+    required XFile photo,
+    String? note,
+  }) async {
+    final code = ticketCode.trim().toUpperCase();
+    final bytes = await photo.readAsBytes();
+    final isPng = photo.name.toLowerCase().endsWith(".png");
+    final suffix = Random().nextInt(1 << 32).toRadixString(36);
+    final path = "complaints/$code/$suffix.${isPng ? "png" : "jpg"}";
+
+    await _db.storage.from(proofBucket).uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(
+            contentType: isPng ? "image/png" : "image/jpeg",
+          ),
+        );
+
+    await _db.rpc("request_refund", params: {
+      "p_ticket_code": code,
+      "p_reasons": reasons,
+      "p_proof_path": path,
+      "p_note": (note ?? "").trim().isEmpty ? null : note!.trim(),
+      "p_device_token": await DeviceToken.get(),
+    });
+  }
+
+  /// What the shop sent back, for the person who was refunded.
+  static Future<Map<String, dynamic>?> myRefund(String ticketCode) async {
+    try {
+      final rows = await _db.rpc("my_refund", params: {
+        "p_ticket_code": ticketCode.trim().toUpperCase(),
+        "p_device_token": await DeviceToken.get(),
+      });
+      if (rows is List && rows.isNotEmpty) {
+        return Map<String, dynamic>.from(rows.first as Map);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// A short-lived link to an object in the proofs bucket.
+  static Future<String?> signedProofUrl(String path) async {
+    try {
+      return await _db.storage.from(proofBucket).createSignedUrl(path, 300);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Clears a recorded receipt so a replacement can be uploaded.
   static Future<Ticket> clearProof(String ticketCode) async {
     final row = await _db.rpc(

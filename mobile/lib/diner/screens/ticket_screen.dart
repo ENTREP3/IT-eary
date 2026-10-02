@@ -12,6 +12,8 @@ import '../../errors.dart';
 import '../../models/models.dart';
 import '../../services/api.dart';
 import '../../theme.dart';
+import '../widgets/refund_notice.dart';
+import '../widgets/refund_request_sheet.dart';
 import '../state/order_history.dart';
 import 'rate_order.dart';
 import '../../tokens.dart';
@@ -133,6 +135,16 @@ class _TicketScreenState extends State<TicketScreen> {
   /// There is no undo: the ticket code dies with it, and re-ordering means
   /// going through the menu again. The dialog says that plainly instead of
   /// asking "are you sure?", which tells nobody anything.
+  Future<void> _askRefund() async {
+    final sent = await RefundRequestSheet.open(context, _ticket);
+    if (!sent || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Sent. The counter will look at it and decide.'),
+      ),
+    );
+  }
+
   Future<void> _cancel() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -591,6 +603,9 @@ class _TicketScreenState extends State<TicketScreen> {
               key: _receiptKey,
               child: _ReceiptCard(ticket: _ticket),
             ),
+
+            if (_ticket.status == 'refunded')
+              RefundNotice(ticketCode: _ticket.ticketCode),
             const SizedBox(height: 16),
             // Two different things, so two buttons. Saving puts a picture in
             // the phone's files; sharing hands it to somebody else along with
@@ -646,6 +661,27 @@ class _TicketScreenState extends State<TicketScreen> {
             // An order nobody has finished cooking can be stopped whoever
             // has paid; anything already taken goes back as a refund. Once
             // the food is ready there is nothing left to call off.
+            // Once the food has been handed over there is nothing left to
+            // call off — only a complaint about what was received.
+            if (paid &&
+                (_ticket.status == 'ready' ||
+                    _ticket.status == 'completed')) ...[
+              const SizedBox(height: 10),
+              OutlinedButton(
+                onPressed: _askRefund,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(46),
+                  foregroundColor: Palette.red,
+                  side: BorderSide(
+                    color: Palette.red.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: const Text(
+                  'Something was wrong — ask for a refund',
+                ),
+              ),
+            ],
+
             if (_ticket.status == 'pending' ||
                 _ticket.status == 'paid' ||
                 _ticket.status == 'preparing') ...[
