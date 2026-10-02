@@ -7,13 +7,6 @@ import '../../services/api.dart';
 import '../../tokens.dart';
 
 /// What the owner needs the counter to know today.
-///
-/// The website's staff screens have had this since announcements were built;
-/// the phone apps were missed, so an owner posting "we close at 4 today" reached
-/// every customer and neither of their own staff.
-///
-/// Shows the customers' announcements too, labelled, because the person at the
-/// till is the one being asked about whatever the menu page is saying.
 class StaffAnnouncement extends StatefulWidget {
   const StaffAnnouncement({super.key});
 

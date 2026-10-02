@@ -110,13 +110,6 @@ function db(path: string, init: RequestInit = {}): Promise<Response> {
 
 /**
  * Whether the caller holds the service role, asked of PostgREST.
- *
- * The constant-time comparison above only recognises the exact string in this
- * function's own environment. This project issues new-style keys while the key
- * in Vault is the legacy service_role JWT — both valid, both working, simply
- * different text — so every call from a database trigger was turned away.
- * PostgREST validates whatever token arrives and reports its claim, which
- * settles it without either side holding the other's secret.
  */
 async function callerIsServiceRole(authorization: string): Promise<boolean> {
   if (!authorization) return false;

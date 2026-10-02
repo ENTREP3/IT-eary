@@ -85,11 +85,6 @@ function CashierCounter({
 
   /**
    * The method the customer has just said they will use, before paying.
-   *
-   * Null means go by the ticket. Switching to GCash is not a payment — the
-   * money still has to be sent — so it changes what the screen offers and
-   * nothing else. What finally lands on the order is whatever mark_ticket_paid
-   * is told at the moment it is settled.
    */
   const [intent, setIntent] = useState<PaymentMethod | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);

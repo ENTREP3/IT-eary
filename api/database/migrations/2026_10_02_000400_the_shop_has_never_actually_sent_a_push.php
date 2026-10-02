@@ -5,28 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Call pg_net by a name that exists.
- *
- * `push_notify` asked for `extensions.net.http_post`. Postgres reads a
- * three-part name as database.schema.function, so that is a request for a
- * database called "extensions" and it fails with "cross-database references are
- * not implemented" every single time. The function ends with a catch-all that
- * returns quietly, written so a failed notification could never undo the order
- * that caused it — and it swallowed this too.
- *
- * So no database trigger has ever sent a notification: not a dish selling out,
- * not low stock, not a GCash proof waiting, not a cancellation, not a poor
- * rating, not the unpaid nudge, not the daily summary. They fired, built their
- * message, called this, and lost it. Nothing anywhere said so.
- *
- * pg_net installs into `extensions`, but it creates its own `net` schema for
- * the functions, so the correct name is `net.http_post`. The only change here
- * is the prefix.
- *
- * The catch-all stays — the reasoning for it was right, and an order must not
- * fail because Firebase is unreachable. What it cost was the two years of
- * silence, so it now says something to the server log on its way past. A
- * `raise warning` cannot roll anything back and leaves a trace in the logs,
- * which is the difference between failing quietly and failing invisibly.
  */
 return new class extends Migration
 {

@@ -5,14 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Let somebody clear their bell, and turn it off entirely.
- *
- * The bell only ever filled up. There was no way to tidy it and no way to say
- * "stop showing me these" short of ignoring the badge, which is how a badge
- * stops meaning anything.
- *
- * Clearing hides rather than deletes. The row is the shop's record that it told
- * somebody their order was ready, and a diner tidying their own list should not
- * erase that — so `dismissed_at` is set and the row stays where it is.
  */
 return new class extends Migration
 {
@@ -95,11 +87,6 @@ return new class extends Migration
 
             /*
              * Whether the bell shows anything, as the person themselves decides.
-             *
-             * Its own function because `profiles` also holds `role`, and a
-             * policy wide enough to let somebody switch off their own
-             * notifications would be wide enough to let them make themselves an
-             * owner.
              */
             create or replace function public.set_my_notify_in_app(p_on boolean)
             returns boolean

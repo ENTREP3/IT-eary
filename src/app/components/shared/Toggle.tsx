@@ -2,11 +2,6 @@ import React from 'react';
 
 /**
  * A switch, for settings that take effect as soon as they are flipped.
- *
- * A checkbox belongs to a form you submit; these are not that. "Also send a
- * notification" and "available for ordering" are states of the thing in front
- * of you, and a switch is what people read as a state rather than as something
- * pending a Save they then look for.
  */
 export function Toggle({
   on,

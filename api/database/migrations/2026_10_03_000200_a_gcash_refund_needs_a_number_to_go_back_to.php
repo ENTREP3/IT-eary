@@ -5,17 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Ask a GCash payer which number to send a refund back to.
- *
- * A cash refund is handed over the counter and needs nothing recorded. A GCash
- * one has to be sent somewhere, and the shop had no idea where: the diner's
- * screenshot shows the money arriving, not the number it came from, and a
- * guest has no account to look it up in. In practice the counter had to ask,
- * which means asking somebody who has already left.
- *
- * Collected beside the proof, because that is the one moment the diner is
- * already typing something about their payment, and it is optional: a refund
- * is unlikely, and a required field in front of ordering lunch is a worse
- * trade than occasionally having to ask.
  */
 return new class extends Migration
 {

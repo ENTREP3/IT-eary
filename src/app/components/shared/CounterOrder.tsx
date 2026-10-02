@@ -8,16 +8,6 @@ import type { Order } from '../../lib/types';
 
 /**
  * Taking an order at the counter, without the diner's phone.
- *
- * Until now every ticket began on a customer's device. That is fine while the
- * website is up and the diner has a phone with battery, and it is the whole
- * ordering system when either of those is not true — which is exactly when a
- * queue forms. The counter needs to be able to start an order itself.
- *
- * It calls the same `create_ticket` the storefront does. That function already
- * detaches the order from a staff account, so a ticket raised here belongs to
- * nobody, like the walk-in it is: the kitchen board, the receipt and the
- * takings all treat it as an ordinary ticket, because it is one.
  */
 export function CounterOrder({ onCreated }: { onCreated: (order: Order) => void }) {
   const dishes = useKarinderyaStore((s) => s.dishes);

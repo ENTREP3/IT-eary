@@ -5,17 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Ask for a lowercase letter too, because Supabase now does.
- *
- * `password_problem` is what the signup and reset screens use to say what is
- * missing while somebody is typing. It checked length, a capital, a number and
- * a symbol, and deliberately not a lowercase letter — one requirement fewer to
- * explain, on the reasoning that nothing downstream cared.
- *
- * Something downstream cares now. With the password rules switched on in
- * Supabase, the server requires one of each case, so "ABCDEF1!" passes this
- * check, is offered to the user as acceptable, and is then refused by the API
- * with a message written for a developer. Advice that disagrees with the rule
- * is worse than no advice.
  */
 return new class extends Migration
 {

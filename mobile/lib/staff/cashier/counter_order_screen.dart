@@ -6,15 +6,6 @@ import '../../services/api.dart';
 import '../../tokens.dart';
 
 /// Taking an order at the counter, without the diner's phone.
-///
-/// Until now every ticket began on a customer's device. That is fine while the
-/// website is up and the diner has a phone with battery, and it is the whole
-/// ordering system when either is not true — which is exactly when a queue
-/// forms.
-///
-/// Raises the ticket with the same `create_ticket` the storefront uses. That
-/// function already detaches an order from a staff account, so a ticket made
-/// here belongs to nobody, like the walk-in it is.
 class CounterOrderScreen extends StatefulWidget {
   const CounterOrderScreen({super.key});
 

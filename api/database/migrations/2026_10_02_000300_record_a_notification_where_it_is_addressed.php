@@ -5,17 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Move the recording of notifications to the one place that resolves an audience.
- *
- * This morning's bell recorded rows in `notify_people`, a SQL transcription of
- * the audience rules in the send-push edge function. It covered the database
- * triggers and nothing else — and the triggers are the minority. Announcements,
- * ticket updates, refunds, "a dish is back" and reward notices are all sent by
- * the apps calling the edge function directly, so they pushed to phones and
- * appeared in nobody's bell.
- *
- * Two copies of the audience rules was the mistake. The edge function is where
- * every sender already ends up, so it is where the row should be written, and
- * `notify_people` goes. The triggers return to calling `push_notify`.
  */
 return new class extends Migration
 {

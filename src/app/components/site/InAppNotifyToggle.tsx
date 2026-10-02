@@ -5,14 +5,6 @@ import { loadNotifications } from '../../lib/notifications';
 
 /**
  * Whether the bell shows anything, as the diner decides.
- *
- * Separate from the push switch beside it, because they are different
- * questions: one is whether the phone may interrupt you, the other is whether
- * the shop keeps a list for you to look at. Somebody who refuses to be buzzed
- * usually still wants to see what happened when they open the app.
- *
- * On by default, and off is remembered on the account rather than on the
- * device, so it follows them to their phone.
  */
 export function InAppNotifyToggle() {
   const [on, setOn] = useState<boolean | null>(null);

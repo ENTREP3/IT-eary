@@ -48,12 +48,6 @@ export function makeInstallable() {
 
   /*
    * Absolute, because the manifest is handed over as a blob.
-   *
-   * A blob: URL has no path to resolve against, so every relative entry in it
-   * — start_url, scope, each icon src — was rejected as invalid and the whole
-   * manifest ignored. The browser said so five times in the console and simply
-   * never offered to install the site, which looked like the feature not
-   * existing rather than being broken.
    */
   const origin = window.location.origin;
 

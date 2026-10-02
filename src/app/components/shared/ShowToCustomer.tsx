@@ -5,14 +5,6 @@ import type { Order } from '../../lib/types';
 
 /**
  * The half of the till screen the customer is meant to look at.
- *
- * A ticket raised at the counter has nothing on the diner's phone — no code to
- * show the kitchen, and for GCash no QR to pay against. This is that, turned
- * outward: the code large enough to photograph, and the shop's own QR beside
- * the amount due.
- *
- * Shown only while the ticket is unpaid, because afterwards there is nothing
- * for the customer to do with it.
  */
 export function ShowToCustomer({
   order,

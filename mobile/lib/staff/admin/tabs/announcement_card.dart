@@ -15,12 +15,6 @@ class AnnouncementCard extends StatefulWidget {
 }
 
 /// How long it runs, in wording the owner thinks in.
-///
-/// "Rest of today" is what almost every announcement wants, so it leads. It
-/// ends at midnight rather than N hours from now, because "closing early
-/// today" should stop being true when today does, whether it was written at
-/// seven in the morning or at four in the afternoon.
-/// Units an announcement can run for, with how long each one is.
 const _units = <String, Duration>{
   'minutes': Duration(minutes: 1),
   'hours': Duration(hours: 1),
