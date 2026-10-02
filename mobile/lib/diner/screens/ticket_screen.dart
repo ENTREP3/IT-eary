@@ -38,6 +38,9 @@ class _TicketScreenState extends State<TicketScreen> {
   /// Identifies the receipt so it can be rasterised when saving.
   final _receiptKey = GlobalKey();
 
+  /// The number they paid from, kept only so a GCash refund has a destination.
+  final _sender = TextEditingController();
+
   late Ticket _ticket = widget.ticket;
   PaymentSettings? _settings;
   bool _uploading = false;
@@ -82,6 +85,7 @@ class _TicketScreenState extends State<TicketScreen> {
 
   @override
   void dispose() {
+    _sender.dispose();
     _poll?.cancel();
     super.dispose();
   }
@@ -98,7 +102,10 @@ class _TicketScreenState extends State<TicketScreen> {
     });
     try {
       if (replace) await Api.clearProof(_ticket.ticketCode);
-      final updated = await Api.pickAndUploadProof(_ticket.ticketCode);
+      final updated = await Api.pickAndUploadProof(
+        _ticket.ticketCode,
+        sender: _sender.text,
+      );
       if (!mounted) return;
       setState(() {
         // null means the diner backed out of the picker; if they had cleared a
@@ -359,6 +366,28 @@ class _TicketScreenState extends State<TicketScreen> {
               style: const TextStyle(fontSize: 12, color: Palette.red),
             ),
           ],
+
+          const SizedBox(height: 12),
+
+          // Asked here because this is the one moment the diner is already
+          // dealing with their payment. Optional: a refund is unlikely, and a
+          // required field in front of lunch is the worse trade.
+          TextField(
+            controller: _sender,
+            keyboardType: TextInputType.phone,
+            style: const TextStyle(fontSize: 14),
+            decoration: InputDecoration(
+              labelText: 'Your GCash number (optional)',
+              helperText: 'Only used if the shop has to send your money back.',
+              helperMaxLines: 2,
+              isDense: true,
+              filled: true,
+              fillColor: Palette.card,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
 
           const SizedBox(height: 12),
           FilledButton.icon(

@@ -1747,6 +1747,9 @@ function TicketView({
 }) {
   const settings = usePaymentStore((s) => s.settings);
   const [uploading, setUploading] = useState(false);
+
+  /** The number they paid from, kept only so a GCash refund has a destination. */
+  const [sender, setSender] = useState('');
   const [error, setError] = useState<string | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
@@ -1812,6 +1815,7 @@ function TicketView({
       const { data, error: rpcErr } = await supabase.rpc('attach_payment_proof', {
         p_ticket_code: order.ticket_code,
         p_path: path,
+        p_sender: sender.trim() || null,
       });
       if (rpcErr) throw rpcErr;
       onUpdate(data as Order);
@@ -1912,6 +1916,27 @@ function TicketView({
               </p>
             )}
             {error && <p className="mt-2 text-xs text-diner-accent">{error}</p>}
+
+            {/* Asked here because this is the one moment the diner is already
+                dealing with their payment. Optional: a refund is unlikely, and
+                a required field in front of lunch is the worse trade. */}
+            {!order.proof_path && (
+              <label className="block mt-3">
+                <span className="text-[11px] opacity-60">
+                  Your GCash number (optional)
+                </span>
+                <input
+                  value={sender}
+                  onChange={(e) => setSender(e.target.value)}
+                  inputMode="tel"
+                  placeholder="09XX XXX XXXX"
+                  className="mt-1 w-full h-10 rounded-xl border border-diner-ink/15 bg-diner-card px-3 text-sm outline-none focus:border-diner-ink/40"
+                />
+                <span className="block mt-1 text-[11px] opacity-45">
+                  Only used if the shop has to send your money back.
+                </span>
+              </label>
+            )}
 
             <input
               ref={fileRef}

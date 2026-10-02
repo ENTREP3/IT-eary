@@ -162,6 +162,25 @@ export function RefundDialog({ order, onClose }: { order: Order; onClose: () => 
               </button>
             ))}
           </div>
+          {/* The number they paid from, which is where the money goes back.
+              Shown only for a GCash refund, because that is the only one that
+              has to be sent somewhere — cash is handed over the counter. */}
+          {method === 'gcash' && (
+            <div className="mt-2 rounded-lg border border-semantic-gcash/35 bg-semantic-gcash/10 px-3 py-2">
+              <div className="text-[11px] opacity-60">Send it to</div>
+              {order.gcash_sender ? (
+                <div className="text-base tabular-nums tracking-wide">
+                  {order.gcash_sender}
+                </div>
+              ) : (
+                <div className="text-[12px] opacity-70 leading-relaxed">
+                  They did not leave a number. Ask them for it before sending,
+                  and check it against the receipt they uploaded.
+                </div>
+              )}
+            </div>
+          )}
+
           {order.payment_method && method !== order.payment_method && (
             // Normal, not a mistake: a GCash payment is often handed back as
             // notes across the counter because it is faster.

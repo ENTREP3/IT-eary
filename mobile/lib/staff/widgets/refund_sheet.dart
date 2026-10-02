@@ -243,6 +243,47 @@ class _RefundSheetState extends State<RefundSheet> {
                   ),
                 ),
             ]),
+            // Where the money goes back. Only for a GCash refund, because
+            // cash is handed over the counter and needs no address.
+            if (_method == 'gcash') ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Tokens.semanticGcash.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: Tokens.semanticGcash.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Send it to',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Tokens.staffInk.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      o.gcashSender?.trim().isNotEmpty == true
+                          ? o.gcashSender!
+                          : 'They did not leave a number. Ask for it before '
+                                'sending, and check it against their receipt.',
+                      style: TextStyle(
+                        fontSize: o.gcashSender?.trim().isNotEmpty == true ? 16 : 12,
+                        height: 1.35,
+                        color: Tokens.staffInk,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             if (o.paymentMethod != null && _method != o.paymentMethod) ...[
               const SizedBox(height: 6),
               // Normal, not a mistake: a GCash payment is often handed back as

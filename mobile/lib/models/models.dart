@@ -235,6 +235,9 @@ class Ticket {
   final String paymentStatus;
   final String status;
   final String? proofPath;
+
+  /// The number a GCash payer paid from, so a refund has somewhere to go.
+  final String? gcashSender;
   /// Cashier eyeballed the diner's live GCash app rather than a screenshot.
   final bool verifiedInPerson;
   final DateTime? paidAt;
@@ -261,6 +264,7 @@ class Ticket {
     required this.paymentStatus,
     required this.status,
     required this.proofPath,
+    this.gcashSender,
     this.verifiedInPerson = false,
     required this.paidAt,
     required this.createdAt,
@@ -283,6 +287,7 @@ class Ticket {
     paymentStatus: m['payment_status'] as String? ?? 'unpaid',
     status: m['status'] as String? ?? 'pending',
     proofPath: m['proof_path'] as String?,
+    gcashSender: m['gcash_sender'] as String?,
     verifiedInPerson: m['verified_in_person'] as bool? ?? false,
     paidAt: m['paid_at'] == null
         ? null

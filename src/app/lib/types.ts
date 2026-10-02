@@ -68,6 +68,8 @@ export type Order = {
   payment_status: PaymentStatus;
   /** Object path in the private payment-proofs bucket — never a public URL. */
   proof_path: string | null;
+  /** The number a GCash payer paid from, so a refund has somewhere to go. */
+  gcash_sender: string | null;
   proof_uploaded_at: string | null;
   verified_in_person: boolean;
   review_note: string | null;

@@ -783,7 +783,11 @@ class Api {
   }
 
   /// Picks a GCash receipt from the gallery and uploads it against [ticketCode].
-  static Future<Ticket?> pickAndUploadProof(String ticketCode) async {
+  static Future<Ticket?> pickAndUploadProof(
+    String ticketCode, {
+    /// The number they paid from, so a GCash refund has somewhere to go.
+    String? sender,
+  }) async {
     final picked = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       maxWidth: 1200,
@@ -810,7 +814,7 @@ class Api {
 
     final row = await _db.rpc(
       'attach_payment_proof',
-      params: {'p_ticket_code': code, 'p_path': path},
+      params: {'p_ticket_code': code, 'p_path': path, 'p_sender': sender},
     );
     return Ticket.fromMap(Map<String, dynamic>.from(row as Map));
   }
