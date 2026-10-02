@@ -255,7 +255,10 @@ export function countsAsSale(o: Order) {
 
 /** A ticket the shop can still hand money back on, per the shop's own rule. */
 export function isRefundable(o: Order) {
-  return o.paid_at !== null && (o.status === 'paid' || o.status === 'preparing');
+  return (
+    o.paid_at !== null &&
+    ['paid', 'preparing', 'ready', 'completed'].includes(o.status)
+  );
 }
 
 export function paymentMix(orders: Order[]) {

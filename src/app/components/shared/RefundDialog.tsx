@@ -21,15 +21,25 @@ export function RefundDialog({
   order,
   onClose,
   onRefunded,
+  statedReason,
 }: {
   order: Order;
   onClose: () => void;
   /** Called once the money has actually been recorded as sent. */
   onRefunded?: () => void;
+  /**
+   * What the diner already said was wrong, when this answers a request.
+   *
+   * The counter was being asked to pick a reason from a list of the shop’s
+   * own — ran out, wrong order, closing early — for a refund the customer
+   * had already explained. Two accounts of one event, and the one kept was
+   * the one from the person who was not there.
+   */
+  statedReason?: string;
 }) {
   const refund = useOrdersStore((s) => s.refund);
 
-  const [reason, setReason] = useState<string>(REASONS[0]);
+  const [reason, setReason] = useState<string>(statedReason ?? REASONS[0]);
   const [other, setOther] = useState('');
   const [method, setMethod] = useState<PaymentMethod>(order.payment_method ?? 'cash');
   const [note, setNote] = useState('');

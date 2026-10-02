@@ -38,6 +38,7 @@ export function RefundRequests() {
   const [zoom, setZoom] = useState<string | null>(null);
   const [refunding, setRefunding] = useState<Order | null>(null);
   const [answering, setAnswering] = useState<string | null>(null);
+  const [statedReason, setStatedReason] = useState<string | undefined>();
 
   const findByTicket = useOrdersStore((s) => s.findByTicket);
 
@@ -85,10 +86,13 @@ export function RefundRequests() {
    * The request is marked agreed only once the money is recorded as sent,
    * so a dialog that is opened and closed again leaves the queue alone.
    */
-  const openRefund = async (code: string, requestId: string) => {
+  const openRefund = async (code: string, requestId: string, reasons: string[]) => {
     const order = await findByTicket(code);
     if (!order) return;
     setAnswering(requestId);
+    // What the diner said, carried straight through, so the counter is not
+    // asked to invent a second account of the same event.
+    setStatedReason(reasons.join(', '));
     setRefunding(order);
   };
 
@@ -147,12 +151,14 @@ export function RefundRequests() {
       {refunding && (
         <RefundDialog
           order={refunding}
+          statedReason={statedReason}
           onRefunded={() => {
             if (answering) decide(answering, 'approved');
           }}
           onClose={() => {
             setRefunding(null);
             setAnswering(null);
+            setStatedReason(undefined);
           }}
         />
       )}
@@ -171,7 +177,7 @@ function Row({
   busy: boolean;
   onZoom: (url: string) => void;
   onDecide: (id: string, status: 'approved' | 'declined') => void;
-  onRefund: (code: string, requestId: string) => void;
+  onRefund: (code: string, requestId: string, reasons: string[]) => void;
 }) {
   const [url, setUrl] = useState<string | null>(null);
 
@@ -247,7 +253,7 @@ function Row({
                   side, so refunding is what marks the request agreed — a
                   separate "agreed" button only invited the pair to disagree. */}
               <button
-                onClick={() => onRefund(r.ticket_code, r.id)}
+                onClick={() => onRefund(r.ticket_code, r.id, r.reasons)}
                 className="h-9 px-4 rounded-lg bg-[#e8a84a] text-[#0a0d0a] text-sm font-medium"
               >
                 Refund this order
