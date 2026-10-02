@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ConfirmProvider } from './shared/useConfirm';
+import { NotificationBell } from './shared/NotificationBell';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Search,
@@ -218,6 +219,8 @@ function CashierCounter({ chrome }: { chrome: boolean }) {
               <LayoutDashboard size={13} /> Dashboard
             </a>
           )}
+
+          <NotificationBell />
 
           <div className="text-right text-xs opacity-60 hidden sm:block">
             <div className="text-[#e8dfc8]/90">{profile?.full_name ?? 'Cashier'}</div>

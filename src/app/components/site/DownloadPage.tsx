@@ -39,8 +39,25 @@ export function DownloadPage() {
   const profile = useBusinessStore((s) => s.profile);
   const [qr, setQr] = useState<string | null>(null);
 
+  // ?app=counter and ?app=owner serve the two staff builds from this same
+  // page, so the install warning is written once.
+  const which =
+    typeof window === 'undefined'
+      ? ''
+      : new URLSearchParams(window.location.search).get('app') ?? '';
+
+  const app =
+    which === 'counter'
+      ? { name: 'Counter', blurb: 'Take payments and run the kitchen queue.', url: profile.counter_app_url }
+      : which === 'owner'
+        ? { name: 'Owner', blurb: 'Sales, stock, menu and people.', url: profile.owner_app_url }
+        : { name: '', blurb: 'Order ahead and watch your food being made.', url: profile.app_download_url };
+
   /** The page itself, so somebody on a laptop can move to their phone. */
-  const pageUrl = typeof window === 'undefined' ? '' : `${window.location.origin}/download`;
+  const pageUrl =
+    typeof window === 'undefined'
+      ? ''
+      : `${window.location.origin}/download${which ? `?app=${which}` : ''}`;
 
   useEffect(() => {
     if (!pageUrl) return;
@@ -71,7 +88,7 @@ export function DownloadPage() {
    * It changes when releases move; the owner can point it somewhere else from
    * the dashboard without waiting for a deploy.
    */
-  const apk = profile.app_download_url?.trim();
+  const apk = app.url?.trim();
 
   return (
     <div className="min-h-screen bg-diner-ground text-diner-ink">
@@ -81,11 +98,9 @@ export function DownloadPage() {
             style={{ fontFamily: 'var(--font-display)', fontWeight: 500, letterSpacing: '-0.02em' }}
             className="text-3xl"
           >
-            Get {profile.name || 'Bencris'}
+            Get {profile.name || 'Bencris'}{app.name ? ` ${app.name}` : ''}
           </h1>
-          <p className="mt-1.5 text-sm opacity-60">
-            Order ahead and watch your food being made.
-          </p>
+          <p className="mt-1.5 text-sm opacity-60">{app.blurb}</p>
         </header>
 
         {/* ------------------------------------------------------- Android */}

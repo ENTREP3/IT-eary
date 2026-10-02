@@ -1407,6 +1407,8 @@ class _AppPoster extends StatefulWidget {
 
 class _AppPosterState extends State<_AppPoster> {
   final _url = TextEditingController();
+  final _counterUrl = TextEditingController();
+  final _ownerUrl = TextEditingController();
   final _shot = GlobalKey();
   bool _loading = true;
   bool _busy = false;
@@ -1420,6 +1422,8 @@ class _AppPosterState extends State<_AppPoster> {
       if (!mounted) return;
       setState(() {
         _url.text = (row?['app_download_url'] as String?) ?? '';
+        _counterUrl.text = (row?['counter_app_url'] as String?) ?? '';
+        _ownerUrl.text = (row?['owner_app_url'] as String?) ?? '';
         _loading = false;
       });
     });
@@ -1428,6 +1432,8 @@ class _AppPosterState extends State<_AppPoster> {
   @override
   void dispose() {
     _url.dispose();
+    _counterUrl.dispose();
+    _ownerUrl.dispose();
     super.dispose();
   }
 
@@ -1438,7 +1444,11 @@ class _AppPosterState extends State<_AppPoster> {
       _failed = false;
     });
     try {
-      await AdminApi.updateShop({'app_download_url': _url.text.trim()});
+      await AdminApi.updateShop({
+        'app_download_url': _url.text.trim(),
+        'counter_app_url': _counterUrl.text.trim(),
+        'owner_app_url': _ownerUrl.text.trim(),
+      });
       if (mounted) setState(() => _note = 'Address saved.');
     } catch (e) {
       if (mounted) {
@@ -1660,9 +1670,119 @@ class _AppPosterState extends State<_AppPoster> {
                   tone: _failed ? Tokens.semanticAlert : Tokens.semanticGood,
                 ),
               ),
+
+            const SizedBox(height: 22),
+            Divider(color: Tokens.staffInk.withValues(alpha: 0.1)),
+            const SizedBox(height: 14),
+
+            // Not for the wall. Scanned off this screen by whoever is about to
+            // use the till or the dashboard, so each is labelled: the two apps
+            // install side by side and look alike on a home screen.
+            const _SectionTitle(
+              icon: Icons.qr_code_2,
+              title: 'Codes for staff phones',
+              subtitle:
+                  'The counter and owner apps install alongside the customer '
+                  'one, each with its own icon.',
+            ),
+            const SizedBox(height: 12),
+            _staffField(_counterUrl, 'Cashier app file'),
+            const SizedBox(height: 10),
+            _staffField(_ownerUrl, 'Owner app file'),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _StaffCode(
+                    label: 'CASHIER',
+                    tint: Color(0xFF1E6F8E),
+                    app: 'counter',
+                    ready: _counterUrl.text.trim().isNotEmpty,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StaffCode(
+                    label: 'OWNER',
+                    tint: Tokens.staffAccent,
+                    app: 'owner',
+                    ready: _ownerUrl.text.trim().isNotEmpty,
+                  ),
+                ),
+              ],
+            ),
           ],
         ],
       ),
+    );
+  }
+  Widget _staffField(TextEditingController c, String label) => TextField(
+    controller: c,
+    style: const TextStyle(color: Tokens.staffInk, fontSize: 13),
+    onChanged: (_) => setState(() {}),
+    decoration: InputDecoration(
+      labelText: label,
+      hintText: 'https://…',
+      labelStyle: TextStyle(color: Tokens.staffInk.withValues(alpha: 0.6)),
+      filled: true,
+      fillColor: Tokens.staffGround,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+  );
+}
+
+/// One labelled code, pointing at the staff download page for that app.
+class _StaffCode extends StatelessWidget {
+  const _StaffCode({
+    required this.label,
+    required this.tint,
+    required this.app,
+    required this.ready,
+  });
+
+  final String label;
+  final Color tint;
+  final String app;
+  final bool ready;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            letterSpacing: 2.5,
+            fontWeight: FontWeight.w600,
+            color: tint,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: QrImageView(
+            data: 'https://bencris.iteary.site/download?app=$app',
+            size: 118,
+            errorCorrectionLevel: QrErrorCorrectLevel.H,
+            backgroundColor: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          ready ? 'Scan with the staff phone.' : 'Add the address above first.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 10.5,
+            height: 1.4,
+            color: Tokens.staffInk.withValues(alpha: 0.45),
+          ),
+        ),
+      ],
     );
   }
 }

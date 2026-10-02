@@ -3,6 +3,7 @@ import '../../errors.dart';
 
 import '../../models/models.dart';
 import '../../tokens.dart';
+import '../../notification_bell.dart';
 import '../../notify_toggle.dart';
 import '../admin/tabs/kitchen_tab.dart';
 import '../widgets/refund_sheet.dart';
@@ -181,6 +182,7 @@ class _CashierScreenState extends State<CashierScreen> {
         centerTitle: false,
         title: const Text('Counter', style: TextStyle(fontWeight: FontWeight.w600)),
         actions: [
+          const NotificationBell.staff(),
           if (widget.onSignOut != null)
             IconButton(
               onPressed: widget.onSignOut,

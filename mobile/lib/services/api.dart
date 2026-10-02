@@ -441,6 +441,37 @@ class Api {
     }
   }
 
+  /// The notifications the shop has recorded for whoever is signed in.
+  static Future<List<AppNotification>> notifications() async {
+    try {
+      final rows = await _db.rpc('my_notifications', params: {'p_limit': 30});
+      if (rows is! List) return const [];
+      return rows
+          .map((r) => AppNotification.fromMap(Map<String, dynamic>.from(r as Map)))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// How many are waiting, for the badge on the bell.
+  static Future<int> unreadCount() async {
+    try {
+      return (await _db.rpc('my_unread_count') as num?)?.toInt() ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Marks them all read, which is what opening the bell means.
+  static Future<void> markNotificationsRead() async {
+    try {
+      await _db.rpc('mark_notifications_read');
+    } catch (_) {
+      // The next load reads the truth back; nothing is lost by failing here.
+    }
+  }
+
   /// Saves the diner's own name, nickname and number.
   ///
   /// Goes through `save_my_profile` rather than updating the row, because

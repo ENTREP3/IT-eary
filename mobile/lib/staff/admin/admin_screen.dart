@@ -3,6 +3,7 @@ import '../../errors.dart';
 
 import '../../models/models.dart';
 import '../../tokens.dart';
+import '../../notification_bell.dart';
 import '../live_refresh.dart';
 import 'admin_api.dart';
 import 'tabs/analytics_tab.dart';
@@ -141,6 +142,7 @@ class _AdminScreenState extends State<AdminScreen> {
           ],
         ),
         actions: [
+          const NotificationBell.staff(),
           if (widget.onSignOut != null)
             IconButton(
               onPressed: widget.onSignOut,

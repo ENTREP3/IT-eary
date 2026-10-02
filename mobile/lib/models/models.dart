@@ -901,3 +901,35 @@ class Person {
     lastOrder: DateTime.tryParse(m['last_order'] as String? ?? '')?.toLocal(),
   );
 }
+
+/// One thing the shop has told this person, as kept for the bell.
+class AppNotification {
+  const AppNotification({
+    required this.id,
+    required this.title,
+    this.body,
+    this.url,
+    required this.createdAt,
+    this.readAt,
+  });
+
+  final String id;
+  final String title;
+  final String? body;
+  final String? url;
+  final DateTime createdAt;
+  final DateTime? readAt;
+
+  bool get unread => readAt == null;
+
+  factory AppNotification.fromMap(Map<String, dynamic> m) => AppNotification(
+    id: m['id'] as String,
+    title: m['title'] as String? ?? '',
+    body: m['body'] as String?,
+    url: m['url'] as String?,
+    createdAt: DateTime.parse(m['created_at'] as String).toLocal(),
+    readAt: m['read_at'] == null
+        ? null
+        : DateTime.parse(m['read_at'] as String).toLocal(),
+  );
+}

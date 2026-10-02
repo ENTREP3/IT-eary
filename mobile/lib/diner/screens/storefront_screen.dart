@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../widgets/photo_sizes.dart';
 import '../../services/api.dart';
+import '../../notification_bell.dart';
 import '../../theme.dart';
 import '../../widgets/dish_image.dart';
 import '../widgets/hero_header.dart';
@@ -135,6 +136,10 @@ class _StorefrontScreenState extends State<StorefrontScreen> {
                                 onDark: true,
                               ),
                             ),
+                            // Only with an account: a guest's identity is
+                            // replaced next visit, so there is nowhere to keep
+                            // their notifications.
+                            if (Api.signedIn) const NotificationBell.onPhoto(),
                             TextButton.icon(
                               style: TextButton.styleFrom(
                                 foregroundColor: Colors.white,

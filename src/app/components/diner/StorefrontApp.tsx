@@ -58,6 +58,7 @@ import type { Dish } from '../data';
 import type { Order, PaymentMethod } from '../../lib/types';
 import { humanError } from '../../lib/errors';
 import { useConfirm } from '../shared/useConfirm';
+import { NotificationBell } from '../shared/NotificationBell';
 
 /** Re-renders whatever reads it whenever the device's own preferences change. */
 function usePrefs<T>(read: () => T): T {
@@ -315,6 +316,11 @@ export function StorefrontApp() {
                 already on the menu had to navigate backwards to sign in or to
                 check an order they were waiting on. The menu is where people
                 actually spend their time, so it needs the same door. */}
+            {/* Only with an account. A guest's notifications have nowhere to
+                be kept, since the identity behind them is replaced on the
+                next visit. */}
+            {user && <NotificationBell tone="diner" />}
+
             <Link
               to="/account"
               className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-full border border-diner-ink/20 hover:bg-diner-ink hover:text-diner-ground transition-colors"

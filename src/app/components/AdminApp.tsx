@@ -77,6 +77,7 @@ import { CogsPanel } from './admin/CogsPanel';
 import { KitchenInsights } from './admin/KitchenInsights';
 import { ReceiptRetention, StorageWarning } from './admin/ReceiptRetention';
 import { ConfirmProvider, useConfirm } from './shared/useConfirm';
+import { NotificationBell } from './shared/NotificationBell';
 import {
   Dialog,
   DialogContent,
@@ -378,7 +379,7 @@ function AdminDashboard() {
               )}
             </div>
 
-            <NotificationBell orders={orders} lowStock={low} onSeeOrders={() => setTab('dashboard')} />
+            <NotificationBell />
           </div>
         </div>
 
@@ -399,141 +400,6 @@ function AdminDashboard() {
           {tab === 'shop' && <ShopPanel />}
         </div>
       </main>
-    </div>
-  );
-}
-
-// ============================================================================
-// Notification bell — combines new orders (live) + low-stock alerts.
-// ============================================================================
-const SEEN_KEY = 'bencris-notif-seen';
-
-function NotificationBell({
-  orders,
-  lowStock,
-  onSeeOrders,
-}: {
-  orders: Order[];
-  lowStock: InventoryItem[];
-  onSeeOrders: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [lastSeen, setLastSeen] = useState<number>(() => {
-    const v = typeof localStorage !== 'undefined' ? localStorage.getItem(SEEN_KEY) : null;
-    return v ? Number(v) : 0;
-  });
-  const ref = useRef<HTMLDivElement>(null);
-
-  const newOrders = useMemo(
-    () => orders.filter((o) => new Date(o.created_at).getTime() > lastSeen),
-    [orders, lastSeen],
-  );
-  const unread = newOrders.length;
-
-  useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
-  }, []);
-
-  const markSeen = () => {
-    const now = Date.now();
-    setLastSeen(now);
-    localStorage.setItem(SEEN_KEY, String(now));
-  };
-
-  const toggle = () => {
-    setOpen((o) => {
-      const next = !o;
-      if (next) markSeen();
-      return next;
-    });
-  };
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={toggle}
-        className="relative w-9 h-9 grid place-items-center rounded-full border border-[#e8dfc8]/15 hover:bg-[#e8dfc8]/5"
-        aria-label="Notifications"
-      >
-        <Bell size={15} />
-        {(unread > 0 || lowStock.length > 0) && (
-          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 grid place-items-center rounded-full bg-[#c8442a] text-white text-[10px]">
-            {unread + lowStock.length}
-          </span>
-        )}
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            className="absolute right-0 mt-2 w-80 bg-[#0a0d0a] border border-[#e8dfc8]/15 rounded-2xl overflow-hidden shadow-2xl z-30"
-          >
-            <div className="px-4 py-3 border-b border-[#e8dfc8]/10 text-[10px] tracking-[0.25em] uppercase opacity-50">
-              Notifications
-            </div>
-
-            <div className="max-h-96 overflow-auto">
-              {lowStock.length > 0 && (
-                <div className="px-4 py-2 space-y-2">
-                  <div className="text-[10px] tracking-[0.2em] uppercase text-[#e87a5c] flex items-center gap-1.5">
-                    <AlertTriangle size={11} /> Low stock
-                  </div>
-                  {lowStock.map((i) => (
-                    <div key={i.id} className="text-sm flex items-center justify-between">
-                      <span>{i.name}</span>
-                      <span className="opacity-50 text-xs">
-                        {i.stock} {i.unit} left
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="px-4 py-2">
-                <div className="text-[10px] tracking-[0.2em] uppercase opacity-50 flex items-center gap-1.5 mb-2">
-                  <ShoppingBag size={11} /> Recent orders
-                </div>
-                {orders.length === 0 ? (
-                  <div className="text-sm opacity-40 py-2">No orders yet.</div>
-                ) : (
-                  orders.slice(0, 6).map((o) => (
-                    <div
-                      key={o.id}
-                      className="text-sm flex items-center justify-between py-1.5 border-b border-[#e8dfc8]/5 last:border-0"
-                    >
-                      <div className="min-w-0">
-                        <span className="font-mono tracking-[0.1em] opacity-70">{o.ticket_code}</span>{' '}
-                        <PaymentBadge method={o.payment_method} />
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div style={{ fontFamily: 'var(--font-display)' }}>₱{o.total}</div>
-                        <div className="text-[10px] opacity-40">{formatOrderTime(o.created_at)}</div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <button
-              onClick={() => {
-                setOpen(false);
-                onSeeOrders();
-              }}
-              className="w-full px-4 py-2.5 text-sm text-[#e8a84a] hover:bg-[#e8dfc8]/5 border-t border-[#e8dfc8]/10"
-            >
-              View dashboard
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

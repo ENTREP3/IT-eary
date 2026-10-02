@@ -158,6 +158,8 @@ export function AppPosterSection() {
       )}
 
       {svg && <Poster svg={svg} shopName={profile.name} district={profile.district} />}
+
+      <StaffCodes />
     </section>
   );
 }
@@ -213,5 +215,150 @@ function Poster({ svg, shopName, district }: { svg: string; shopName: string; di
         <p className="text-[11px] opacity-40 mt-4">Walang account na kailangan.</p>
       </div>
     </>
+  );
+}
+
+/**
+ * Codes for the two staff apps.
+ *
+ * Not for the wall. These are scanned off this screen by the person who is
+ * about to use the till or the dashboard, which is why they sit here rather
+ * than on the customer poster — and why each is labelled, since the two APKs
+ * install side by side and look alike on a home screen.
+ */
+function StaffCodes() {
+  const profile = useBusinessStore((s) => s.profile);
+  const save = useBusinessStore((s) => s.save);
+
+  const [counter, setCounter] = useState(profile.counter_app_url);
+  const [owner, setOwner] = useState(profile.owner_app_url);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => setCounter(profile.counter_app_url), [profile.counter_app_url]);
+  useEffect(() => setOwner(profile.owner_app_url), [profile.owner_app_url]);
+
+  const commit = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await save({ counter_app_url: counter.trim(), owner_app_url: owner.trim() });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      setError(humanError(e, 'Could not save those.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-8 pt-6 border-t border-[#e8dfc8]/10 print:hidden">
+      <div className="flex items-center gap-2 mb-1">
+        <QrCode size={16} className="text-[#e8a84a]" />
+        <h3 className="text-sm font-medium">Codes for staff phones</h3>
+      </div>
+      <p className="text-[12px] opacity-55 mb-4 max-w-lg leading-relaxed">
+        The counter and owner apps install alongside the customer one, each with
+        its own icon. Have the person scan their own code from this screen.
+      </p>
+
+      <div className="grid gap-3 sm:grid-cols-2 max-w-lg mb-3">
+        <label className="block">
+          <span className="text-[11px] opacity-55">Cashier app file</span>
+          <input
+            value={counter}
+            onChange={(e) => setCounter(e.target.value)}
+            placeholder=".../releases/latest/download/bencris-counter.apk"
+            className={`${field} mt-1`}
+          />
+        </label>
+        <label className="block">
+          <span className="text-[11px] opacity-55">Owner app file</span>
+          <input
+            value={owner}
+            onChange={(e) => setOwner(e.target.value)}
+            placeholder=".../releases/latest/download/bencris-owner.apk"
+            className={`${field} mt-1`}
+          />
+        </label>
+      </div>
+
+      <button
+        onClick={commit}
+        disabled={saving}
+        className="h-9 px-4 rounded-lg text-sm font-medium bg-[#e8a84a] text-[#0a0d0a] disabled:opacity-60 inline-flex items-center gap-2 mb-5"
+      >
+        {saving && <Loader2 size={14} className="animate-spin" />}
+        {saved ? 'Saved' : 'Save staff addresses'}
+      </button>
+
+      {error && (
+        <div className="text-sm rounded-lg px-3 py-2 mb-4 bg-[#c8442a]/20 text-[#e87a5c]">{error}</div>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2 max-w-lg">
+        <StaffCode app="counter" label="Cashier" tint="#1e6f8e" ready={!!counter.trim()} />
+        <StaffCode app="owner" label="Owner" tint="#e8a84a" ready={!!owner.trim()} />
+      </div>
+    </div>
+  );
+}
+
+/** One labelled code, pointing at the staff download page for that app. */
+function StaffCode({
+  app,
+  label,
+  tint,
+  ready,
+}: {
+  app: 'counter' | 'owner';
+  label: string;
+  tint: string;
+  ready: boolean;
+}) {
+  const [svg, setSvg] = useState<string | null>(null);
+  const target = `${dinerOrigin()}/download?app=${app}`;
+
+  useEffect(() => {
+    let stale = false;
+    QRCode.toString(target, {
+      type: 'svg',
+      margin: 1,
+      errorCorrectionLevel: 'H',
+      color: { dark: '#1a1410', light: '#ffffff' },
+    })
+      .then((out) => !stale && setSvg(out))
+      .catch(() => !stale && setSvg(null));
+    return () => {
+      stale = true;
+    };
+  }, [target]);
+
+  return (
+    <div className="rounded-xl border border-[#e8dfc8]/12 p-4 text-center">
+      <div
+        className="text-[10px] tracking-[0.25em] uppercase mb-3 font-medium"
+        style={{ color: tint }}
+      >
+        {label}
+      </div>
+
+      {svg ? (
+        <div
+          className="mx-auto w-[128px] h-[128px] bg-white rounded-lg p-1.5 [&>svg]:w-full [&>svg]:h-full"
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+      ) : (
+        <div className="mx-auto w-[128px] h-[128px] rounded-lg bg-[#e8dfc8]/5" />
+      )}
+
+      <p className="text-[11px] opacity-45 mt-3 leading-relaxed">
+        {ready
+          ? 'Scan with the staff phone.'
+          : 'Add the address above first, or the page will have nothing to install.'}
+      </p>
+    </div>
   );
 }

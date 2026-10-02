@@ -76,6 +76,9 @@ export type BusinessProfile = {
   hours: Hours[];
   /** Address the printed QR code points at. Empty until the owner sets it. */
   app_download_url: string;
+  /** Where the cashier and owner apps are downloaded from. */
+  counter_app_url: string;
+  owner_app_url: string;
   storefront: Storefront;
 };
 
@@ -91,6 +94,8 @@ const FALLBACK: BusinessProfile = {
   email: '',
   hours: BUSINESS.hours as unknown as Hours[],
   app_download_url: '',
+  counter_app_url: '',
+  owner_app_url: '',
   storefront: STOREFRONT_DEFAULTS,
 };
 
