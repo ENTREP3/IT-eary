@@ -74,6 +74,23 @@ class AdminApi {
   ///
   /// The notification goes after the database has agreed, so nobody is told
   /// their food is ready by a move that was refused.
+  /// Average order, repeat buyers and menu-to-ticket conversion.
+  ///
+  /// Computed by the database over a window of days, so the website and
+  /// the phone cannot disagree about what a sale is.
+  static Future<Map<String, dynamic>?> shopMetrics({int days = 30}) async {
+    try {
+      final rows = await _db.rpc('shop_metrics', params: {'p_days': days});
+      if (rows is List && rows.isNotEmpty) {
+        return Map<String, dynamic>.from(rows.first as Map);
+      }
+      if (rows is Map) return Map<String, dynamic>.from(rows);
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<void> setStatus(String ticketCode, String status) async {
     await _db.rpc(
       'advance_order_status',

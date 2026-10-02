@@ -88,6 +88,7 @@ class _MenuScreenState extends State<MenuScreen> {
   @override
   void initState() {
     super.initState();
+    Api.recordMenuVisit();
     _load();
   }
 

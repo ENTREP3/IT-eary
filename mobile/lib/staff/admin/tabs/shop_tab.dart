@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../models/models.dart';
 import '../../../tokens.dart';
+import '../../../services/api.dart';
 import '../../../notify_toggle.dart';
 import '../admin_api.dart';
 import 'announcement_card.dart';
@@ -982,6 +983,12 @@ class _AppPosterState extends State<_AppPoster> {
   final _counterUrl = TextEditingController();
   final _ownerUrl = TextEditingController();
   final _shot = GlobalKey();
+
+  /// One of the dishes, for the poster.
+  ///
+  /// There is no storefront photograph in the settings, so the best image
+  /// available is the food — which is also the thing worth putting on a wall.
+  String? _photo;
   bool _loading = true;
   bool _busy = false;
   String? _note;
@@ -990,6 +997,12 @@ class _AppPosterState extends State<_AppPoster> {
   @override
   void initState() {
     super.initState();
+    Api.menu().then((menu) {
+      final withPhoto = menu.where((d) => d.image.trim().isNotEmpty);
+      final chosen = withPhoto.where((d) => d.available).firstOrNull ??
+          withPhoto.firstOrNull;
+      if (mounted) setState(() => _photo = chosen?.image);
+    });
     AdminApi.shopSettings().then((row) {
       if (!mounted) return;
       setState(() {
@@ -1128,67 +1141,150 @@ class _AppPosterState extends State<_AppPoster> {
                 child: RepaintBoundary(
                   key: _shot,
                   child: Container(
-                    width: 300,
-                    padding: const EdgeInsets.all(24),
-                    color: Colors.white,
+                    width: 340,
+                    color: const Color(0xFFF4EAD5),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          widget.shop,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1A1410),
-                          ),
-                        ),
-                        if (widget.district.isNotEmpty)
+                        // The food carries the poster. A code with the name
+                        // over it is a notice, not something that makes
+                        // anybody want lunch.
+                        if (_photo != null)
+                          Stack(
+                            children: [
+                              Image.network(
+                                _photo!,
+                                width: 340,
+                                height: 150,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) =>
+                                    const SizedBox(height: 0),
+                              ),
+                              Positioned(
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(16, 24, 16, 10),
+                                  decoration: const BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Color(0x00000000),
+                                        Color(0xBF000000),
+                                      ],
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        widget.shop,
+                                        style: const TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      if (widget.district.isNotEmpty)
+                                        Text(
+                                          widget.district.toUpperCase(),
+                                          style: const TextStyle(
+                                            fontSize: 9,
+                                            letterSpacing: 3,
+                                            color: Color(0xCCFFFFFF),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        else ...[
+                          const SizedBox(height: 20),
                           Text(
-                            widget.district.toUpperCase(),
+                            widget.shop,
                             style: const TextStyle(
-                              fontSize: 9,
-                              letterSpacing: 3,
-                              color: Color(0x8A1A1410),
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF1A1410),
                             ),
                           ),
-                        const SizedBox(height: 20),
-                        QrImageView(
-                          data: target,
-                          size: 180,
-                          // A code on a wall gets scanned in bad light, at an
-                          // angle, on paper that may pick up a smudge. The
-                          // highest correction level still reads with roughly a
-                          // third of it obscured.
-                          errorCorrectionLevel: QrErrorCorrectLevel.H,
-                          backgroundColor: Colors.white,
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'Order from your phone',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1A1410),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Scan to get the app. See what is cooking today, '
-                          'order ahead, and show your ticket at the counter.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 11,
-                            height: 1.5,
-                            color: Color(0xA61A1410),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        const Text(
-                          'Walang account na kailangan.',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Color(0x661A1410),
+                        ],
+
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                          child: Column(
+                            children: [
+                              const Text(
+                                'Order from your phone',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF1A1410),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'See what is cooking today, order ahead, and '
+                                'show your ticket at the counter.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  height: 1.45,
+                                  color: Color(0xA61A1410),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                color: Colors.white,
+                                child: QrImageView(
+                                  data: target,
+                                  size: 150,
+                                  // Scanned in bad light, at an angle, on
+                                  // paper that may pick up a smudge. The
+                                  // highest level still reads with a third
+                                  // of it obscured.
+                                  errorCorrectionLevel: QrErrorCorrectLevel.H,
+                                  backgroundColor: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'SCAN TO GET THE APP',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  letterSpacing: 2,
+                                  color: Color(0x8A1A1410),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              // For the people who will not scan a square.
+                              Text(
+                                target.replaceFirst(
+                                  RegExp(r'^https?://'),
+                                  '',
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1A1410),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Walang account na kailangan.',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Color(0x661A1410),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],

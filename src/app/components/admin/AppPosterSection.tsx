@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import QRCode from 'qrcode';
 import { Loader2, Printer, QrCode } from 'lucide-react';
 import { useBusinessStore } from '../../store/businessStore';
 import { humanError } from '../../lib/errors';
 import { dinerOrigin } from '../../lib/surface';
+import { displayPhoto } from '../../lib/photos';
+import { useKarinderyaStore } from '../../store/karinderyaStore';
 
 /**
  * The printed poster that gets the app onto a diner's phone.
@@ -14,6 +16,7 @@ const field =
 
 export function AppPosterSection() {
   const profile = useBusinessStore((s) => s.profile);
+  const dishes = useKarinderyaStore((s) => s.dishes);
   const save = useBusinessStore((s) => s.save);
 
   const [url, setUrl] = useState(profile.app_download_url);
@@ -30,6 +33,24 @@ export function AppPosterSection() {
    * The poster points at the download page, never at the file.
    */
   const posterTarget = `${dinerOrigin()}/download`;
+
+  /*
+   * A dish of the shop's own for the poster.
+   *
+   * There is no storefront photograph anywhere in the settings — the hero on
+   * the website cycles dish pictures — so the best image available is the food,
+   * which is also the thing worth putting on a wall. Prefers one that is on the
+   * menu today, so the poster is not advertising something sold out.
+   */
+  // Without the scheme: nobody types https:// off a wall.
+  const printedAddress = posterTarget.replace(new RegExp('^https?:\\/\\/'), '');
+
+  const posterPhoto = useMemo(() => {
+    const withPhoto = dishes.filter((d) => d.image);
+    const live = withPhoto.find((d) => d.available);
+    const chosen = live ?? withPhoto[0];
+    return chosen ? displayPhoto(chosen.image) : null;
+  }, [dishes]);
 
   useEffect(() => {
     const target = posterTarget;
@@ -136,7 +157,15 @@ export function AppPosterSection() {
         </p>
       )}
 
-      {svg && <Poster svg={svg} shopName={profile.name} district={profile.district} />}
+      {svg && (
+        <Poster
+          svg={svg}
+          shopName={profile.name}
+          district={profile.district}
+          photo={posterPhoto}
+          address={printedAddress}
+        />
+      )}
 
       <StaffCodes />
     </section>
@@ -146,52 +175,119 @@ export function AppPosterSection() {
 /**
  * The sheet itself, shown on screen at a readable size and printed alone.
  *
- * `print:` utilities hide the rest of the dashboard, so pressing print produces
- * the poster rather than a screenshot of an admin panel with a poster in it.
+ * A photograph carries it. The previous version was a QR code with the shop's
+ * name over it, which is a notice rather than a poster — nothing on it made
+ * anybody want the food, and a code alone gives a passer-by no reason to lift
+ * their phone. The picture is one of the shop's own dishes, so the poster sells
+ * what is actually being cooked.
+ *
+ * The address is printed under the code as well. Somebody who will not scan a
+ * square can still type it, and a poster that only works through a camera
+ * excludes exactly the customers least likely to have the app already.
  */
-function Poster({ svg, shopName, district }: { svg: string; shopName: string; district: string }) {
+function Poster({
+  svg,
+  shopName,
+  district,
+  photo,
+  address,
+}: {
+  svg: string;
+  shopName: string;
+  district: string;
+  photo: string | null;
+  address: string;
+}) {
   return (
     <>
       <style>{`
         @media print {
-          @page { size: A5 portrait; margin: 12mm; }
+          @page { size: A5 landscape; margin: 0; }
           body * { visibility: hidden; }
           #app-poster, #app-poster * { visibility: visible; }
           #app-poster {
-            position: absolute; inset: 0; margin: auto;
+            position: absolute; inset: 0; margin: 0;
+            width: 100%; height: 100%;
             border: none !important; box-shadow: none !important;
+            border-radius: 0 !important;
+          }
+          /* Printers drop background colour and images by default, which would
+             leave the photograph half of this sheet blank. */
+          #app-poster, #app-poster * {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
         }
       `}</style>
 
       <div
         id="app-poster"
-        className="bg-white text-[#1a1410] rounded-xl p-8 max-w-[380px] text-center"
+        className="flex overflow-hidden rounded-xl bg-[#f4ead5] text-[#1a1410] w-full max-w-[640px] aspect-[1.414/1]"
       >
-        {/* The name as the owner typed it. An earlier version split it to mimic
-            the italic wordmark, which cut "Bencris" in the wrong place and would
-            have mangled any name the owner chose instead. */}
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }} className="text-3xl leading-none">
-          {shopName}
-        </div>
-        <div className="text-[10px] tracking-[0.3em] uppercase opacity-50 mt-1 mb-6">{district}</div>
+        {/* The food, as big as the sheet allows. */}
+        {photo ? (
+          <div className="relative w-[46%] shrink-0">
+            <img src={photo} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            {/* Keeps the name legible whatever the photograph is doing. */}
+            <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/75 to-transparent">
+              <div
+                style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}
+                className="text-white text-2xl leading-none"
+              >
+                {shopName}
+              </div>
+              {district && (
+                <div className="text-white/80 text-[9px] tracking-[0.3em] uppercase mt-1">
+                  {district}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="w-[46%] shrink-0 bg-[#c8442a] grid place-items-center p-6 text-center">
+            <div>
+              <div
+                style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}
+                className="text-white text-3xl leading-none"
+              >
+                {shopName}
+              </div>
+              {district && (
+                <div className="text-white/80 text-[9px] tracking-[0.3em] uppercase mt-2">
+                  {district}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
-        <div
-          className="mx-auto w-[200px] h-[200px] [&>svg]:w-full [&>svg]:h-full"
-          dangerouslySetInnerHTML={{ __html: svg }}
-        />
+        {/* The code, and everything somebody needs to act on it. */}
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-5 py-6">
+          <div
+            style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}
+            className="text-xl leading-tight"
+          >
+            Order from your phone
+          </div>
+          <p className="text-[11px] opacity-70 leading-relaxed mt-1 max-w-[15rem]">
+            See what is cooking today, order ahead, and show your ticket at the
+            counter.
+          </p>
 
-        <div
-          style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}
-          className="text-xl mt-6 mb-1"
-        >
-          Order from your phone
+          <div
+            className="mt-3 w-[142px] h-[142px] bg-white rounded-lg p-1.5 [&>svg]:w-full [&>svg]:h-full"
+            dangerouslySetInnerHTML={{ __html: svg }}
+          />
+
+          <div className="mt-2 text-[10px] tracking-[0.18em] uppercase opacity-55">
+            Scan to get the app
+          </div>
+
+          {/* For the people who will not scan a square. */}
+          <div className="mt-2 text-[12px] font-medium tracking-wide">{address}</div>
+
+          <div className="mt-3 text-[10px] opacity-45">Walang account na kailangan.</div>
         </div>
-        <p className="text-[13px] opacity-65 leading-relaxed">
-          Scan to get the app. See what is cooking today, order ahead, and show
-          your ticket at the counter.
-        </p>
-        <p className="text-[11px] opacity-40 mt-4">Walang account na kailangan.</p>
       </div>
     </>
   );

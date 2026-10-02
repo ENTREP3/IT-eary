@@ -489,6 +489,22 @@ class Api {
 
   // ----------------------------------------------------------- announcements
 
+  /// Counts this device as having opened the menu today.
+  ///
+  /// The denominator for the conversion figure on the dashboard. One row
+  /// per device per day — a date and a device id, not a record of what was
+  /// looked at. Failure is ignored: a statistic is never worth standing
+  /// between somebody and their lunch.
+  static Future<void> recordMenuVisit() async {
+    try {
+      await _db.rpc('record_menu_visit', params: {
+        'p_device_token': await DeviceToken.get(),
+      });
+    } catch (_) {
+      /* nothing to do, and nothing worth saying */
+    }
+  }
+
   /// What the shop is telling everybody right now, or null.
   ///
   /// The schedule lives in the row and is enforced by RLS, so this asks for

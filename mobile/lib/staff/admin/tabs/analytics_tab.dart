@@ -55,6 +55,16 @@ class AnalyticsTab extends StatefulWidget {
 }
 
 class _AnalyticsTabState extends State<AnalyticsTab> {
+  @override
+  void initState() {
+    super.initState();
+    AdminApi.shopMetrics().then((m) {
+      if (mounted) setState(() => _metrics = m);
+    });
+  }
+
+  /// The three figures the dashboard described but never computed.
+  Map<String, dynamic>? _metrics;
   final _label = TextEditingController();
   final _amount = TextEditingController();
   String _category = 'Supplies';
@@ -266,6 +276,79 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
     }
   }
 
+  /// Average order, repeat buyers and menu-to-ticket conversion.
+  Widget _metricRow(Map<String, dynamic> m) {
+    final visitors = (m['menu_visitors'] as num?)?.toInt() ?? 0;
+    final counted = (m['orders_counted'] as num?)?.toInt() ?? 0;
+    final buyers = (m['buyers'] as num?)?.toInt() ?? 0;
+    final repeats = (m['repeat_buyers'] as num?)?.toInt() ?? 0;
+    final avg = ((m['average_order'] as num?) ?? 0).toStringAsFixed(2);
+    final rate = ((m['repeat_rate'] as num?) ?? 0).toStringAsFixed(1);
+    final conv = ((m['conversion_rate'] as num?) ?? 0).toStringAsFixed(1);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: _figure('AVERAGE ORDER', '₱$avg', 'Across $counted paid.'),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _figure(
+            'REPEAT BUYERS',
+            '$rate%',
+            buyers == 0 ? 'Nobody yet.' : '$repeats of $buyers.',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _figure(
+            'MENU TO TICKET',
+            visitors == 0 ? '—' : '$conv%',
+            visitors == 0
+                ? 'Counting has just started.'
+                : '$counted of $visitors.',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _figure(String label, String value, String note) {
+    return AdminCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              letterSpacing: 1.4,
+              color: Tokens.staffInk.withValues(alpha: 0.5),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Tokens.staffInk,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            note,
+            style: TextStyle(
+              fontSize: 10,
+              height: 1.3,
+              color: Tokens.staffInk.withValues(alpha: 0.45),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     final net = _todayGross - _todayExpenses;
@@ -276,6 +359,12 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // Three figures the dashboard described for a long time without
+        // computing any of them.
+        if (_metrics != null) ...[
+          _metricRow(_metrics!),
+          const SizedBox(height: 14),
+        ],
         // Above the figures on purpose. A margin quietly eaten by a supplier
         // price rise is the thing most worth acting on, and it is invisible in
         // a sales chart, which only ever shows money coming in.

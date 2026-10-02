@@ -158,6 +158,19 @@ export function StorefrontApp() {
     void syncFavourites();
   }, []);
 
+  // Counted once a day per device, as the denominator for the conversion
+  // figure on the dashboard. The row is a date and a device id, not a
+  // record of what anybody looked at, and a failure is ignored: a statistic
+  // is never worth standing between somebody and the menu.
+  useEffect(() => {
+    supabase
+      .rpc('record_menu_visit', { p_device_token: deviceToken() })
+      .then(
+        () => undefined,
+        () => undefined,
+      );
+  }, []);
+
   // Open on a category that actually has food today. Landing on one where
   // everything is sold out reads as though the karinderya is closed.
   useEffect(() => {

@@ -73,6 +73,7 @@ import { RecipePanel } from './admin/RecipePanel';
 import { ShopPanel } from './admin/ShopPanel';
 import { OrderHistory, OrderDetail } from './admin/OrderHistory';
 import { PriceSuggestions } from './admin/PriceSuggestions';
+import { ShopMetrics } from './admin/ShopMetrics';
 import { BestsellerSuggestions } from './admin/BestsellerSuggestions';
 import { CogsPanel } from './admin/CogsPanel';
 import { KitchenInsights } from './admin/KitchenInsights';
@@ -1279,6 +1280,11 @@ function AnalyticsPanel({ orders }: { orders: Order[] }) {
 
   return (
     <div className="space-y-6">
+      {/* Three figures the dashboard described for a long time without
+          computing any of them. Conversion only means anything from the day
+          menu visits started being counted, and says so until then. */}
+      <ShopMetrics />
+
       {/* Sits above the figures on purpose. A margin quietly eaten by a supplier
           price rise is the thing most worth acting on, and it is invisible in a
           sales chart, which only ever shows money coming in. */}
