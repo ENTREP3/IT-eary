@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Check, Loader2, Maximize2, X } from 'lucide-react';
+import { Loader2, Maximize2, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { humanError } from '../../lib/errors';
 import { useOrdersStore } from '../../store/ordersStore';
@@ -37,6 +37,7 @@ export function RefundRequests() {
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState<string | null>(null);
   const [refunding, setRefunding] = useState<Order | null>(null);
+  const [answering, setAnswering] = useState<string | null>(null);
 
   const findByTicket = useOrdersStore((s) => s.findByTicket);
 
@@ -78,10 +79,17 @@ export function RefundRequests() {
     }
   };
 
-  /** Approving answers the diner; this is what actually moves the money. */
-  const openRefund = async (code: string) => {
+  /**
+   * Opens the refund flow, and remembers which request it answers.
+   *
+   * The request is marked agreed only once the money is recorded as sent,
+   * so a dialog that is opened and closed again leaves the queue alone.
+   */
+  const openRefund = async (code: string, requestId: string) => {
     const order = await findByTicket(code);
-    if (order) setRefunding(order);
+    if (!order) return;
+    setAnswering(requestId);
+    setRefunding(order);
   };
 
   return (
@@ -137,7 +145,16 @@ export function RefundRequests() {
       )}
 
       {refunding && (
-        <RefundDialog order={refunding} onClose={() => setRefunding(null)} />
+        <RefundDialog
+          order={refunding}
+          onRefunded={() => {
+            if (answering) decide(answering, 'approved');
+          }}
+          onClose={() => {
+            setRefunding(null);
+            setAnswering(null);
+          }}
+        />
       )}
     </div>
   );
@@ -154,7 +171,7 @@ function Row({
   busy: boolean;
   onZoom: (url: string) => void;
   onDecide: (id: string, status: 'approved' | 'declined') => void;
-  onRefund: (code: string) => void;
+  onRefund: (code: string, requestId: string) => void;
 }) {
   const [url, setUrl] = useState<string | null>(null);
 
@@ -225,21 +242,15 @@ function Row({
 
           {r.status === 'open' ? (
             <div className="mt-3 flex flex-wrap gap-2">
-              {/* Answering and paying are separate on purpose: the money moves
-                  through the refund flow, which records the amount, the method
-                  and the proof of sending. */}
+              {/* Two answers, because there are only two. Agreeing to a
+                  refund and sending it are the same act from the counter’s
+                  side, so refunding is what marks the request agreed — a
+                  separate "agreed" button only invited the pair to disagree. */}
               <button
-                onClick={() => onRefund(r.ticket_code)}
+                onClick={() => onRefund(r.ticket_code, r.id)}
                 className="h-9 px-4 rounded-lg bg-[#e8a84a] text-[#0a0d0a] text-sm font-medium"
               >
                 Refund this order
-              </button>
-              <button
-                disabled={busy}
-                onClick={() => onDecide(r.id, 'approved')}
-                className="h-9 px-3 rounded-lg border border-semantic-good/40 text-semantic-good text-sm inline-flex items-center gap-1.5 disabled:opacity-40"
-              >
-                <Check size={14} /> Mark agreed
               </button>
               <button
                 disabled={busy}

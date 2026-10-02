@@ -13,6 +13,9 @@ type Metrics = {
   repeat_rate: number;
   menu_visitors: number;
   conversion_rate: number;
+  carts_started: number;
+  carts_abandoned: number;
+  abandon_rate: number;
 };
 
 export function ShopMetrics({ days = 30 }: { days?: number }) {
@@ -32,7 +35,7 @@ export function ShopMetrics({ days = 30 }: { days?: number }) {
   if (!m) return null;
 
   return (
-    <div className="grid sm:grid-cols-3 gap-3">
+    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <Figure
         label="Average order"
         value={`₱${Number(m.average_order).toFixed(2)}`}
@@ -56,6 +59,16 @@ export function ShopMetrics({ days = 30 }: { days?: number }) {
           m.menu_visitors === 0
             ? 'Counting starts from the first visit after this was added.'
             : `${m.orders_counted} paid of ${m.menu_visitors} who opened the menu.`
+        }
+      />
+
+      <Figure
+        label="Carts abandoned"
+        value={m.carts_started === 0 ? '—' : `${Number(m.abandon_rate).toFixed(1)}%`}
+        note={
+          m.carts_started === 0
+            ? 'Counted from the first cart started after this was added.'
+            : `${m.carts_abandoned} of ${m.carts_started} filled a cart and left.`
         }
       />
     </div>

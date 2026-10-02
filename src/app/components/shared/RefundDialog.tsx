@@ -17,7 +17,16 @@ const REASONS = [
   'Paid twice by mistake',
 ] as const;
 
-export function RefundDialog({ order, onClose }: { order: Order; onClose: () => void }) {
+export function RefundDialog({
+  order,
+  onClose,
+  onRefunded,
+}: {
+  order: Order;
+  onClose: () => void;
+  /** Called once the money has actually been recorded as sent. */
+  onRefunded?: () => void;
+}) {
   const refund = useOrdersStore((s) => s.refund);
 
   const [reason, setReason] = useState<string>(REASONS[0]);
@@ -69,6 +78,7 @@ export function RefundDialog({ order, onClose }: { order: Order; onClose: () => 
         }
       }
 
+      onRefunded?.();
       onClose();
     } catch (e) {
       setError(humanError(e, 'The refund could not be recorded.'));

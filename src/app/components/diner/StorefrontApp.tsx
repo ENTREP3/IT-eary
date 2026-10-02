@@ -164,7 +164,10 @@ export function StorefrontApp() {
   // is never worth standing between somebody and the menu.
   useEffect(() => {
     supabase
-      .rpc('record_menu_visit', { p_device_token: deviceToken() })
+      .rpc('record_storefront_event', {
+        p_event: 'menu_viewed',
+        p_device_token: deviceToken(),
+      })
       .then(
         () => undefined,
         () => undefined,
@@ -237,13 +240,28 @@ export function StorefrontApp() {
     return skipped;
   };
 
-  const add = (d: Dish) =>
+  const add = (d: Dish) => {
+    // Counted once a day per device. The pair of this and a ticket is what
+    // makes abandonment a real number rather than a guess.
+    if (cart.length === 0) {
+      supabase
+        .rpc('record_storefront_event', {
+          p_event: 'cart_started',
+          p_device_token: deviceToken(),
+        })
+        .then(
+          () => undefined,
+          () => undefined,
+        );
+    }
+
     setCart((prev) => {
       const ex = prev.find((l) => l.dish.id === d.id);
       return ex
         ? prev.map((l) => (l.dish.id === d.id ? { ...l, qty: l.qty + 1 } : l))
         : [...prev, { dish: d, qty: 1 }];
     });
+  };
 
   const sub = (id: string) =>
     setCart((prev) =>

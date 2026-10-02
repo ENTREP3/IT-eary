@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../models/models.dart';
+import '../../services/api.dart';
 
 /// The diner's in-progress order. Prices here are only ever used for display —
 /// the authoritative total is computed server-side by `create_ticket()`.
@@ -27,9 +28,15 @@ class Cart extends ChangeNotifier {
       .toList();
 
   void add(Dish dish) {
+    // The first item is the cart being started. Counted once a day per
+    // device, and paired with a ticket later to say how many were left.
+    final wasEmpty = _qty.isEmpty;
+
     _dishes[dish.id] = dish;
     _qty[dish.id] = (_qty[dish.id] ?? 0) + 1;
     notifyListeners();
+
+    if (wasEmpty) Api.recordStorefrontEvent('cart_started');
   }
 
   void remove(String dishId) {

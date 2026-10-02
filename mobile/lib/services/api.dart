@@ -495,9 +495,10 @@ class Api {
   /// per device per day — a date and a device id, not a record of what was
   /// looked at. Failure is ignored: a statistic is never worth standing
   /// between somebody and their lunch.
-  static Future<void> recordMenuVisit() async {
+  static Future<void> recordStorefrontEvent(String event) async {
     try {
-      await _db.rpc('record_menu_visit', params: {
+      await _db.rpc('record_storefront_event', params: {
+        'p_event': event,
         'p_device_token': await DeviceToken.get(),
       });
     } catch (_) {
