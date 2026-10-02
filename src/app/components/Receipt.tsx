@@ -1,6 +1,6 @@
 import React from 'react';
 import { Printer, Download, Share2, Check } from 'lucide-react';
-import { receiptPng } from '../lib/receiptImage';
+import { receiptPng, saveBlob } from '../lib/receiptImage';
 import { dinerOrigin } from '../lib/surface';
 import type { Order } from '../lib/types';
 
@@ -27,20 +27,15 @@ function methodLabel(order: Order) {
  */
 export async function downloadReceipt(order: Order) {
   // The renderer adds "Karinderya" itself, so it is given the bare name.
-  const blob = await receiptPng(order, { name: 'Bencris' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `bencris-${order.ticket_code}.png`;
-  a.click();
-  URL.revokeObjectURL(url);
+  const blob = await receiptPng(order, { name: 'Bencris' }, dinerOrigin());
+  saveBlob(blob, `bencris-${order.ticket_code}.png`);
 }
 
 /** Hands the receipt to somebody else, with a link back to the menu. */
 export async function shareReceipt(order: Order) {
   const link = dinerOrigin();
   const text = 'My order from Bencris Karinderya';
-  const blob = await receiptPng(order, { name: 'Bencris' });
+  const blob = await receiptPng(order, { name: 'Bencris' }, link);
   const file = new File([blob], `bencris-${order.ticket_code}.png`, {
     type: 'image/png',
   });

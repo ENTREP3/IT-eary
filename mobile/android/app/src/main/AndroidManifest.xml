@@ -1,9 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- android:label is what appears under the icon on a customer's phone. It
-         was "iteary_mobile", the Dart package name, which is a thing no diner
-         has any reason to see. -->
+    <!-- What appears under the icon on the home screen. Supplied by the build
+             flavor rather than written here, because one codebase produces three
+             apps — Bencris, Bencris Counter and Bencris Owner — and all three
+             share this manifest. A literal name here would have put "Bencris" on
+             the cashier's phone. -->
     <application
-        android:label="Bencris"
+        android:label="${appLabel}"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

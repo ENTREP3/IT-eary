@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Download, Loader2, Share2, X } from 'lucide-react';
+import { Download, Link as LinkIcon, Loader2, Share2, X } from 'lucide-react';
 import type { Order } from '../../lib/types';
 import { useOrdersStore } from '../../store/ordersStore';
 import { useBusinessStore } from '../../store/businessStore';
 import { humanError } from '../../lib/errors';
 import { useConfirm } from '../shared/useConfirm';
-import { receiptPng } from '../../lib/receiptImage';
+import { receiptPng, saveBlob } from '../../lib/receiptImage';
 import { dinerOrigin } from '../../lib/surface';
 
 /**
@@ -54,15 +54,8 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
   const download = async () => {
     setError(null);
     try {
-      const blob = await receiptPng(order, shop);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `bencris-${order.ticket_code}.png`;
-      a.click();
-      // Released straight away: the download is already the browser's, and
-      // holding the object alive leaks the whole file.
-      URL.revokeObjectURL(url);
+      const blob = await receiptPng(order, shop, dinerOrigin());
+      saveBlob(blob, `bencris-${order.ticket_code}.png`);
     } catch (e) {
       setError(humanError(e, 'Could not save the receipt.'));
     }
@@ -85,7 +78,7 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
     const text = `My order from ${shop.name || 'Bencris'} Karinderya`;
 
     try {
-      const blob = await receiptPng(order, shop);
+      const blob = await receiptPng(order, shop, link);
       const file = new File([blob], `bencris-${order.ticket_code}.png`, {
         type: 'image/png',
       });
@@ -105,6 +98,27 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
       // reporting to somebody who just decided not to send it.
       if (e instanceof DOMException && e.name === 'AbortError') return;
       setError(humanError(e, 'Could not share the receipt.'));
+    }
+  };
+
+  /**
+   * Puts the shop's address on the clipboard.
+   *
+   * Its own action rather than a corner of the share flow, because the share
+   * flow is where a link goes to disappear: a phone that attaches the picture
+   * drops the text that came with it, and a desktop browser without the share
+   * API never showed one. Somebody pasting into a caption needs the address as
+   * a thing they can take, not as a hoped-for side effect.
+   */
+  const copyLink = async () => {
+    setError(null);
+    try {
+      await navigator.clipboard.writeText(dinerOrigin());
+      setNote('Link copied.');
+    } catch {
+      // Clipboard access can be refused outright. Showing the address is the
+      // fallback that always works, since it can be selected by hand.
+      setNote(dinerOrigin());
     }
   };
 
@@ -272,6 +286,13 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
               <Share2 size={15} /> Share
             </button>
           </div>
+
+          <button
+            onClick={copyLink}
+            className="w-full h-9 rounded-full text-xs text-diner-ink/60 hover:text-diner-ink inline-flex items-center justify-center gap-1.5"
+          >
+            <LinkIcon size={13} /> Copy the shop link
+          </button>
 
           {canCancel && (
             <button

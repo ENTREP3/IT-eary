@@ -70,6 +70,44 @@ android {
         versionName = flutter.versionName
     }
 
+    /*
+     * Three apps out of one codebase.
+     *
+     * The customer app shipped first and is the only one that had an APK; the
+     * counter and the owner dashboard existed only as web builds served off a
+     * container on a developer's machine, which is no use to somebody standing
+     * at a till. They are the same Flutter project with a different entrypoint,
+     * so what was missing was never the app — it was the packaging.
+     *
+     * Each flavor gets its own applicationId, because Android decides what is
+     * "the same app" by that string alone. Without the suffixes, installing the
+     * counter build would replace the customer's app on the same phone rather
+     * than sitting beside it, which is precisely what a shared device must not
+     * do.
+     *
+     * The customer flavor deliberately has no suffix. Its id is already on
+     * phones and is what google-services.json is bound to; changing it now
+     * would orphan every install.
+     */
+    flavorDimensions += "audience"
+
+    productFlavors {
+        create("customer") {
+            dimension = "audience"
+            manifestPlaceholders["appLabel"] = "Bencris"
+        }
+        create("counter") {
+            dimension = "audience"
+            applicationIdSuffix = ".counter"
+            manifestPlaceholders["appLabel"] = "Bencris Counter"
+        }
+        create("owner") {
+            dimension = "audience"
+            applicationIdSuffix = ".owner"
+            manifestPlaceholders["appLabel"] = "Bencris Owner"
+        }
+    }
+
     signingConfigs {
         if (hasReleaseKey) {
             create("release") {
@@ -101,6 +139,34 @@ android {
                 signingConfigs.getByName("debug")
             }
         }
+    }
+}
+
+/*
+ * Firebase belongs to the customer build only.
+ *
+ * google-services.json registers one package name, and the Gradle plugin fails
+ * any variant whose applicationId is not in it — so the moment the counter and
+ * owner flavors got their own ids, their builds stopped with "No matching
+ * client found".
+ *
+ * The honest fix is not to register them. Push is started from bootstrap only
+ * for the app that takes an anonymous identity, which is the customer one; the
+ * counter and the dashboard never call Firebase at all. Generating Firebase
+ * config for them would be config for something that is never used, and it
+ * would mean adding two Android apps to the shop's Firebase project to work
+ * around a build error rather than because anything needed them.
+ *
+ * If staff phones should ever receive push, this is the thing to undo: register
+ * both package names in Firebase, replace google-services.json with the one it
+ * generates, and delete this block. Until then, skipping the task is what keeps
+ * the two builds honest about using no Firebase.
+ */
+tasks.whenTaskAdded {
+    if (name.startsWith("process") && name.endsWith("GoogleServices") &&
+        !name.contains("Customer")
+    ) {
+        enabled = false
     }
 }
 

@@ -84,3 +84,23 @@ self.addEventListener('notificationclick', (event) => {
     }),
   );
 });
+
+/*
+ * A fetch handler, so the site can be installed.
+ *
+ * A browser only offers to add a site to the home screen if a service worker is
+ * registered and handling fetches. This worker already had to exist for
+ * notifications, and it is registered at the site root, so it is the one that
+ * can satisfy that — and it has to be the one, because two different scripts
+ * cannot both own the scope. Adding a second worker for installability would
+ * have replaced this registration and quietly broken push.
+ *
+ * It caches nothing, on purpose. Serving the app from a cache is how a counter
+ * ends up running last week's build against a changed database, and an app that
+ * is silently out of date is worse than one that is briefly offline. Everything
+ * goes straight to the network. This is the place real offline behaviour would
+ * go if it is ever actually wanted.
+ */
+self.addEventListener('fetch', (event) => {
+  event.respondWith(fetch(event.request));
+});

@@ -2,7 +2,15 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./app/App.tsx";
 import { ErrorBoundary } from "./app/components/shared/ErrorBoundary.tsx";
+import { makeInstallable } from "./app/lib/installable.ts";
 import "./styles/index.css";
+
+/*
+ * Before the first render, so the manifest is in the document by the time the
+ * browser decides whether this is something that can be installed. It only
+ * touches <head> and registers a worker, so there is nothing to wait for.
+ */
+makeInstallable();
 
 /*
  * Wrapped at the very root, above the router.

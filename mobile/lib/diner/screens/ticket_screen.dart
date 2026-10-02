@@ -209,6 +209,20 @@ class _TicketScreenState extends State<TicketScreen> {
   /// The picture carries what they ordered, which is the part people actually
   /// forward — "this is what I had" — and the link is so the person reading it
   /// can order the same thing rather than ask where it came from.
+  /// Puts the shop's address on the clipboard.
+  ///
+  /// Its own button rather than a corner of the share flow, because the share
+  /// flow is where a link goes to disappear: Android drops the text once a
+  /// picture is attached. Somebody pasting into a caption needs the address as
+  /// something they can take, not as a hoped-for side effect.
+  Future<void> _copyLink() async {
+    await Clipboard.setData(const ClipboardData(text: _siteUrl));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Shop link copied.')),
+    );
+  }
+
   Future<void> _shareReceipt() async {
     try {
       final png = await _receiptPng();
@@ -602,6 +616,15 @@ class _TicketScreenState extends State<TicketScreen> {
                 ),
               ],
             ),
+            TextButton.icon(
+              onPressed: _copyLink,
+              icon: const Icon(Icons.link, size: 15),
+              label: const Text('Copy the shop link'),
+              style: TextButton.styleFrom(
+                foregroundColor: Palette.ink.withValues(alpha: 0.6),
+                minimumSize: const Size.fromHeight(40),
+              ),
+            ),
 
             // Calling it off. Only while it is unpaid and the kitchen has not
             // started — the database enforces both, and past either point this
@@ -777,6 +800,19 @@ class _ReceiptCard extends StatelessWidget {
             child: Text(
               'Salamat po!',
               style: TextStyle(fontSize: 12, color: Colors.black45),
+            ),
+          ),
+          const SizedBox(height: 6),
+
+          // Printed on the receipt rather than left to the share sheet to
+          // carry. Android drops the text of a share once a file is attached,
+          // so a link sent alongside the picture arrives perhaps half the
+          // time — which is the same as not having one. Here it cannot be
+          // separated from the thing being shared.
+          Center(
+            child: Text(
+              'Order again at ${_siteUrl.replaceFirst('https://', '')}',
+              style: const TextStyle(fontSize: 10.5, color: Colors.black38),
             ),
           ),
         ],
