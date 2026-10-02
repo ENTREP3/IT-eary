@@ -5,31 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * What this diner has rated, from the shop rather than from their browser.
- *
- * The rating itself was always saved properly — it is in `reviews`, it counts
- * towards the dish average, and everybody can see it. What was kept on the
- * device was the answer to a different question: *did I rate this?* That drives
- * the filled-in stars and whether the button says "Rate this dish" or "Edit
- * your rating".
- *
- * So signing in on another browser showed a diner their own ratings as though
- * they had never left one. Nothing was lost — the ratings were on the dishes
- * the whole time — but the screen said otherwise, which is the same thing to
- * the person reading it.
- *
- * ---------------------------------------------------------------------------
- * Found by ticket, because that is what a review is attached to
- *
- * `reviews` has no customer column. It has a ticket code, and that was a good
- * decision: a rating is proof of a meal, and the ticket is the proof. It also
- * meant a guest with no account could rate what they ate.
- *
- * Ownership therefore runs through the order: the tickets belonging to this
- * account, and the reviews left against them. A guest's ratings stay on their
- * device, which is the only place they can be.
- *
- * The device copy is not going away. It answers instantly, works offline, and
- * covers the guest. This is the copy that survives a new browser.
  */
 return new class extends Migration
 {

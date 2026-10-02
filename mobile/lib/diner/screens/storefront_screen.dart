@@ -16,14 +16,6 @@ import '../widgets/announcement_banner.dart';
 import '../widgets/update_banner.dart';
 
 /// The first screen a diner meets, matching the website's landing page.
-///
-/// Its whole job is to answer three questions in about five seconds: what is
-/// this, is it open, and where is it. The app opened straight onto the menu
-/// before, which is fine for somebody who already knows Bencris and useless for
-/// somebody who just scanned a poster on a wall and has never heard of it.
-///
-/// Everything here is read from the shop's own settings, so the owner corrects
-/// the address or the hours once on the dashboard and every app follows.
 class StorefrontScreen extends StatefulWidget {
   const StorefrontScreen({super.key});
 
@@ -44,12 +36,6 @@ class _StorefrontScreenState extends State<StorefrontScreen> {
 
     /*
      * Rebuild when the diner signs in or out.
-     *
-     * The header already asks Api.signedIn whether to say "My orders" or
-     * "Sign in", but it only asked once, when the screen was first built.
-     * This screen sits underneath the account screen the whole time
-     * somebody is signing in, so it was never rebuilt afterwards and went
-     * on offering to sign in a diner who already had.
      */
     _auth = Api.authChanges.listen((_) {
       if (mounted) setState(() {});
@@ -163,10 +149,6 @@ class _StorefrontScreenState extends State<StorefrontScreen> {
               // Under the photograph, above the food. A diner opening this
               // app came to order lunch, so news about a version number is
               // something they meet on the way down, never a dialog across
-              // the thing they came for.
-              // Greeted by the name they chose, which is the reason
-              // signing up asks for a nickname at all. Above the
-              // announcement because it is about them, not the shop.
               const _Welcome(),
 
               const AnnouncementBanner(),

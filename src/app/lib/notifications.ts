@@ -3,18 +3,6 @@ import { supabase } from './supabase';
 
 /**
  * What the shop has told this person, kept so it can be looked at later.
- *
- * Push notifications are shouted once. If the phone was in a pocket, or the app
- * was open at the time, or notifications were never switched on, the event is
- * gone — and in a karinderya that is most of the working day. The same rows now
- * live in `public.notifications`, written by the same call that sends the push,
- * so a bell and a phone buzz are two deliveries of one notification rather than
- * two features that have to be kept in agreement.
- *
- * One store for all three audiences. The diner, the counter and the owner see
- * different notifications because the database resolved a different audience
- * when it wrote them, not because the client filters anything — which is what
- * stops a bug here from showing somebody else's business.
  */
 
 export type Notification = {
@@ -89,12 +77,6 @@ export async function markNotificationsRead() {
 
 /**
  * Keeps the bell current while the page is open.
- *
- * Returns the unsubscribe, and takes a unique channel name from the caller.
- * `supabase.channel(name)` hands back an existing channel if the name is
- * already in use, and adding a listener to a channel that has subscribed
- * throws — which is how a second mount of the same screen used to take the
- * whole app down with a white page.
  */
 export function watchNotifications(channelName: string) {
   loadNotifications();

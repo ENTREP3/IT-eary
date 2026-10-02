@@ -5,31 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 
 /// Whether a newer APK has been published, and where to get it.
-///
-/// The shop hands its app out as a file from GitHub Releases rather than
-/// through the Play Store, which is the right trade for a karinderya — no
-/// developer account, no review, ship when you like. The cost is that nothing
-/// updates itself. Without this, a diner who installed in September is still
-/// running September's app next year, and every fix since has reached nobody.
-///
-/// The check is a plain read of a public JSON endpoint: no key, no account, no
-/// SDK. It is also entirely advisory. Failing to reach GitHub, finding no
-/// releases at all, or meeting something it cannot parse all mean the same
-/// thing here — say nothing and let the diner get on with ordering. An update
-/// prompt is never worth standing between somebody and their lunch.
 class UpdateCheck {
   const UpdateCheck._();
 
   /// Where the releases live. Public, so this needs no credentials.
-  ///
-  /// A repository of its own, separate from the source. The QR code on the
-  /// shop wall and the download page both lead here, and a customer following
-  /// either of them should arrive at a file — not at the source code of a
-  /// system they have no reason to know exists.
-  ///
-  /// It must stay public: this call is unauthenticated, and so is the download
-  /// behind it. A private repository answers 404 to both, which this treats as
-  /// "no release yet" and reports as nothing at all.
   static const _latest =
       'https://api.github.com/repos/ENTREP3/IT-eary-release-apk/releases/latest';
 
@@ -74,18 +53,6 @@ class UpdateCheck {
   }
 
   /// The customer APK attached to a release, by name rather than by luck.
-  ///
-  /// This used to take the first asset ending in `.apk`, which was safe only
-  /// while exactly one existed. There are now three — the diner's, the
-  /// counter's and the owner's — and they are built from the same project, so
-  /// one landing in the wrong release is an ordinary slip rather than an
-  /// unthinkable one. Taking the first match would then hand a diner the
-  /// owner's dashboard as an update to their menu, signed with the same key and
-  /// therefore perfectly installable.
-  ///
-  /// So the exact filename wins. Any other `.apk` is a last resort, kept
-  /// because a release named `bencris-1.0.3.apk` should still work, and only
-  /// reached when nothing is named properly.
   static String? _apkUrl(Map<String, dynamic> body) {
     final assets = body['assets'];
     if (assets is! List) return null;

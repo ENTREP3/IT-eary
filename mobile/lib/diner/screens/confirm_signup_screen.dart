@@ -6,20 +6,6 @@ import '../../services/push.dart';
 import '../../theme.dart';
 
 /// Confirming a new account with the code from the email.
-///
-/// The website confirms with a link, and that is right there: a link opens the
-/// browser, which is where the website already is. On a phone the same link
-/// opens a browser too — away from the app the diner just signed up in,
-/// leaving them confirmed somewhere they are not.
-///
-/// A code brings them back into the app. Same account, same email, same
-/// backend; only the way back differs, because the way back is the part that
-/// actually differs between a browser and an app.
-///
-/// Shown immediately after signing up rather than as a dialog saying "check
-/// your email". A dialog is dismissed and then the diner is on a sign-in form
-/// with a password that does not work yet, which reads as the account having
-/// failed to be made.
 class ConfirmSignupScreen extends StatefulWidget {
   const ConfirmSignupScreen({super.key, required this.email});
 

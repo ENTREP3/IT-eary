@@ -1,36 +1,5 @@
 /**
  * Which dishes this diner is actually entitled to rate, according to the shop.
- *
- * The device already keeps its own list of what it ordered, and for a long
- * time that was the only list there was — ordering was anonymous, so there was
- * nowhere else to put it. It works right up until the diner is somewhere else:
- * ordered on their phone and looking at a laptop, cleared their browser,
- * opened the real site having tested on localhost. In every one of those the
- * button to rate a meal they genuinely ate is simply absent, and nothing
- * explains why.
- *
- * The database has always known better. `leave_review` asks only that the
- * ticket was paid, is under thirty days old, and contained the dish — it never
- * cared which browser was used. This closes the gap by asking it.
- *
- * ---------------------------------------------------------------------------
- * One query, shared, and reloaded when the session changes
- *
- * Both of those matter, and the second is a bug this file had on its first
- * attempt.
- *
- * Shared, because every dish card on the menu needs the same answer. A hook
- * that fetched per card issued twenty-five identical queries on every visit to
- * the menu.
- *
- * Reloaded on sign-in, because Supabase restores a session from storage
- * asynchronously. A query fired the instant a component mounts can easily run
- * before the session is back, in which case row-level security correctly shows
- * it nothing — and a list loaded once at mount then stays empty forever. The
- * diner is signed in, has eaten the dish, and the button never appears.
- *
- * That failure is invisible in development, because there the device history
- * usually has the order anyway and covers for it.
  */
 import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
@@ -129,11 +98,6 @@ function refresh(): Promise<void> {
 
 /**
  * Follow the session.
- *
- * Signing in is the moment this becomes answerable, and signing out is the
- * moment the answer stops being this person's. Registered once at module load
- * rather than per component, so the number of subscriptions does not grow with
- * the number of dishes on the menu.
  */
 if (typeof window !== 'undefined') {
   supabase.auth.onAuthStateChange((event) => {
@@ -170,11 +134,6 @@ export function refreshRateable(): void {
 
 /**
  * This diner's recent orders, from the device and from their account.
- *
- * Merged rather than one or the other: the device covers a guest who never
- * signed in, and the account covers somebody on a browser they have not used
- * before. Duplicates are collapsed on the ticket code, which is the same
- * order seen from both sides.
  */
 export function useRecentOrders(): PastOrder[] {
   const [, setTick] = useState(0);

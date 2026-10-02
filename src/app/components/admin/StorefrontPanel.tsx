@@ -6,12 +6,6 @@ import { humanError } from '../../lib/errors';
 
 /**
  * What the storefront shows, decided by the owner.
- *
- * Grouped rather than listed flat, because the switches are not siblings: the
- * comments and the whole review showcase only mean anything while star ratings
- * are on, so they sit inside it and disappear when it is off. Six switches in a
- * row hid that relationship and left the owner wondering why turning one on
- * changed nothing.
  */
 
 type BoolKey = 'ratings' | 'comments' | 'bestseller' | 'low_stock' | 'sold_out' | 'recommended';

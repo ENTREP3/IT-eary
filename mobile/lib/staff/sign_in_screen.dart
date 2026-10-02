@@ -94,11 +94,6 @@ class _SignInScreenState extends State<SignInScreen> {
       }
       /*
        * Point this phone's notifications at whoever just signed in.
-       *
-       * The token is recorded against a user, not a device, so on a phone two
-       * people share — which is the normal case for a till — the shop would
-       * otherwise keep notifying whoever enabled it first. Raises no prompt and
-       * returns immediately unless permission was already given.
        */
       unawaited(Push.reregister());
 

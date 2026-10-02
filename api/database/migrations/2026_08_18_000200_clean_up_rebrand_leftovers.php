@@ -5,27 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Three leftovers the schema dump exposed.
- *
- * 1. payment_settings.gcash_name still said "K-MARY Karinderya", the name this
- *    shop had before the rebrand, and not only as a column default: the live row
- *    said it too. The diner's GCash screen reads that column directly, so anyone
- *    paying that way was told to send money to a business that no longer exists.
- *    Wrong branding is the small half of that problem; being asked to transfer
- *    money to an unfamiliar name is the half that loses the sale.
- *
- * 2. The defaults themselves carried the old identity, so a fresh install would
- *    have inherited the same wrong name and the old tagline. Both now default to
- *    empty, which shows as a blank the owner can fill rather than a confident
- *    lie.
- *
- * 3. The foreign key on orders.processed_by was still named orders_paid_by_fkey.
- *    Renaming a column does not rename its constraints, so the old name survived
- *    the rename and would have sent the next person looking for a column that no
- *    longer exists.
- *
- * NOT fixed here, because it is not mine to invent: gcash_number is still the
- * placeholder 0917 555 0123. The owner has to enter their real number on the
- * Payments screen before anyone is asked to send money to it.
  */
 return new class extends Migration
 {

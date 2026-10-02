@@ -24,11 +24,6 @@ const kMaxContentWidth = 520.0;
 
 /// Centres its child and caps its width. Wrap every screen body in this so the
 /// same build works on a phone and in a desktop browser tab.
-///
-/// Set [shrinkHeight] when the parent measures height intrinsically — a
-/// `bottomNavigationBar`, for example. Without it the default `Center` reports
-/// an unbounded height there, which starves the Scaffold body of space and
-/// blanks the page.
 class PageBody extends StatelessWidget {
   const PageBody({super.key, required this.child, this.shrinkHeight = false});
 

@@ -83,13 +83,6 @@ const PICKUP_CHOICES: { label: string; minutes: number | null }[] = [
 
 /**
  * The diner-facing web storefront — the browser twin of the Flutter app.
- *
- * Deliberately mirrors the mobile flow rather than inventing a second one:
- * browse → cart → choose a method → ticket code → (GCash) upload the receipt.
- *
- * An account is optional and always will be: the ticket code carries identity,
- * so ordering never requires signing up. Signing in only adds what needs memory
- * across visits, such as history and live order tracking.
  */
 /**
  * The chip that means no category at all.
@@ -102,22 +95,11 @@ const ALL_DISHES = 'All dishes';
 
 /**
  * The chip that shows only what this diner has hearted.
- *
- * The heart had nowhere to lead: it marked a card and that was the end of it,
- * so the only way back to a saved dish was to scroll the menu looking for a
- * filled-in icon. Favourites stay on the device rather than in the database —
- * a usual order is a private convenience, not something the shop needs to know,
- * and keeping it local is what makes it work without an account at all.
  */
 const FAVOURITES = 'Favourites';
 
 /**
  * The chip that shows only what the owner marked.
- *
- * The same dishes the front page leads with, reachable from inside the menu —
- * a diner who scrolled past the storefront had no way back to them without
- * going home. Owner-marked, never calculated: the shop decides what it is
- * proud of.
  */
 const BEST_SELLERS = 'Best sellers';
 
@@ -150,11 +132,6 @@ export function StorefrontApp() {
 
   /**
    * The rice on the menu, cheapest first.
-   *
-   * Read from the menu rather than hardcoded, because rice is a dish like any
-   * other: the owner sets its price, can take it off when the pot runs out,
-   * and the ticket shows it at the counter. Sold-out rice simply stops being
-   * offered.
    */
   const riceServings = useMemo(
     () =>
@@ -264,11 +241,6 @@ export function StorefrontApp() {
 
   /**
    * Drop a whole line, however many of it there are.
-   *
-   * Minus is for changing your mind about the number; this is for changing your
-   * mind about the dish. Reaching the second by repeating the first is a tax on
-   * ordering five of something, and five taps on a small round button on a phone
-   * is exactly where a diner mis-taps and buys a sixth.
    */
   const removeLine = (id: string) => {
     const next = cart.filter((l) => l.dish.id !== id);
@@ -793,33 +765,9 @@ function DishCard({
 
 /**
  * The whole dish on one screen, and the rice that goes with it.
- *
- * A card has room for a name, a price and two lines. Everything else a diner
- * might want to know — the full description, what other people said, and
- * whether to add rice — was either cut short or not there at all.
- *
- * Rice is the reason this exists. The ulam price has never included it, so
- * every order needed the diner to remember to add rice separately from another
- * part of the menu. Asking here, at the moment they choose the dish, is asking
- * at the only point they are actually thinking about the meal.
  */
 /**
  * A dish's photographs, taking turns.
- *
- * One picture was never going to sell food. A karinderya has the plate, the
- * serving in the platter and the meal with rice beside it, and all three say
- * something different — so the sheet shows them in turn rather than making the
- * owner pick which one to tell the truth with.
- *
- * Rotation lives here and not on the menu cards. Eight cards cross-fading on
- * their own timers reads as a page malfunctioning, and it would force every
- * photo of every dish to download before the menu could finish. Here the diner
- * has already chosen this dish and is looking straight at it.
- *
- * The dots are buttons, because somebody who wants the third picture should not
- * have to wait for it to come round again. Touching one stops the timer: the
- * diner is now driving, and a slideshow that pulls away from you is worse than
- * one that never moved.
  */
 function DishGallery({ dish, seconds }: { dish: Dish; seconds: number }) {
   const photos = dish.images?.length ? dish.images : dish.image ? [dish.image] : [];
@@ -1178,12 +1126,6 @@ function RateSheet({
 
   /*
    * Follow the rating once it arrives.
-   *
-   * useState only reads its argument on the first render, and the account
-   * copy is fetched over the network — so a rating left on another device
-   * lands after this has already initialised to zero stars, and without this
-   * would never be shown. Skipped while the sheet is open, so it cannot
-   * overwrite what somebody is in the middle of typing.
    */
   useEffect(() => {
     if (!existing) return;
@@ -1360,14 +1302,6 @@ function CartSheet({
 
   /**
    * A signed-in diner starts with their own name already in the box.
-   *
-   * It used to start empty for everybody, and the database filled the gap at
-   * order time from the profile. That worked, but it meant somebody who had told
-   * us their name was still looking at an empty field labelled "your name" — and
-   * an empty field asks to be filled, so one order went out stamped `SUKIF9061`.
-   *
-   * Still editable, not read-only: ordering for somebody else is normal here,
-   * and the counter calls out whatever is on the ticket.
    */
   const mine = realName(profile);
   const [name, setName] = useState(mine ?? '');
@@ -1821,11 +1755,6 @@ function TicketView({
 
   /**
    * Live: flips to Paid while the diner is standing at the counter.
-   *
-   * Pushed for anybody with a session, which since anonymous sign-ins is
-   * everybody — Realtime checks the row against the caller's own id, and a
-   * guest now has one. The polling below is only the fallback for a device
-   * that could not get a session at all.
    */
   const identified = useAuthStore((s) => !!s.identity);
 
@@ -2053,11 +1982,6 @@ function TicketView({
 
 /**
  * Lets the diner call off an order they have not paid for.
- *
- * Behind a confirmation, because there is no undo: the ticket code dies with
- * it, and re-ordering means going through the menu again. The confirmation
- * says that plainly instead of asking "are you sure?", which tells nobody
- * anything.
  */
 function CancelOrder({ order, onCancelled }: { order: Order; onCancelled: () => void }) {
   const [asking, setAsking] = useState(false);

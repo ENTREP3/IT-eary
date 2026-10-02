@@ -2,23 +2,6 @@ import { SURFACE } from './surface';
 
 /**
  * Makes the site installable, as the app it actually is.
- *
- * None of the three sites could be added to a home screen. The usual cause is a
- * missing manifest, and that was the cause here: there was no manifest at all,
- * no icon above 192px, and the only service worker was the one Firebase
- * messaging registers for notifications. A browser with nothing to read does not
- * argue, it just never offers to install — which looks from the outside like the
- * feature not existing.
- *
- * ---------------------------------------------------------------------------
- * Why it is built here and not shipped as a file
- *
- * One `dist` is served at three addresses. A `public/manifest.json` would be the
- * same bytes for the diner, the counter and the owner, so all three would
- * install under one name and one icon, and a cashier's home screen would end up
- * with a tile called "Bencris" that opens the till. The surface is only known
- * once the page is running, so the manifest is assembled then and handed to the
- * browser as a blob.
  */
 
 type Shape = {
@@ -116,23 +99,6 @@ export function makeInstallable() {
 
 /**
  * Registers the service worker that installability requires.
- *
- * It is the notifications worker, and that is not a shortcut. A browser only
- * offers to install a site when a worker is registered and handling fetches, so
- * one had to be registered up front — but `firebase-messaging-sw.js` already
- * claims the root scope, and two different scripts cannot both own a scope. A
- * second worker added for installability would have replaced that registration
- * and broken push without a word.
- *
- * So the same script is registered here, with the same scope the messaging code
- * asks for later. Registering an identical script at an identical scope returns
- * the existing registration rather than making a second one, which is what lets
- * both callers ask without fighting.
- *
- * Done on load rather than when notifications are switched on, because
- * otherwise the site could only be installed by somebody who had already
- * accepted push — two unrelated things, tied together by an accident of which
- * code happened to register a worker.
  */
 function registerWorker() {
   if (!('serviceWorker' in navigator)) return;

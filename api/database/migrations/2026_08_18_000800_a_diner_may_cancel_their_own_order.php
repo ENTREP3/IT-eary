@@ -5,26 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Lets the person who placed an order call it off.
- *
- * Until now only the owner could cancel anything, so a diner who ordered by
- * mistake, or changed their mind before reaching the counter, had no way to say
- * so. The ticket simply sat in the queue until somebody at the shop noticed and
- * cleared it, which wastes the kitchen's attention and leaves the day's figures
- * carrying an order that was never going to happen.
- *
- * Two guards, and they are the whole point:
- *
- *  - Unpaid only. Once money has changed hands this is a refund conversation
- *    with a human, not a button.
- *  - Untouched only. Once the kitchen has started, the food and the ingredients
- *    are already committed, and a diner cancelling cannot un-cook them.
- *
- * Who may call it: the account that placed it, or — for the guest orders that
- * have always been the common case — anyone holding the ticket code inside the
- * same 24-hour window the read policy already grants. The code is the bearer
- * proof throughout this system; treating it as proof here is consistent, and
- * the two guards above bound what a stolen code could actually do to a
- * still-unpaid ticket the shop has not begun.
  */
 return new class extends Migration
 {

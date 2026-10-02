@@ -52,10 +52,6 @@ export type OrderItem = {
 /**
  * What the cashier concluded about the money — deliberately separate from
  * `payment_method`, which is only the diner's declared intent.
- *
- * `needs_review` is the no-loss outcome: the food is released so the diner
- * isn't stuck at the counter, but the sale is flagged for the owner to
- * reconcile against the real GCash history.
  */
 export type PaymentStatus = 'unpaid' | 'verified' | 'needs_review';
 
@@ -107,11 +103,6 @@ export type Order = {
   customer_id: string | null;
   /**
    * Whether the diner had a real account when they ordered.
-   *
-   * customer_id cannot answer this: every visitor is given an anonymous
-   * account on opening the app, so it is filled in for a walk-in guest
-   * exactly as for a regular. Stamped once at the time of ordering, so a
-   * guest who signs up later does not rewrite their old tickets.
    */
   from_account?: boolean;
   /** When the diner said they would collect. NULL means as soon as it is ready. */

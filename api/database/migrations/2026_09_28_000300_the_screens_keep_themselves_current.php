@@ -5,24 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Four tables were broadcasting; the rest were silent.
- *
- * Realtime here is a WebSocket fed by Postgres logical replication, and a table
- * only reaches it if it is in the `supabase_realtime` publication. Dishes,
- * categories, inventory and orders were in it. Everything else was not, so the
- * owner could change the shop address, switch GCash off, start a promotion or
- * record a delivery, and no screen anywhere heard about it until somebody
- * reloaded the page.
- *
- * That is why the apps grew Refresh buttons: not because the live connection
- * was unreliable, but because for most of the data there was nothing on the
- * wire to listen to.
- *
- * The tables added here are the ones a person changes and another person needs
- * to see. Left out on purpose: `recipe_items`, `promo_redemptions`,
- * `inventory_cost_history`, `stock_alerts` and `profiles`, which either change
- * only as a side effect of something already broadcast, or are nobody's live
- * concern. Every row still passes RLS on the way out — realtime does not widen
- * who may read what, it only says sooner.
  */
 return new class extends Migration
 {

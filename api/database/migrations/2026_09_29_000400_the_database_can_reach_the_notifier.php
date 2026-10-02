@@ -5,37 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Letting the database send a notification when nobody pressed a button.
- *
- * Everything notified so far was triggered by a person: staff mark an order
- * ready, the owner posts an announcement. Those go out from the app that did
- * it, using that person's own session, and need nothing here.
- *
- * The rest have no such moment. A dish sells out because a customer bought the
- * last one. Stock crosses its par level because a recipe consumed it. A rating
- * arrives at ten at night. In every case the person who needs telling — usually
- * the owner — is nowhere near a screen, and the person who caused it must not
- * be the one sending it: a diner's browser cannot be trusted to notify the shop
- * about the shop.
- *
- * So the database does it. Postgres cannot make an HTTPS request on its own, so
- * `pg_net` does the asking and the edge function does the sending.
- *
- * ---------------------------------------------------------------------------
- * Two things this is careful about
- *
- * **It never blocks or fails the thing that triggered it.** `pg_net` queues the
- * request and returns at once rather than waiting for a reply, and every call
- * here is wrapped so that any error — a missing key, an unreachable function,
- * a malformed payload — is swallowed. A notification that cannot be sent must
- * never stop an order being placed. The shop selling food matters more than
- * the shop being told about it.
- *
- * **The key is not in this file.** The service role key can read and write
- * every table, so it cannot live in a migration that goes into git. It is read
- * at call time from Supabase Vault, which is encrypted at rest and readable
- * only by the database owner. Until somebody puts it there this whole
- * mechanism does nothing at all, quietly and on purpose — see the note printed
- * at the end of this migration.
  */
 return new class extends Migration
 {

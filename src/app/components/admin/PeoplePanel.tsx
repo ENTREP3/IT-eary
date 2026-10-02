@@ -18,33 +18,6 @@ import { useConfirm } from '../shared/useConfirm';
 
 /**
  * Everyone with an account, and what the owner can do about them.
- *
- * ---------------------------------------------------------------------------
- * Only real accounts
- *
- * Anonymous diners are left out, in the database rather than here. An account
- * is something you manage — suspend, ban, promote, delete — and an anonymous
- * row is none of those: no email to write to, no password to reset, and
- * banning it achieves nothing because the next visit mints another one. Their
- * orders are still in the takings; they are simply not people the owner can
- * act on.
- *
- * ---------------------------------------------------------------------------
- * Staff show no order figures
- *
- * `create_ticket` deliberately leaves `customer_id` empty when a signed-in
- * member of staff checks out, so a cashier testing the storefront does not
- * bank orders against themselves. Their figures were therefore always zero,
- * and "0 orders, ₱0.00" beside the owner's name reads as a fact about the
- * owner rather than a column that does not apply. The database sends null and
- * this shows a dash.
- *
- * ---------------------------------------------------------------------------
- * Every dangerous action is refused by the database, not just hidden here
- *
- * Acting on yourself, and removing the last owner, are both refused in
- * `assert_may_manage`. The buttons are hidden as a courtesy; hiding a button
- * is not a rule, and the rule lives where it cannot be clicked around.
  */
 
 type Person = {
@@ -503,16 +476,6 @@ function Badge({ role }: { role: Person['role'] }) {
 
 /**
  * Correcting somebody's registration details.
- *
- * The same six fields the signup form collects, and the same rules — they are
- * enforced in one place in the database, which both this and the diner's own
- * "Your details" call. A refusal comes back as a
- * sentence rather than a constraint name.
- *
- * Email is absent on purpose. Changing it means proving the new address
- * belongs to somebody, which is a confirmation flow rather than a text box,
- * and an owner quietly reassigning a login to another address is precisely the
- * shape of a thing that should not be one click away.
  */
 function EditDetails({
   person,

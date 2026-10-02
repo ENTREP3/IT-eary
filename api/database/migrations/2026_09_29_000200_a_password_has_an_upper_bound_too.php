@@ -5,25 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The password rule, as the owner asked for it.
- *
- * Two changes.
- *
- * A maximum of 64. The owner asked for 24; 64 is the number after explaining
- * why. A stored password is hashed to a fixed length, so there is no storage
- * reason for a ceiling at all — the only honest reason is to stop somebody
- * pasting a megabyte and making the server hash it. 24 would have rejected
- * what a password manager generates by default, which pushes the most secure
- * users towards the least secure behaviour: giving up and typing something
- * they can remember. 64 bounds the input and no real person ever meets it.
- *
- * And the lowercase requirement is gone. The owner listed a capital, a number
- * and a symbol, and did not list a small letter. It was costing a rule without
- * buying anything: essentially every password containing a capital contains a
- * lowercase letter too, so the check only ever fired on SHOUTED PASSWORDS.
- *
- * The order of the checks is the order somebody fixes them in, and only the
- * first problem is ever returned — a list of five complaints about one attempt
- * reads as a telling-off.
  */
 return new class extends Migration
 {

@@ -5,23 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Six characters was the whole rule, and the worksheet said otherwise.
- *
- * `create_staff_account` and `set_staff_password` both checked nothing but
- * length, and six of anything is guessable in seconds. The Lab 3 worksheet has
- * been claiming for weeks that a password here needs uppercase, lowercase,
- * numbers and symbols — a promise the code did not keep.
- *
- * These are the accounts most worth taking: a staff login can read every
- * customer's order, change prices, and settle money.
- *
- * The rule lives in one function so the two callers cannot drift apart, and so
- * the apps can ask the database what the rule is rather than each keeping a
- * copy that slowly stops matching. It returns the reason rather than a boolean,
- * because "not strong enough" tells somebody nothing about what to type next.
- *
- * Existing passwords are not revalidated. This gates what can be set from now
- * on; forcing a working account to change mid-service would lock a cashier out
- * of a till with a queue in front of it.
  */
 return new class extends Migration
 {

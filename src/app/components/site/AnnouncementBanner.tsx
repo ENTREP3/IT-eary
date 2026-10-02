@@ -4,19 +4,6 @@ import { supabase } from '../../lib/supabase';
 
 /**
  * What the shop needs to tell everybody today.
- *
- * Closing early, a brownout at the palengke, kambing that will be gone by two.
- * None of it fits anywhere else on the storefront, because every other piece of
- * writing here answers a question the diner asked, and this one is the shop
- * speaking first.
- *
- * A strip above the menu rather than a dialog over it. Somebody opening this
- * site has come to see what is cooking, and a modal between them and the food
- * to say "we close at 2 today" is the site serving itself. It can be dismissed,
- * because a person who has read it should not have to keep reading it.
- *
- * Nothing here waits for the network: the banner is absent until the row
- * arrives, so a slow or unreachable Supabase costs the menu nothing.
  */
 
 type Announcement = {
@@ -58,14 +45,6 @@ export function AnnouncementBanner() {
     // again after the start time gets it and one that asks before does not.
     /*
      * A name of its own per mount, not a fixed one.
-     *
-     * supabase.channel(name) hands back the EXISTING channel when one with
-     * that topic is already open, and adding a callback to a channel that
-     * has already subscribed throws. removeChannel is asynchronous, so a
-     * component that unmounts and remounts — switching view, or React
-     * mounting an effect twice in development — reaches for the old channel
-     * before it has finished closing. That threw during render and took the
-     * whole screen down with it, which is a high price for a banner.
      */
     const channel = supabase
       .channel(`announcements-${Math.random().toString(36).slice(2)}`)
@@ -80,11 +59,6 @@ export function AnnouncementBanner() {
 
   /**
    * Take it down when it expires, without being told to.
-   *
-   * Expiry is the clock passing a timestamp, not a row changing, so there is no
-   * database event to listen for and realtime will never mention it. A phone
-   * left open on the menu through closing time would otherwise still be
-   * advertising this afternoon's notice tomorrow morning.
    */
   useEffect(() => {
     if (!item) return;

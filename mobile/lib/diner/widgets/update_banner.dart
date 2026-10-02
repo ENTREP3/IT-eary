@@ -5,16 +5,6 @@ import '../../services/update_check.dart';
 import '../../theme.dart';
 
 /// Tells a diner a newer app exists, once, quietly.
-///
-/// The app is handed out as a file from GitHub rather than through the Play
-/// Store, so nothing updates itself. Somebody who installed in September would
-/// otherwise still be running September's app next year.
-///
-/// A strip above the menu rather than a dialog on top of it. A diner opening
-/// this app has come to order lunch, and a modal between them and the food to
-/// announce a version number is the app serving itself. It can be dismissed,
-/// and it stays dismissed for that version — nagging is how people learn to
-/// close things without reading them.
 class UpdateBanner extends StatefulWidget {
   const UpdateBanner({super.key});
 

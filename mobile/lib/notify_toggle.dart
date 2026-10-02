@@ -5,24 +5,6 @@ import 'theme.dart';
 import 'tokens.dart';
 
 /// Where somebody turns notifications on.
-///
-/// One widget, two audiences, because the mechanism is identical and only the
-/// words and the colours differ. Written twice it would have drifted — and the
-/// part most worth not drifting is the handling of a refusal, which is subtle
-/// and easy to leave out of the second copy.
-///
-/// ---------------------------------------------------------------------------
-/// The wording is about the work, not the technology
-///
-/// "Enable notifications" asks somebody to weigh a vague future benefit against
-/// a known annoyance, and they decline. "Tell me when my food is ready" is the
-/// thing a diner already wants while standing there waiting for it, and "tell me
-/// when a dish sells out" is the thing the owner already wants while not being
-/// in the shop.
-///
-/// Renders nothing when the phone cannot do it — no Play Services, no Firebase
-/// configuration, an emulator without Google apps. A switch that cannot work is
-/// worse than no switch, because it gets flipped, believed, and waited on.
 class NotifyToggle extends StatefulWidget {
   /// For the diner: their own order, and dishes they asked after.
   const NotifyToggle.diner({super.key})

@@ -7,16 +7,6 @@ import { notifyAnnouncement } from '../../lib/notify';
 
 /**
  * Saying one thing to every diner at once.
- *
- * The shop's permanent description is two sections up and is not this: that
- * says what Bencris is, and this says what is true today. Closing early for a
- * fiesta, a brownout at the palengke, kambing that will be gone by two.
- *
- * Every announcement expires, and the form does not offer a way around it. An
- * open-ended notice is the one that gets forgotten, and a sign still reading
- * "closing early today" on Thursday teaches customers to stop believing the
- * banner — which costs more than never having posted it. Anything genuinely
- * permanent belongs in the shop blurb.
  */
 
 const field =
@@ -44,11 +34,6 @@ const WHO: Record<Audience, string> = {
 
 /**
  * How long it runs, in wording the owner thinks in.
- *
- * "Rest of today" is the one almost every announcement wants, so it is the
- * default. It ends at midnight in the shop's own timezone rather than N hours
- * from now, because "closing early today" should stop being true when today
- * does, whether it was written at seven in the morning or at four.
  */
 const RUNS = [
   { label: 'Rest of today', until: () => endOfToday() },

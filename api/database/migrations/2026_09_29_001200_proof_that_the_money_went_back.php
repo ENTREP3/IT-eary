@@ -5,50 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The shop's own proof that it sent a refund.
- *
- * The shop already demands a screenshot when money comes in: a diner paying by
- * GCash uploads their receipt and the counter checks it before letting the
- * order through. Nothing was kept when money went out. The refund row recorded
- * an amount, a method and a reason, and the shop's only evidence that the
- * transfer actually happened was its own word.
- *
- * That asymmetry falls the wrong way. "You never refunded me" is exactly the
- * dispute where a GCash screenshot settles things in a second, and it is the
- * shop that needs it, since it is the shop being accused.
- *
- * ---------------------------------------------------------------------------
- * Same bucket, different door
- *
- * Refund proof goes in the existing private `payment-proofs` bucket, under a
- * `refunds/` prefix, rather than a bucket of its own — one place to set
- * retention, one place to look, one set of enumeration protections already
- * thought through.
- *
- * It cannot reuse the existing upload policy, though, and the reason is worth
- * stating: that policy admits an upload only while `paid_at is null`, because
- * it exists for a diner proving a payment that has not yet been accepted. A
- * refund happens on an order that is by definition already paid, so every
- * refund upload would have been refused by the rule that lets payments in.
- *
- * Hence a second policy, and a prefix to tell the two apart. `refunds/` also
- * means the first path segment is not a ticket code, so the diner-facing
- * policies — which match on segment one — do not accidentally apply to it.
- *
- * ---------------------------------------------------------------------------
- * Staff only, deliberately
- *
- * The diner already sees the refund itself: the amount, the method and the
- * date are on their order. The image is the shop's record for a dispute, not
- * a receipt for the customer, and a private bucket readable only by staff is
- * the smaller thing to defend.
- *
- * ---------------------------------------------------------------------------
- * Attached after, not during
- *
- * Refunding and uploading are separate calls. Giving the money back is the
- * part that matters and it must not be held up by a photo — a failed upload
- * must never leave a diner unrefunded at the counter. So the refund goes
- * through, and the proof is attached to it afterwards, whenever staff have it.
  */
 return new class extends Migration
 {
@@ -64,10 +20,6 @@ comment on column public.refunds.proof_path is
 
 -- ---------------------------------------------------------------------------
 -- Staff may upload under refunds/
--- ---------------------------------------------------------------------------
--- Matches on the literal prefix rather than on path_tokens, which is a
--- GENERATED column and is not computed yet while an INSERT policy runs — the
--- same trap the payment-proof policy documents.
 drop policy if exists "refund_proofs_staff_insert" on storage.objects;
 create policy "refund_proofs_staff_insert"
   on storage.objects for insert

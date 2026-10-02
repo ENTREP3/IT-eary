@@ -4,16 +4,6 @@ import { pushState, enablePush, disablePush, type PushState } from '../../lib/pu
 
 /**
  * Where a diner turns "tell me when it's ready" on.
- *
- * The wording is about the food, not about the technology. "Get notified" asks
- * somebody to weigh a vague future benefit against a known annoyance and they
- * will decline; "tell me when my food is ready" is the thing they already want.
- *
- * Renders nothing at all when the browser cannot do it. iOS Safari only allows
- * push for a site added to the home screen, private windows refuse outright,
- * and older browsers have no service worker — in all of those a switch that
- * cannot work is worse than no switch, because the diner flips it, believes
- * they will be told, and stands outside waiting.
  */
 export function NotifyToggle({ className = '' }: { className?: string }) {
   const [state, setState] = useState<PushState | null>(null);

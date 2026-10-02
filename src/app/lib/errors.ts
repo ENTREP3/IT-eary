@@ -1,20 +1,5 @@
 /**
  * What a person should be told when something fails.
- *
- * Diners and cashiers were being shown whatever came back off the wire:
- * "Bad Request", "PostgrestException", "JWT expired", "Failed to fetch". Those
- * sentences are written for whoever is going to fix the problem, and the person
- * reading them is standing at a counter with a queue behind them. They cannot
- * act on any of it, and it reads as though the shop is broken.
- *
- * The one thing worth passing through untouched is the shop's own rules. Every
- * `raise exception` in the database — "ticket K7M2Q9 has been paid for, refund
- * it rather than cancelling it" — comes back as SQLSTATE **P0001**, and those
- * were written for exactly this moment. Anything with a real SQLSTATE, or no
- * code at all, is machinery and gets translated.
- *
- * The rule of thumb for the wording: say what happened, and say what to do
- * next. "Try again" is only useful where trying again might actually work.
  */
 
 type MaybeError = {
@@ -88,15 +73,6 @@ export function humanError(e: unknown, fallback = 'Something went wrong. Please 
   /*
    * "Updating password of an anonymous user without an email or phone is
    * not allowed".
-   *
-   * Said when a reset link did not sign anybody in, so the password is being
-   * set on the guest identity every visitor carries instead. The diner did
-   * nothing wrong and their password was fine — the link was spent, expired,
-   * or opened somewhere other than where it was asked for.
-   *
-   * Worth naming rather than leaving to a fallback: this is the difference
-   * between "your password is bad" and "ask for a new link", and the diner
-   * cannot tell which from a generic failure.
    */
   if (low.includes('anonymous user')) {
     return (

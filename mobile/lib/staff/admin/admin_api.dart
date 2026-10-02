@@ -64,18 +64,6 @@ class AdminApi {
   );
 
   /// Moves an order along the kitchen flow.
-  ///
-  /// Goes through `advance_order_status()` rather than updating the row, which
-  /// is what this used to do. The direct write looked identical from the
-  /// counter, because the staff update policy allows it, but it skipped every
-  /// guard the function exists to apply: food could be started on a ticket
-  /// nobody had paid for, any staff member could cancel rather than only the
-  /// owner, `completed_at` was never stamped, and a paid order could be
-  /// cancelled outright — returning the food and reversing the sale without a
-  /// refund ever being recorded.
-  ///
-  /// Keyed by ticket code because that is what the function takes, and what
-  /// the counter reads off the diner's phone.
   static Future<void> setStatus(String ticketCode, String status) =>
       _db.rpc(
         'advance_order_status',
@@ -115,21 +103,6 @@ class AdminApi {
       _db.from('dishes').delete().eq('id', id);
 
   /// Picks photos and puts them in the bucket, returning their URLs.
-  ///
-  /// Storage rather than a data URI in the row: the menu query reads every dish
-  /// column, so a base64 photo is downloaded by every diner just to see the
-  /// list. A URL is a few hundred bytes and the picture is fetched only when it
-  /// is actually shown.
-  ///
-  /// The file is uploaded exactly as it was taken. Nothing is resized and
-  /// nothing is re-encoded.
-  ///
-  /// The picker is deliberately given no `maxWidth` and no `imageQuality`.
-  /// Either one makes it decode the photograph and write a new JPEG, which
-  /// throws away detail permanently — and the loss only becomes visible later,
-  /// on the front page, where the first photo is stretched across a whole
-  /// laptop screen. A receipt can be squeezed to 900px because nobody frames it;
-  /// food is the one thing on this site meant to be looked at.
   static Future<List<String>> pickAndUploadDishPhotos(
     String dishId, {
     int limit = 4,
@@ -163,10 +136,6 @@ class AdminApi {
       // The smaller copy the menu will actually load. Made here because this is
       // the one moment the full file is already in hand, and stored under a
       // fixed sibling name so nothing extra is needed to find it.
-      //
-      // A failure is deliberately swallowed: the photo itself is safely up, and
-      // a card that falls back to the original is slow, not broken. Losing the
-      // whole upload over a thumbnail would be the worse trade.
       try {
         final small = makeDisplayCopy(bytes);
         if (small != null) {
@@ -319,13 +288,6 @@ class AdminApi {
       _db.from('inventory').delete().eq('id', id);
 
   /// Records a delivery: the one way stock goes up.
-  ///
-  /// A plain edit to the stock figure is a correction and explains nothing.
-  /// This stamps the delivery date, updates what the ingredient costs, and
-  /// books the expense in one step, so a delivery never has to be typed twice
-  /// and the cost of every dish using it moves with the new price.
-  ///
-  /// A null [unitCost] means "unchanged". Zero would wipe the recorded price.
   static Future<void> receiveStock(
     String inventoryId,
     double quantity, {
@@ -431,12 +393,6 @@ class AdminApi {
 
   /// Records that the owner turned down a bestseller suggestion, against the
   /// sales figure at the time.
-  ///
-  /// Reads the settings object and writes it back whole, because the column is
-  /// one jsonb value: patching a single key would replace the object and take
-  /// every other setting with it. Keeping the number rather than a plain list
-  /// is what stops the panel becoming nagware — a dish declined at 30 sold
-  /// stays quiet, but at 45 the question is a genuinely new one.
   static Future<void> dismissBestseller(String dishId, int sold) async {
     final row = await shopSettings();
     final show = Map<String, dynamic>.from(
@@ -609,11 +565,6 @@ class AdminApi {
   // ---- recipes -------------------------------------------------------------
   //
   // A dish's recipe is recorded per BATCH, the way a cook actually thinks: one
-  // pot of sinigang takes a kilo and a half of pork and feeds twenty. Recording
-  // that a batch was cooked is the only thing that draws ingredients out of the
-  // store room, which is why the numbers stay honest — selling a serving lowers
-  // the servings left, cooking lowers the ingredients, and the two never
-  // overlap.
 
   static Future<List<Map<String, dynamic>>> recipeFor(String dishId) async {
     final rows = await _db
@@ -722,13 +673,6 @@ class AdminApi {
   }
 
   /// Uploads the shop's proof that a refund was actually sent.
-  ///
-  /// The shop demands a screenshot when money comes in; until now it kept
-  /// nothing when money went out, so "you never refunded me" was a dispute
-  /// the shop could only answer with its own word.
-  ///
-  /// Attached after the refund, never before. Giving the money back is the
-  /// part that matters and must not be held up by a photo.
   static Future<void> attachRefundProof(
     String ticketCode,
     Uint8List bytes,

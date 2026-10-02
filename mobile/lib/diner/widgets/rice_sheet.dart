@@ -13,16 +13,6 @@ class RiceChoice {
 }
 
 /// Asks whether rice goes with the ulam.
-///
-/// Every dish on this menu is the ulam on its own — rice is priced and cooked
-/// separately, a cup or a half cup, and the shop sells plenty of both. The app
-/// used to add the ulam straight to the cart and never mention it, so a diner
-/// on a phone had to know to go back to the Kanin category and add rice as a
-/// separate dish. The website has asked all along; this is the same question,
-/// in the shape a phone expects.
-///
-/// Rice is read from the menu rather than hardcoded, so when the pot runs out
-/// the owner marks it sold out and the question simply stops being asked.
 class RiceSheet extends StatefulWidget {
   const RiceSheet({super.key, required this.dish, required this.rice});
 

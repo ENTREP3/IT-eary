@@ -5,32 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * A way for the shop to say something to everybody at once.
- *
- * Every other piece of writing on the storefront answers a question the diner
- * asked: what is cooking, what does it cost, is it ready. None of it can carry
- * the thing a karinderya most often needs to announce — closing early for a
- * fiesta, a power cut, kambing that only came in today and will be gone by two.
- * Until now the only way to say any of it was to change the tagline, which is
- * the shop's permanent description being used as a noticeboard.
- *
- * Three decisions worth keeping:
- *
- * `ends_at` is NOT NULL, deliberately. An announcement is news, and news goes
- * stale: a sign reading "closing early today" still up on Thursday is worse
- * than no sign, because it teaches people to stop believing the banner. There
- * is no "until I remove it" option, because that is precisely the option that
- * gets forgotten. Anything genuinely permanent belongs in the shop blurb, which
- * already exists and is edited two sections higher in the same screen.
- *
- * Reading is open to `anon`. A stranger who has never signed in is exactly who
- * "we are closed this afternoon" needs to reach, and they are most of the
- * traffic. The RLS predicate carries the schedule, so an announcement written
- * at dawn for the evening is invisible to everybody, including a client that
- * asks for it directly, until its own start time.
- *
- * Writing is the owner alone — `is_admin()`, not `is_staff()`. This speaks to
- * every customer in the shop's voice, which is a different thing from moving a
- * ticket to ready, and it is the owner's name on it.
  */
 return new class extends Migration
 {

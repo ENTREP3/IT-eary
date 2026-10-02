@@ -7,17 +7,6 @@ import { dinerOrigin } from '../../lib/surface';
 
 /**
  * The printed poster that gets the app onto a diner's phone.
- *
- * A karinderya has no app store listing and no advertising budget, but it does
- * have a wall and a menu, and every customer is already standing in front of
- * both while they wait. A code taped there costs one sheet of paper and reaches
- * exactly the people who already eat here.
- *
- * The QR is generated in the browser from the address the owner saved, so no
- * third-party QR service is involved: nothing to pay for, nothing to expire,
- * and no outside site sitting between a customer and the download. Printing is
- * plain window.print() against a print stylesheet, so it works on whatever
- * printer the shop can borrow.
  */
 
 const field =
@@ -39,16 +28,6 @@ export function AppPosterSection() {
 
   /**
    * The poster points at the download page, never at the file.
-   *
-   * A code encoding the .apk directly starts a download the moment somebody
-   * scans a sheet of paper, with no explanation of what they are installing or
-   * warning about the security prompt Android is about to show them. Pointing
-   * it at the release host instead shows a customer a page of version tags
-   * belonging to a system they have no reason to know exists.
-   *
-   * It is also the only address that gets printed. The file behind it can move
-   * between releases or hosts without every poster on the wall becoming wrong,
-   * which is the thing nobody remembers to reprint.
    */
   const posterTarget = `${dinerOrigin()}/download`;
 
@@ -220,11 +199,6 @@ function Poster({ svg, shopName, district }: { svg: string; shopName: string; di
 
 /**
  * Codes for the two staff apps.
- *
- * Not for the wall. These are scanned off this screen by the person who is
- * about to use the till or the dashboard, which is why they sit here rather
- * than on the customer poster — and why each is labelled, since the two APKs
- * install side by side and look alike on a home screen.
  */
 function StaffCodes() {
   const profile = useBusinessStore((s) => s.profile);

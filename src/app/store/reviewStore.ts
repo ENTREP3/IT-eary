@@ -4,14 +4,6 @@ import { humanError } from '../lib/errors';
 
 /**
  * Dish ratings, shared by everyone.
- *
- * These used to live in the diner's own browser, which meant a rating helped
- * nobody but the person who left it. They now come from the database, so a
- * first-time visitor can see what previous diners thought.
- *
- * Posting is deliberately not done here: `leave_review` in the database checks
- * that the ticket was settled and actually contained the dish. This store only
- * reads averages and pushes the write through that rule.
  */
 
 export type DishRating = { average: number; total: number };

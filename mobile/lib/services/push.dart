@@ -7,26 +7,6 @@ import 'package:flutter/foundation.dart';
 import 'api.dart';
 
 /// Reaching a diner who has closed the app.
-///
-/// Everything the system tells somebody today needs them to be watching: the
-/// ticket screen updates itself, the banner appears, the menu changes under
-/// them. All of it over a connection that exists only while the app is open.
-/// Close it and the shop cannot reach you — which is exactly when it most
-/// needs to, because you are waiting for food and therefore doing something
-/// else.
-///
-/// The same machinery as the website: one `push_tokens` table, one sender, one
-/// set of rules about who gets told what. This is only the half that runs on
-/// the phone.
-///
-/// ---------------------------------------------------------------------------
-/// Permission is never asked for on startup
-///
-/// Android has asked before showing notifications since 13, and a prompt that
-/// appears before somebody has done anything is why people refuse reflexively.
-/// A refusal is also close to permanent — the app cannot ask twice, and the
-/// diner has to go into system settings, which nobody does. So the question is
-/// only put when they press something that says what it is for.
 class Push {
   const Push._();
 
@@ -156,13 +136,5 @@ class Push {
 }
 
 /// Runs when a message arrives with the app closed.
-///
-/// Must be a top-level function: Android starts a separate Dart isolate to run
-/// it, with none of the app's state, so anything captured from a class or a
-/// closure simply is not there.
-///
-/// Deliberately empty. The sender posts data-only messages and Android shows
-/// the tray notification itself; doing anything here as well would produce two
-/// banners for one event.
 @pragma('vm:entry-point')
 Future<void> _whileClosed(RemoteMessage message) async {}

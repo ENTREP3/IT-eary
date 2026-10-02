@@ -1,11 +1,6 @@
 // Renders the journey flowchart from docs/lab3-presentation.html to a PNG.
 //
 // Word's HTML import does not handle inline SVG reliably, so the .docx build
-// needs a raster copy. Captured at 2x in the light theme, clipped to the
-// <svg class="flowchart"> element only.
-//
-// Run after `node scripts/build-lab3-page.mjs`:
-//   node scripts/lab3-flowchart-png.mjs
 import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';

@@ -5,32 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Cancelling and refunding are different words for different events.
- *
- * `cancelled` was doing three incompatible jobs. A diner dropping an unpaid
- * ticket, the owner writing off a payment that never arrived, and the owner
- * undoing an order the shop had already been paid for all ended up in the same
- * state — so the books could not answer the one question that matters after
- * money has changed hands: does the shop owe anybody anything?
- *
- * The shop's own rule settles it:
- *
- *   cancel  — the ticket was never paid for. Nothing owed.
- *   refund  — the ticket was paid for, and the money goes back.
- *
- * And a refund is only possible while the food can still go back in the
- * platter. A karinderya cooks in batches and plates to order, so a serving on a
- * ticket that is still `paid` or `preparing` has not left the platter yet:
- * refunding it returns the serving to the count and costs the shop nothing.
- * Once the ticket is `ready` the food is plated and waiting, and neither a
- * refund nor a cancellation is offered. That gate lives here rather than in the
- * app, because a rule about money that only exists in a screen is not a rule.
- *
- * The discount is already inside `total`, so a 75-peso dish bought with a
- * 15-peso code refunds 60. What the diner paid is what the diner gets back.
- *
- * A promotion is not released by a refund. The code is spent when it is used,
- * which is the shop's decision and also stops one code being recycled through
- * an order-and-refund loop.
  */
 return new class extends Migration
 {

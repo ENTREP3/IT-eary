@@ -6,21 +6,6 @@ import { useAuthStore } from '../../store/authStore';
 
 /**
  * A diner's own details, and a way to fix them.
- *
- * Accounts collect a name at signup, and until this existed
- * there was nowhere to see either of them again, let alone correct a surname
- * typed wrong on a phone keyboard at the counter.
- *
- * Read through `my_profile()` rather than straight from the table, because the
- * email address lives on `auth.users` where no client may look. The row is the
- * caller's own and nobody else's — the function reads `auth.uid()` rather than
- * taking an id.
- *
- * Saving goes through `save_my_profile()` for a sharper reason: `profiles`
- * also holds `role`. Any update policy wide enough to let somebody fix their
- * own surname would be wide enough to let them set themselves to owner, and no
- * amount of care in this file closes that. The function writes the name
- * columns and nothing else, so the role is not reachable from here at all.
  */
 
 type Details = {
@@ -46,11 +31,6 @@ const field =
 export function MyDetails() {
   /*
    * refreshProfile, not init.
-   *
-   * init() subscribes to onAuthStateChange, so calling it again adds a second
-   * listener rather than refreshing anything — and a third, and a fourth. Every
-   * later sign-in or token refresh then ran settle() once per accumulated
-   * listener, each a state update on a component tree already re-rendering.
    */
   const refreshProfile = useAuthStore((s) => s.refreshProfile);
 

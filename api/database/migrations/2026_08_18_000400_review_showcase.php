@@ -5,17 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Choosing which reviews the shop shows off, and how they cycle.
- *
- * An on/off switch for ratings was not control. The owner could show all of
- * them or none of them, and a single sour review sat beside the good ones with
- * nothing to be done about it short of deleting it, which is dishonest.
- *
- * Picking is the honest middle: every review stays in the system and still
- * counts towards each dish's average, but the owner decides which ones are
- * quoted on the front page. That is what any shop does with a testimonial board.
- *
- * The showcase settings live in the storefront column beside the display
- * switches, since they are the same kind of decision.
  */
 return new class extends Migration
 {

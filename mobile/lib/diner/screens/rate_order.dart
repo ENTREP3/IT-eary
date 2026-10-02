@@ -5,16 +5,6 @@ import '../../services/api.dart';
 import '../../theme.dart';
 
 /// Rating what you just ate, from the ticket that proves you bought it.
-///
-/// The ticket code IS the proof of purchase, which is what lets ratings work
-/// without accounts. The database refuses a rating unless that ticket was
-/// settled and actually contained the dish, so nobody can manufacture praise
-/// for food they never ordered.
-///
-/// Existing ratings are read back from the database when this opens. An earlier
-/// version only remembered what was rated during that one visit to the screen,
-/// so reopening a past order showed empty stars and looked as though nothing had
-/// saved. What you gave now shows wherever you look at it, on any device.
 class RateOrder extends StatefulWidget {
   const RateOrder({super.key, required this.ticket});
 

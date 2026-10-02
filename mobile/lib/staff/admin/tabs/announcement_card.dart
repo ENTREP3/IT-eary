@@ -7,20 +7,6 @@ import '../../../tokens.dart';
 import 'widgets.dart';
 
 /// Saying one thing to every diner at once, from behind the counter.
-///
-/// The shop's permanent description is a section above and is not this: that
-/// says what Bencris is, and this says what is true today. Closing early for a
-/// fiesta, a brownout at the palengke, kambing that will be gone by two.
-///
-/// Every announcement expires, and the form offers no way around it. An
-/// open-ended notice is the one that gets forgotten, and a sign still reading
-/// "closing early today" on Thursday teaches customers to stop believing the
-/// banner — which costs more than never having posted it. Anything genuinely
-/// permanent belongs in the shop blurb.
-///
-/// On the phone deliberately, not only the laptop. The owner is usually at the
-/// counter when the reason to announce something happens, and a notice that
-/// has to wait until they get home is a notice nobody needed by then.
 class AnnouncementCard extends StatefulWidget {
   const AnnouncementCard({super.key});
 

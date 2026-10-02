@@ -1,22 +1,6 @@
 // Loads every screen, signs in as staff, and clicks through every tab,
 // reporting anything that throws.
 //
-// Vite strips TypeScript without type-checking it, so a wrong prop, a missing
-// import or a helper left behind by a refactor only fails at runtime. An
-// earlier version of this script checked routes while signed OUT, which meant
-// the staff tabs were never rendered and a missing component in the kitchen
-// board went unnoticed. Signing in is the point.
-//
-// The staff logins are real accounts the owner created, so they are not
-// hardcoded here. Put them in .env.local or pass them on the command line:
-//
-//   CHECK_ADMIN_EMAIL=... CHECK_ADMIN_PASSWORD=... \
-//   CHECK_CASHIER_EMAIL=... CHECK_CASHIER_PASSWORD=... node scripts/check-ui.mjs
-//
-// Without them the public pages are still checked and the staff screens are
-// skipped, which is more useful than failing outright.
-//
-// Run with `npm run dev` up:  node scripts/check-ui.mjs
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import os from 'node:os';

@@ -5,35 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The owner can fix somebody's details, not only suspend or delete them.
- *
- * A name typed wrong on a phone keyboard at the counter, a username somebody
- * regrets, a mobile number that has changed. Every one of those is a thing the
- * customer will ask the shop to fix rather than work out themselves, and until
- * now the only answers were "delete the account" or "open Supabase".
- *
- * ---------------------------------------------------------------------------
- * One set of rules, used twice
- *
- * The validation — a first and last name, a username of the right shape, not
- * one somebody else already has — is identical whether a diner is editing
- * their own details or an owner is editing theirs. It is therefore written
- * once, in `write_profile_names`, and both entry points call it.
- *
- * The alternative was two copies that agree today. They would not have agreed
- * for long: the next change to the username rule would be made in whichever
- * one the person was looking at.
- *
- * ---------------------------------------------------------------------------
- * What the owner still cannot do here
- *
- * Change a role. `profiles.role` is not written by any of this, which is the
- * same reason a diner's own save goes through a function rather than an update
- * policy. Promotion has its own call, with its own guard about the last owner.
- *
- * Change an email. That lives on `auth.users` and means proving the new
- * address belongs to somebody, which is a confirmation flow rather than a text
- * box. An owner silently reassigning a login to another address is also
- * exactly the shape of the thing you would not want to be possible.
  */
 return new class extends Migration
 {

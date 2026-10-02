@@ -3,14 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 /// Shows a dish's photo, however it happens to be stored.
-///
-/// The web admin encodes an uploaded photo as a `data:` URI directly in the
-/// column rather than uploading it to storage. `Image.network` fetches a URL
-/// through the platform's HTTP stack, which does not understand that scheme
-/// outside a browser tab — so a photo added on the web rendered fine on the
-/// website and quietly failed everywhere else the app runs natively. This
-/// decodes it locally instead, which is what makes a photo look the same
-/// wherever it is opened.
 class DishImage extends StatelessWidget {
   const DishImage({
     super.key,

@@ -1,43 +1,5 @@
 /**
  * Sends a notification to whoever the shop needs to reach.
- *
- * ---------------------------------------------------------------------------
- * Why this exists at all
- *
- * Calling FCM requires signing a request with a service account's private key.
- * That key can send a notification to every device this project knows about,
- * so it cannot go anywhere a customer's browser could reach it. It lives in
- * this function's secrets and nowhere else — not in the bundle, not in the
- * database, not in the repository.
- *
- * Firebase Cloud Functions would be the obvious home, but those require the
- * Blaze plan and the shop is on Spark. This runs on Supabase instead, beside
- * the data it reads.
- *
- * ---------------------------------------------------------------------------
- * Who may call it
- *
- * Two callers, and no third.
- *
- * A member of staff, proved by their own session — the same login they use at
- * the till. An endpoint that makes phones buzz and trusts whoever calls it is
- * a way to push a message to a shop's entire customer list.
- *
- * Or the database itself, proved by the service role key, for the things no
- * person presses a button for: a dish selling out, stock falling below par, a
- * rating arriving. Those happen while the owner is nowhere near the shop,
- * which is exactly when they most need saying.
- *
- * ---------------------------------------------------------------------------
- * Who gets told is never simply taken from the request
- *
- * `to` names an audience, not a list of devices. A ticket resolves to the
- * diner who placed it; `staff` resolves to the people whose profile says so;
- * `dish_waiters` resolves to whoever actually asked about that dish. The
- * caller says who it means, and this decides who that is.
- *
- * The one exception is `users`, which does take ids — and it is why the staff
- * check matters, because it is the shape a stranger would reach for.
  */
 
 const FCM_SCOPE = 'https://www.googleapis.com/auth/firebase.messaging';
@@ -87,11 +49,6 @@ function signingKey(pem: string): Promise<CryptoKey> {
 
 /**
  * An OAuth access token for FCM, cached until shortly before it expires.
- *
- * Google issues these for an hour. Minting a fresh one per notification would
- * add a second round trip to every send and, on a busy lunchtime, invite rate
- * limiting on the token endpoint rather than on the thing we actually want to
- * do.
  */
 let cached: { token: string; expires: number } | null = null;
 
@@ -218,12 +175,6 @@ async function resolve(to: Audience): Promise<{ userIds: string[]; note?: string
     case 'dish_waiters': {
       /*
        * Everyone still waiting on this dish.
-       *
-       * The trigger that stamps notified_at runs when the dish comes back, so
-       * by the time this is called the rows are already marked. Filtering on
-       * an unnotified flag here would therefore match nobody — the waiting
-       * list is read by dish, and the flag is what the diner's own account
-       * page uses to show them the news.
        */
       const dish = encodeURIComponent(String(to.dish_id ?? ''));
       const res = await db(`stock_alerts?dish_id=eq.${dish}&select=customer_id`);
@@ -256,12 +207,6 @@ Deno.serve(async (req) => {
 
     /*
      * Everyone is its own path rather than a list of every user id.
-     *
-     * Resolving it the other way would mean fetching every account in the
-     * shop to build a filter naming them all, when the only thing actually
-     * needed is the devices — and most accounts have none. It is also the
-     * one audience where the number of ids grows without limit, which is
-     * how a URL ends up too long to send.
      */
     let tokensRes: Response;
     if ((to as Audience)?.kind === 'everyone') {
@@ -288,12 +233,6 @@ Deno.serve(async (req) => {
     for (const row of rows) {
       /*
        * Data-only, deliberately.
-       *
-       * A message carrying a `notification` block is displayed by the browser
-       * or the OS itself, *and* handed to our service worker, which then shows
-       * its own — two identical banners for one event. Sending data only makes
-       * our handler the single place that decides what a notification looks
-       * like, on both platforms.
        */
       const res = await fetch(
         `https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`,

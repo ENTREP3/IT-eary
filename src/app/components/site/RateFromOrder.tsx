@@ -8,21 +8,6 @@ import { humanError } from '../../lib/errors';
 
 /**
  * Rating the dishes on an order, from the order.
- *
- * Rating already existed, on the dish cards in the menu, behind a check that
- * this browser had ordered the dish. Which meant somebody looking at their own
- * order history — the one screen in the whole site that is a list of meals
- * they have definitely eaten — had no way to rate any of them, and had to go
- * back to the menu, find the dish among two dozen others, and hope the button
- * was there.
- *
- * This is the same `leave_review` underneath. The difference is that here the
- * ticket is not something to look up: it is the card the diner is already
- * reading, so the question "may this person rate this dish" never has to be
- * asked.
- *
- * Shown only on a collected order. Rating food before it is handed over is
- * rating the wait, and the database refuses it anyway.
  */
 
 type Item = { id?: string; name: string; qty: number };
@@ -59,11 +44,6 @@ function DishRow({ ticketCode, item }: { ticketCode: string; item: Item }) {
 
   /*
    * Settled ratings cannot be changed, and the stars stop being buttons.
-   *
-   * The database refuses a late edit regardless; this is so nobody taps a
-   * star, watches nothing happen, and taps it again. It also removes the
-   * risk the window exists for: a mistap on a months-old rating silently
-   * rewriting a dish's average.
    */
   const locked = Boolean(existing) && !stillEditable(existing?.at);
   const [stars, setStars] = useState(existing?.stars ?? 0);
@@ -76,12 +56,6 @@ function DishRow({ ticketCode, item }: { ticketCode: string; item: Item }) {
 
   /*
    * Follow the rating once it arrives.
-   *
-   * useState only reads its argument on the first render, and the account
-   * copy is fetched over the network — so a rating left on another device
-   * lands after this has already initialised to zero stars, and without this
-   * would never be shown. Skipped while the sheet is open, so it cannot
-   * overwrite what somebody is in the middle of typing.
    */
   useEffect(() => {
     if (!existing || open) return;

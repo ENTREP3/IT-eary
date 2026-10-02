@@ -1,20 +1,4 @@
 /// What a person should be told when something fails.
-///
-/// Diners and cashiers were being shown whatever came back off the wire:
-/// `PostgrestException(message: ..., code: 23505)`, `SocketException`,
-/// `AuthApiException`. Those sentences are written for whoever is going to fix
-/// the problem, and the person reading them is standing at a counter with a
-/// queue behind them. They cannot act on any of it, and it reads as though the
-/// shop is broken.
-///
-/// The one thing worth passing through untouched is the shop's own rules.
-/// Every `raise exception` in the database — "ticket K7M2Q9 has been paid for,
-/// refund it rather than cancelling it" — comes back as SQLSTATE **P0001**, and
-/// those were written for exactly this moment. Anything with a real SQLSTATE,
-/// or no code at all, is machinery and gets translated.
-///
-/// The rule of thumb for the wording: say what happened, and say what to do
-/// next. "Try again" is only useful where trying again might actually work.
 library;
 
 import 'dart:async';

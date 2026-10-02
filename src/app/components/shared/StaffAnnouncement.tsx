@@ -4,16 +4,6 @@ import { supabase } from '../../lib/supabase';
 
 /**
  * What the owner needs the counter to know today.
- *
- * The same table the storefront banner reads, but staff see more of it: the
- * read policies let them through to announcements addressed to `staff` as well
- * as the ones written for diners. Both are worth having on screen at the till —
- * somebody taking payments should know the shop is closing early quite as much
- * as the customers do.
- *
- * Which is why this is not the diner banner with different colours. It is the
- * same idea in the staff palette, and it deliberately shows announcements the
- * storefront would never render.
  */
 
 type Announcement = {
@@ -43,14 +33,6 @@ export function StaffAnnouncement() {
 
     /*
      * A name of its own per mount, not a fixed one.
-     *
-     * supabase.channel(name) hands back the EXISTING channel when one with
-     * that topic is already open, and adding a callback to a channel that
-     * has already subscribed throws. removeChannel is asynchronous, so a
-     * component that unmounts and remounts — switching view, or React
-     * mounting an effect twice in development — reaches for the old channel
-     * before it has finished closing. That threw during render and took the
-     * whole screen down with it, which is a high price for a banner.
      */
     const channel = supabase
       .channel(`staff-announcements-${Math.random().toString(36).slice(2)}`)
@@ -65,11 +47,6 @@ export function StaffAnnouncement() {
 
   /**
    * Takes it down when it expires, without being told to.
-   *
-   * Expiry is the clock passing a timestamp, not a row changing, so there is no
-   * database event to listen for. A till left open through closing time would
-   * otherwise still be showing this afternoon's notice tomorrow morning — and
-   * a till is exactly the screen nobody reloads.
    */
   useEffect(() => {
     if (!item) return;

@@ -22,13 +22,6 @@ class Api {
   }
 
   /// Frees any plate still held by a ticket nobody came for.
-  ///
-  /// Called before the menu is read, because that is the moment a stale hold
-  /// does its damage: a serving sitting in the platter while the app says sold
-  /// out. There is no pg_cron on this project, so nothing does it on a timer.
-  ///
-  /// Failure is ignored on purpose. A menu that loads with one plate still
-  /// wrongly held is worth far more than no menu at all.
   static Future<void> releaseStaleTickets() async {
     try {
       await _db.rpc('release_stale_tickets');
@@ -65,10 +58,6 @@ class Api {
   // --------------------------------------------------------------- accounts
   //
   // An account is optional and always will be. On a meal costing under a
-  // hundred pesos a signup wall is the surest way to lose the sale, and the
-  // ticket-code flow is what keeps the counter fast. What an account adds is
-  // everything that needs memory across visits: history that survives a new
-  // phone, a live view of the order, and loyalty.
 
   static User? get currentUser => _db.auth.currentUser;
 
@@ -79,24 +68,10 @@ class Api {
   static bool get identified => currentUser != null;
 
   /// Whether there is a real account behind the session.
-  ///
-  /// Deliberately false for an anonymous one. Every diner now has a session —
-  /// that is how a guest ticket becomes provably theirs — so "is there a user"
-  /// stopped being a usable test for "has an account", and every screen that
-  /// asks this one is really asking whether to show the account screen, the
-  /// loyalty card and the promotions.
   static bool get signedIn =>
       currentUser != null && currentUser!.isAnonymous != true;
 
   /// Gives this device an identity if it has none.
-  ///
-  /// Called once at startup. The diner is never asked and never told: the only
-  /// thing it changes is that the orders they place belong to somebody the
-  /// database can name, so they are theirs and nobody else's.
-  ///
-  /// A failure is survivable — the order is simply placed unattached, which is
-  /// how the system worked for its whole life until now — so it never blocks
-  /// the app from opening.
   static Future<void> ensureIdentity() async {
     if (currentUser != null) return;
     try {
@@ -112,18 +87,6 @@ class Api {
 
   /// Returns true when the account is ready to use, false when the project
   /// requires the address to be confirmed by email first.
-  ///
-  /// A guest signing up is upgraded in place, not replaced.
-  ///
-  /// The app gives every diner an anonymous session the moment it opens, so by
-  /// the time anybody reaches this form there is always one. Calling signUp()
-  /// on top of it asks Supabase to mint a second user while the first is still
-  /// signed in — which is why nothing was created and no email ever went out.
-  /// Attaching the address to the user they already are keeps every order that
-  /// user placed as a guest, rather than stranding it against an identity
-  /// nobody can sign into.
-  ///
-  /// The website has always done this. The phone never did.
   static Future<bool> signUp(
     String email,
     String password, {
@@ -170,13 +133,6 @@ class Api {
     // Signing up with an address that already has an account does not fail.
     // Supabase answers as though it worked, because telling a stranger which
     // emails are registered hands them a list of this shop's customers. What
-    // it returns instead is a user with no identities attached, and that is
-    // the tell.
-    //
-    // Left alone it reads as success: the diner is told to check an inbox
-    // that never receives anything, and blames the app rather than
-    // remembering they already signed up. Saying so costs the shop nothing —
-    // anyone can learn the same thing from the sign-in form.
     if (res.session == null && (res.user?.identities?.isEmpty ?? false)) {
       throw const AuthException('User already registered');
     }
@@ -190,13 +146,6 @@ class Api {
   static Future<void> signOut() => _db.auth.signOut();
 
   /// Sends a six-digit code to somebody locked out of their account.
-  ///
-  /// A code rather than the link the website uses. A link has to come back
-  /// into the app, which means App Links or a custom scheme — a deployed
-  /// domain, a verification file it has to serve, and a per-platform dance
-  /// that breaks quietly whenever any of it drifts. A code the diner reads
-  /// from their inbox and types needs none of that and works the same on a
-  /// phone with no default browser set.
   static Future<void> sendPasswordCode(String email) =>
       _db.auth.resetPasswordForEmail(email.trim());
 
@@ -212,15 +161,6 @@ class Api {
       );
 
   /// Confirms a new account with the six-digit code from the email.
-  ///
-  /// The website confirms with a link, and that is right there: a link in an
-  /// email opens the browser, which is where the website already is. On a
-  /// phone the same link opens a browser too — away from the app the diner
-  /// just signed up in, leaving them confirmed somewhere they were not.
-  ///
-  /// A code brings them back into the app instead. Same account, same email,
-  /// same backend; only the way back differs, because the way back is the
-  /// part that differs between a browser and an app.
   static Future<void> verifySignupCode(String email, String code) =>
       _db.auth.verifyOTP(
         email: email.trim(),
@@ -254,17 +194,6 @@ class Api {
   }
 
   /// This diner's own orders, newest first.
-  ///
-  /// Filtered by customer here on purpose. The access rules would return rows
-  /// without it, because anybody may read orders from the last 24 hours so a
-  /// guest ticket can follow itself, and the screen would quietly list other
-  /// people's orders. Access rules decide what you MAY read, not what a screen
-  /// means. The web app had exactly this bug.
-  ///
-  /// That window is now closed, and this goes through my_orders() instead: it
-  /// returns the orders raised by THIS device, plus the ones on the account if
-  /// there is one, and nothing else. A guest gets their own list without ever
-  /// making an account, which is the point.
   static Future<List<Ticket>> myOrders() async {
     final rows = await _db.rpc(
       'my_orders',
@@ -302,12 +231,6 @@ class Api {
   }
 
   /// Turns a filled loyalty card into a discount code.
-  ///
-  /// The card could be read but never spent, so a diner who had earned a reward
-  /// on their phone had to find a laptop to claim it. The database decides
-  /// whether they have actually earned one; this only asks.
-  ///
-  /// Returns the code, or null if there was nothing to claim.
   static Future<String?> claimLoyaltyReward() async {
     if (!signedIn) return null;
     final code = await _db.rpc('claim_loyalty_reward');
@@ -317,11 +240,6 @@ class Api {
   /// Discount codes the owner is running now, so a diner with an account learns
   /// about them without the shop paying to advertise anywhere.
   /// The codes still worth something to this diner.
-  ///
-  /// A code is good once per account, so listing one they have already claimed
-  /// would be an advert for a dead end — they would type it in and be told no.
-  /// The redemptions they can read are their own; access rules see to that, so
-  /// filtering here shows nobody anything new.
   static Future<List<Promo>> activePromos() async {
     try {
       final running = await _db
@@ -341,12 +259,6 @@ class Api {
   }
 
   /// What a discount code is worth on this order, before committing to it.
-  ///
-  /// Priced by the same database rule that will charge it, so the cart can never
-  /// quote a discount the checkout then refuses. On failure it returns the
-  /// reason, so the diner is told "spend 20 pesos more" instead of a flat
-  /// "invalid", which is the difference between an abandoned cart and a bigger
-  /// one.
   static Future<PromoPreview> previewPromo(String code, double subtotal) async {
     try {
       final rows = await _db.rpc(
@@ -385,16 +297,6 @@ class Api {
   }
 
   /// The quotes for the showcase band, chosen by the owner's own rules.
-  ///
-  /// The same query the website runs, so the two cannot end up quoting
-  /// different diners.
-  ///
-  /// Every rating above the bar comes back, whatever the two switches say. The
-  /// comments switch used to filter this query — with it on, a review with no
-  /// words was dropped entirely, so a shop whose diners rated without writing
-  /// anything had a band that showed nothing at all. It now decides only
-  /// whether the words are printed; the stars are the owner's other switch,
-  /// and neither hides a rating the other would have shown.
   static Future<List<Review>> showcaseReviews(Storefront show) async {
     try {
       var q = _db
@@ -806,13 +708,6 @@ class Api {
   }
 
   /// Picks a GCash receipt from the gallery and uploads it against [ticketCode].
-  ///
-  /// image_picker caps the image at 1200px / 70% quality itself, which works on
-  /// both mobile and web. That matters: Supabase's server-side image transform
-  /// is a paid feature, and a raw phone screenshot is 1–2 MB, so shrinking here
-  /// is what keeps the project inside the free 1 GB storage allowance.
-  ///
-  /// Returns null if the diner backs out of the picker.
   static Future<Ticket?> pickAndUploadProof(String ticketCode) async {
     final picked = await ImagePicker().pickImage(
       source: ImageSource.gallery,

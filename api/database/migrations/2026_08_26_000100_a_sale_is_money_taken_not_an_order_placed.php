@@ -5,27 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * A ticket counted as a sale the moment it was created, and never stopped.
- *
- * `apply_order_to_dishes` ran on insert and did two different jobs at once:
- * it held back a plate (right — two diners must not be sold the last serving)
- * and it recorded a sale (wrong — nobody had paid yet). Adding to a cart moved
- * the day's takings. Cancelling moved nothing back, so a cancelled order stayed
- * in the takings forever and its plate was never returned to the shelf.
- *
- * The two jobs are now separated by the event that actually distinguishes them:
- *
- *   placed     -> hold the plate
- *   paid       -> record the sale
- *   cancelled  -> give the plate back, and take the sale off if one was recorded
- *
- * `paid_at` is the marker rather than `payment_status`, because it is what the
- * cashier's own settle path stamps and what `cogs_by_day` already trusted. A
- * ticket sitting in `needs_review` is not money in the till yet; it becomes one
- * when the owner resolves it on the dashboard.
- *
- * Reversal is written so it cannot run twice. Cancelling an already-cancelled
- * order, or a second UPDATE that touches an unrelated column, must not keep
- * handing back plates — hence the guard on the previous row's own status.
  */
 return new class extends Migration
 {

@@ -5,37 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Whether a ticket belongs to somebody with an account, and what to call them.
- *
- * The counter could not tell. `customer_id` looks like the answer and is not:
- * every diner is given an anonymous account the moment they open the app, so
- * that column is filled in for a walk-in guest exactly as it is for a regular
- * with a real login. A ticket from each looked identical.
- *
- * ---------------------------------------------------------------------------
- * Stamped at the time, not worked out on every read
- *
- * `from_account` is written once, when the order is placed. It could have been
- * a join to auth.users on every read, but that would be a different answer to
- * a different question: whether the person *still* has an account today. What
- * the counter needs is what was true when the food was ordered, and that does
- * not change afterwards — not when they later sign up, and not when the
- * account is deleted and the order becomes a guest order in the takings.
- *
- * No client may read auth.users either, so a join would have had to happen
- * inside a function on every listing of every order.
- *
- * ---------------------------------------------------------------------------
- * The name now uses what the diner chose to be called
- *
- * The old rule fell back to the part of their email before the @, which was
- * the best available when an account had nothing but an address. Accounts now
- * carry a nickname, a username and a real name, so the ticket uses those in
- * the order the diner would expect to be greeted — the same order
- * `display_name()` uses everywhere else.
- *
- * What the diner typed still wins over all of it. They may be ordering for
- * somebody else, and the name to call out at the counter is the one on the
- * ticket.
  */
 return new class extends Migration
 {

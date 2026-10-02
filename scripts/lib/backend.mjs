@@ -1,12 +1,6 @@
 // The one place a script decides which backend it is talking to.
 //
 // There is exactly one database for this system: the hosted Supabase project.
-// The scripts used to hardcode the local Docker stack, which meant "the checks
-// passed" and "the app works" could be true of two different databases at once.
-// They now read the same .env.local the web app reads, so that cannot happen.
-//
-// Staff credentials come from the environment because staff accounts are real
-// rows created by the owner, not fixtures. Nothing is hardcoded.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -10,16 +10,6 @@ import { OpenPill } from './SiteChrome';
 
 /**
  * The front page opens on the food, not on a paragraph.
- *
- * The dishes the owner featured take turns filling the screen behind the
- * headline. That is the only thing on this page that can make somebody hungry,
- * and it was previously three small thumbnails below the fold while the top of
- * the page repeated the opening hours and address that already sit in the footer.
- *
- * Everything on top of the photograph has to stay readable over a photograph
- * nobody has vetted, which is what the scrim below is for: the owner will upload
- * their own pictures, some bright, some dark, and the headline cannot depend on
- * any of them.
  */
 export function Hero() {
   const biz = useBusinessStore((s) => s.profile);

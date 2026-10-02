@@ -5,38 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Suspending, banning, deleting, and changing what somebody is.
- *
- * The people screen could only look. An owner who needs to stop a customer
- * ordering — somebody abusive, somebody placing orders they never collect —
- * had no way to do it short of opening the Supabase dashboard.
- *
- * ---------------------------------------------------------------------------
- * Suspension is Supabase's own, not a flag of ours
- *
- * `auth.users.banned_until` already exists and is already enforced at sign-in,
- * before any of our code runs. A `suspended` column on `profiles` would have
- * been a second answer to the same question, enforced only wherever we
- * remembered to check it — and the place it would be forgotten is the one that
- * matters. A ban here is simply a suspension with a date far enough away that
- * nobody will outlive it.
- *
- * ---------------------------------------------------------------------------
- * Deleting keeps the sales
- *
- * `orders.customer_id` is ON DELETE SET NULL, so removing an account turns
- * their past orders into guest orders rather than erasing them. That is the
- * right trade: the shop's takings for last Tuesday are the shop's records, not
- * the customer's, and an owner deleting a troublesome account must not
- * silently rewrite their own sales history. Favourites, loyalty and push
- * tokens do go, because those are the person's and mean nothing without them.
- *
- * ---------------------------------------------------------------------------
- * Three things nobody may do, however senior
- *
- * Act on yourself — locking yourself out of your own shop needs a developer to
- * undo. Remove the last owner, by deletion, ban or demotion, which leaves a
- * shop nobody can administer. And reach any of this without being an owner in
- * the first place.
  */
 return new class extends Migration
 {
@@ -262,10 +230,6 @@ grant execute on function public.list_people(text) to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Reading your own details back
--- ---------------------------------------------------------------------------
--- The profile row is readable under existing policy, but the email lives on
--- auth.users where no client may look. This hands back one person's own row,
--- and only their own.
 create or replace function public.my_profile()
 returns table (
   id          uuid,

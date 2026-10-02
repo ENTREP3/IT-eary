@@ -381,18 +381,6 @@ class Ticket {
 }
 
 /// The shop's own details, owned by the owner and read by every client.
-///
-/// Kept here rather than hardcoded so the address, hours and tagline can be
-/// corrected on the dashboard without anyone rebuilding an app. The website
-/// reads the same row, which is what stops the two disagreeing.
-/// What the storefront shows, decided by the owner on the dashboard.
-///
-/// The app used to ignore this row entirely, so every switch on the Shop screen
-/// changed the website and left the phone showing whatever it liked. An owner
-/// who turns ratings off has turned them off, not turned them off in one place.
-///
-/// A missing key means on, so a shop that has never opened that screen looks
-/// exactly as it always did and nothing vanishes because a key was added.
 class Storefront {
   final bool ratings;
   final bool comments;

@@ -5,41 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * An account with a person behind it.
- *
- * Signing up asked for an email and a password, which is exactly what signing
- * in asks for. The form gave no sign that it was creating anything, and the
- * account it created knew nothing about the person: `full_name` was a single
- * optional box that nothing ever filled, so the shop could not greet anybody
- * by name or tell two customers apart on a receipt.
- *
- * ---------------------------------------------------------------------------
- * The name, in parts
- *
- * First and last are required; middle is not, because plenty of people do not
- * use one and a required box they must leave blank is a box that gets a full
- * stop typed into it.
- *
- * `full_name` stays, and a trigger keeps it equal to the parts. Dropping it
- * would mean finding every receipt, every order stamp and every staff list
- * that reads it; deriving it means those keep working and cannot disagree with
- * the parts.
- *
- * ---------------------------------------------------------------------------
- * The username
- *
- * What the shop greets them by, and the reason it is separate from the name:
- * "Welcome back, Maria" is warmer than "Welcome back, Maria Dela Cruz", and a
- * diner should get to choose what they are called. `nickname` sits above it
- * for anyone who wants something different again.
- *
- * Unique without case, so `Maria` and `maria` cannot both exist — two accounts
- * that look identical in a greeting is a way to be mistaken for somebody else.
- *
- * Nullable, though, and that is deliberate rather than sloppiness. Every diner
- * gets an anonymous account the moment they open the app, long before anybody
- * asks them anything. Those are real rows in this table and they genuinely
- * have no username; a NOT NULL here would mean inventing one for a guest who
- * never asked for an account at all.
  */
 return new class extends Migration
 {
@@ -68,12 +33,6 @@ create unique index if not exists profiles_username_unique
 
 /*
  * What a username may be.
- *
- * Letters, digits, underscore and full stop, starting with a letter, three to
- * twenty. Narrow on purpose: this is shown to other people and typed by the
- * person themselves, so anything that can be confused for something else — a
- * leading digit, a trailing space, a right-to-left mark — is worth refusing at
- * the door rather than explaining later.
  */
 do $$
 begin
@@ -142,11 +101,6 @@ comment on function public.display_name(public.profiles) is
 /*
  * Answered for anyone, signed in or not, because the signup form needs it
  * before an account exists.
- *
- * This does reveal whether a username is taken — but so does the signup form
- * itself the moment it is submitted, and a name people can be greeted by is
- * public by its nature. What it deliberately does not expose is any way to get
- * from a username to an email or an order.
  */
 create or replace function public.username_available(p_username text)
 returns boolean

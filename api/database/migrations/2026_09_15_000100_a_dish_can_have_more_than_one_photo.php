@@ -5,27 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * One photograph was never going to be enough to sell a dish.
- *
- * A karinderya sells food that looks like something: the plate, the serving in
- * the platter, the meal with rice next to it. A single column could hold one of
- * those, so the owner had to choose which one lie to tell.
- *
- * Two decisions worth writing down.
- *
- * The photos live in storage and the row keeps only their URLs. The existing
- * column holds a base64 data URI — the two dishes that have a picture carry
- * about 76 KB each inside the row itself, and the menu query reads every dish
- * column. Three photos each across twenty-five dishes would have meant roughly
- * five megabytes downloaded before a diner saw a single price, on a phone, on
- * mobile data, standing in the street. A URL is a few hundred bytes, the
- * browser fetches the image only when it is shown, and it caches it afterwards.
- *
- * `image` is kept, and kept correct, rather than dropped. Every existing read
- * path uses it — the hero, the menu cards, the admin list, the storefront
- * thumbnails, both apps. A trigger keeps it equal to the first photo, so that
- * code goes on working untouched and there is exactly one answer to "what does
- * this dish look like". Old data URIs still sit in the array quite happily;
- * both apps already know how to render either kind.
  */
 return new class extends Migration
 {

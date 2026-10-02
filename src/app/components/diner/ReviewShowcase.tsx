@@ -6,14 +6,6 @@ import { useBusinessStore } from '../../store/businessStore';
 
 /**
  * What diners said, a few at a time, cycling.
- *
- * Food is bought on trust and a first-time visitor has nothing else to go on.
- * A wall of every review is unreadable and a single static quote looks planted;
- * a small group that changes reads like a board of testimonials and gives every
- * good review a turn.
- *
- * The owner controls all of it on the Shop screen: which reviews qualify, the
- * star floor, how many are on screen, and how often they change.
  */
 
 type Quote = {
@@ -26,12 +18,6 @@ type Quote = {
 
 /**
  * Four columns, always, whatever the batch size is.
- *
- * Not "as many columns as there are quotes": the card is a fixed thing on the
- * page, and it should not grow to double width because the owner chose to show
- * two at a time, or because the last batch happened to be short. One quote, two
- * or four, each one is the same card in the same place — the band keeps its
- * shape and only the number of them in it changes.
  */
 const BAND_COLUMNS = 'sm:grid-cols-2 lg:grid-cols-4';
 
@@ -55,12 +41,6 @@ export function ReviewShowcase() {
       // Every rating above the bar, whatever the two switches say.
       //
       // The comments switch used to filter the query — with it on, a review
-      // with no words was dropped entirely, so a shop whose diners rated
-      // without writing anything had a band that showed nothing at all. That
-      // made one switch quietly decide which ratings existed, which is not
-      // what it claims to do. It now decides only whether the words are
-      // printed; the stars are the owner's other switch, and neither hides a
-      // rating the other would have shown.
       if (show.reviews_source === 'picked') q = q.eq('featured', true);
 
       const { data, error } = await q;

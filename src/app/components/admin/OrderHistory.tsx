@@ -6,15 +6,6 @@ import { humanError } from '../../lib/errors';
 
 /**
  * Every order the shop has taken, not just the ones still on the board.
- *
- * The dashboard shows five. That is the right number for a glance during
- * service and the wrong number for every other question an owner has: what a
- * regular usually orders, whether a refund argument is genuine, what last
- * Tuesday actually took. Those need the whole record and a way through it.
- *
- * Loaded on its own rather than from the live order feed. That feed is what the
- * kitchen board and today's figures read, and widening it to ninety days to
- * serve this screen would put three-month-old tickets back on the line.
  */
 
 const RANGES = [

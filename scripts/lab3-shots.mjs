@@ -1,13 +1,6 @@
 // Captures the evidence screenshots referenced by docs/lab3-worksheet.md.
 //
 // Drives the real app headlessly through the Chrome DevTools Protocol using
-// Edge, so every image is of the running system rather than a mockup. It walks
-// the full diner -> cashier -> owner loop:
-//
-//   storefront menu -> cart -> ticket issued -> cashier settles -> owner sees it
-//
-// Prerequisites: `npm run dev` on :5173 and the Supabase stack up.
-// Run with: node scripts/lab3-shots.mjs
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';

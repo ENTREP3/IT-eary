@@ -12,31 +12,6 @@ import {
 
 /**
  * One "are you sure?" for the whole system.
- *
- * Most destructive actions here used to fire the instant they were tapped:
- * cancelling a diner's order, revoking a staff login, deleting a promo code,
- * removing an ingredient from a recipe. None of them can be undone, and all sit
- * next to buttons pressed all day on a phone at a busy counter.
- *
- * Provided through context rather than mounted per screen, so a component only
- * asks for `confirm` and never has to remember to render a dialog. Forgetting
- * that would be silent: `confirm` would fall through to window.confirm, which
- * takes a string, so the message would read "[object Object]" and the action
- * would never run.
- *
- *   const confirm = useConfirm();
- *   <button onClick={() => confirm({
- *     title: 'Cancel this order?',
- *     body: 'The diner will see it as cancelled. This cannot be undone.',
- *     action: 'Cancel order',
- *     danger: true,
- *     onConfirm: () => setStatus(code, 'cancelled'),
- *   })}>…</button>
- *
- * Deliberately NOT used for ordinary saves. Adding an ingredient already means
- * opening a dialog and pressing Save; a second confirmation on top is how staff
- * learn to dismiss dialogs without reading them, which is exactly what makes the
- * one that matters useless.
  */
 
 export type Ask = {

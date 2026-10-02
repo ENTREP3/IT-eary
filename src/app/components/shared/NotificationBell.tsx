@@ -10,17 +10,6 @@ import {
 
 /**
  * The bell, for whoever is signed in.
- *
- * One component for the diner, the counter and the owner. They see different
- * things because the database wrote different rows for them, not because this
- * filters anything — which is what keeps a mistake here from showing somebody
- * the shop's takings.
- *
- * The dashboard had a bell before this and it was quietly incomplete: it
- * counted new orders and low stock by looking at rows the page already had, and
- * knew nothing about the five other things the shop sends. Anything computed in
- * the browser can only ever report what the browser was already looking at,
- * which is why this reads a list the database keeps.
  */
 export function NotificationBell({ tone = 'staff' }: { tone?: 'staff' | 'diner' }) {
   const { items, unread } = useNotifications();

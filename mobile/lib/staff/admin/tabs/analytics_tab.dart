@@ -828,14 +828,6 @@ class _Figure extends StatelessWidget {
 }
 
 /// Dishes whose ingredients have gone up enough to eat the margin.
-///
-/// This sits above the sales figures on purpose. A margin quietly eaten by a
-/// supplier price rise is the thing most worth acting on, and it is invisible
-/// in a sales chart, which only ever shows money coming in.
-///
-/// The new price is never applied on its own. The system works out what would
-/// restore the old margin and the owner decides — a system that repriced a
-/// menu by itself would be one the owner could not trust.
 class PriceSuggestions extends StatefulWidget {
   const PriceSuggestions({super.key, required this.onChanged});
 

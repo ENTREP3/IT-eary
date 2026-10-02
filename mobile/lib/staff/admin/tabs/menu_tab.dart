@@ -390,17 +390,6 @@ class _MenuTabState extends State<MenuTab> {
 }
 
 /// What the sales say, offered as a question rather than acted on.
-///
-/// The badge used to appear by itself, so the shop made a claim about its own
-/// food on the strength of a sum. The figures stay, but they stop being the
-/// decision: they come here, and the owner accepts or declines.
-///
-/// The second question has to be careful. Flagging a marked dish simply
-/// because it is quiet would flag the new dish the owner is deliberately
-/// pushing, so it asks only where there is a concrete alternative: something
-/// unmarked outselling their pick in the same category by a wide margin. That
-/// is a fact rather than an opinion about the food, and it names the rival so
-/// the owner can judge it themselves.
 class _Suggestions extends StatefulWidget {
   const _Suggestions({required this.dishes, required this.onChanged});
 
@@ -418,11 +407,6 @@ class _SuggestionsState extends State<_Suggestions> {
 
   /// How far an unmarked dish has to be ahead before the marked one is
   /// questioned.
-  ///
-  /// Twice is deliberately a wide gap. A marked dish merely being second is
-  /// nothing — the owner may be pushing it precisely because it needs the help.
-  /// Being outsold two to one by something they passed over is a different
-  /// claim.
   static const _clearlyAhead = 2;
 
   /// How many the rival has to have sold before being outsold means anything.
@@ -1177,12 +1161,6 @@ class _DishFormState extends State<_DishForm> {
 }
 
 /// The link between the menu and the store room.
-///
-/// A recipe is recorded per BATCH, the way a cook actually thinks: one pot of
-/// sinigang takes a kilo and a half of pork and feeds twenty. Recording that a
-/// batch was cooked is the only thing that draws ingredients out of the store
-/// room, which is why the numbers stay honest — selling a serving lowers the
-/// servings left, cooking lowers the ingredients, and the two never overlap.
 class _RecipeSheet extends StatefulWidget {
   const _RecipeSheet({required this.dish, required this.inventory});
 
@@ -1206,12 +1184,6 @@ class _RecipeSheetState extends State<_RecipeSheet> {
   final _batches = TextEditingController(text: '1');
 
   /// How many servings one batch makes.
-  ///
-  /// This used to save only when the keyboard's submit key was pressed, which
-  /// on a phone number pad is a key many people never look for — so the figure
-  /// looked changed and was not. It now saves shortly after typing stops, and
-  /// at once when the field loses focus, so what is on screen is what is in the
-  /// database. The pause is what stops "20" writing a 2 on its way past.
   final _yieldCtrl = TextEditingController();
   final _yieldFocus = FocusNode();
   Timer? _yieldDebounce;

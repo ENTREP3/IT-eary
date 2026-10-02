@@ -18,12 +18,6 @@ function methodLabel(order: Order) {
 
 /**
  * Saves the receipt as a picture.
- *
- * It wrote a .txt, on the reasoning that a receipt is read and kept and that
- * text does both without a library. That was wrong about what people do with
- * one: it gets sent to somebody, and a text file in a chat is an attachment
- * nobody opens while a picture is simply there.
- *
  */
 export async function downloadReceipt(order: Order) {
   // The renderer adds "Karinderya" itself, so it is given the bare name.

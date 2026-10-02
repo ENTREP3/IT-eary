@@ -77,12 +77,6 @@ type KarinderyaState = {
   deleteDish: (id: string) => Promise<void>;
   /**
    * Puts a photo in the bucket and hands back its URL.
-   *
-   * Storage rather than a data URI in the row. The menu query reads every dish
-   * column, so a base64 photo is downloaded by every diner just to see the
-   * list — three each across the menu came to roughly five megabytes before a
-   * single price appeared. A URL is a few hundred bytes, fetched only when the
-   * picture is actually shown, and cached afterwards.
    */
   uploadDishPhoto: (dishId: string, file: File) => Promise<string>;
   /** Removes a photo from the bucket. Silent for anything not stored by us. */
@@ -95,13 +89,6 @@ type KarinderyaState = {
 
 /**
  * Frees any plate still held by a ticket nobody came for.
- *
- * Called before the menu is read, because that is the moment a stale hold does
- * its damage — a serving sitting in the platter while the page says sold out.
- * There is no pg_cron on this project, so nothing can do this on a timer.
- *
- * Failure is ignored on purpose: a menu that loads with one plate still wrongly
- * held is worth far more than no menu at all.
  */
 async function sweepStaleTickets() {
   try {
@@ -197,10 +184,6 @@ export const useKarinderyaStore = create<KarinderyaState>((set, get) => ({
     // The smaller copy the menu will actually load. Made here because this is
     // the one moment the full file is already in hand, and uploaded under a
     // fixed sibling name so nothing extra has to be stored to find it.
-    //
-    // A failure is deliberately swallowed: the photo itself is safely up, and a
-    // card that falls back to the original is slow, not broken. Refusing the
-    // whole upload over the thumbnail would be the worse trade.
     try {
       const small = await makeDisplayCopy(file);
       if (small) {
@@ -267,14 +250,6 @@ export const useKarinderyaStore = create<KarinderyaState>((set, get) => ({
 
     /*
      * Only on the edge from unavailable to available.
-     *
-     * Every sold-out dish has a 'Tell me when this is back' button, and
-     * pressing it promises exactly that. Until now the shop recorded the
-     * request and waited for the diner to happen to look again, which is
-     * not what the button says.
-     *
-     * Edge, not state: saving the price of a dish that is already on the
-     * menu must not tell everyone it has returned.
      */
     if (before && !before.available && after.available) {
       notifyDishBack(id, after.name);

@@ -5,18 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The bestseller badge becomes the owner's word rather than a calculation.
- *
- * It used to be worked out on the diner's screen: whichever dish had the
- * highest sales in its category wore the badge, whether or not anybody at the
- * shop agreed. That is the shop making a claim about its own food that nobody
- * approved, and it could never promote a new dish however good it was, because
- * a dish with no sales can never top a list.
- *
- * The figures are not thrown away. They now produce a suggestion on the admin
- * screen — "this outsold everything else in Merienda, mark it?" — and the owner
- * accepts or declines. This key remembers the ones declined, against the sales
- * figure at the time, so the same question is not asked every morning but does
- * come back if the dish climbs well past where it was refused.
  */
 return new class extends Migration
 {

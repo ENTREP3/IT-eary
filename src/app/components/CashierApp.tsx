@@ -44,12 +44,6 @@ export function CashierApp({ chrome = true }: { chrome?: boolean }) {
 
 /**
  * @param chrome  Whether to draw the counter's own header and screen.
- *
- * The dashboard shows this same till inside its Kitchen page, where it already
- * has a sidebar, a heading and a sign-out of its own. Rendering it there with
- * its full chrome would stack two headers and two log-out buttons; rebuilding
- * the ticket flow a second time would leave two of them to keep in step. So the
- * component keeps one implementation and simply drops its frame.
  */
 function CashierCounter({ chrome }: { chrome: boolean }) {
   // In a karinderya this size the person on the till is also the person calling

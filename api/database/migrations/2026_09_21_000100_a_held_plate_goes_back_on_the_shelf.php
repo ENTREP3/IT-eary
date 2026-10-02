@@ -5,31 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * A reservation that never ends is not a reservation, it is a loss.
- *
- * Placing an order takes the serving off the menu straight away, and that is
- * right: the diner is walking over, and the whole promise of this shop's site
- * is that what it says is cooking will still be there when they arrive. Selling
- * the last adobo twice would send somebody on a trip for nothing.
- *
- * But the hold had no end. A diner who took a ticket and never came held that
- * plate for ever — the food sitting in the platter, perfectly sellable, while
- * the menu told the next customer it was sold out. Nothing was wasted in the
- * kitchen, because food cannot be cooked before it is paid for; what was lost
- * was the sale to the person who actually turned up.
- *
- * So the ticket and the plate are separated. The no-show loses their ticket,
- * which is the shop's own rule and fair enough. The serving goes back on the
- * menu, because it never left the platter.
- *
- * `expired` rather than `cancelled`, though both mean nobody paid and nothing
- * is owed. A diner calling their order off and a diner never arriving are
- * different events, and the shop cannot count how often the second happens if
- * it is written down as the first.
- *
- * There is no pg_cron on this project, so nothing can run on a timer. The sweep
- * is called instead at the moments staleness becomes visible — a diner loading
- * the menu, staff opening the kitchen board — which at this volume is more than
- * often enough, and needs no new infrastructure.
  */
 return new class extends Migration
 {

@@ -6,18 +6,6 @@ import 'services/api.dart';
 import 'services/push.dart';
 
 /// Backend selection, shared by both entrypoints.
-///
-/// The hosted Supabase project, the same one the web app uses. A plain
-/// `flutter run` or `flutter build apk` needs no flags and no local server.
-///
-/// This is why a released APK works anywhere. The app talks straight to
-/// Supabase over HTTPS, so it never needs to reach the development laptop and
-/// is not tied to the Wi-Fi the laptop happens to be on. Overriding these with
-/// `--dart-define` to point at a machine on the LAN is what creates a
-/// same-network requirement, so do not ship a build made that way.
-///
-/// The publishable key is safe to ship — it is designed to be public, and every
-/// rule that matters is enforced by RLS and SECURITY DEFINER functions.
 const supabaseUrl = String.fromEnvironment(
   'SUPABASE_URL',
   defaultValue: 'https://tgazemsmihvodammodfu.supabase.co',
@@ -43,23 +31,6 @@ Future<void> bootstrap(Widget app, {bool anonymousIdentity = false}) async {
 
   /*
    * Firebase is started, but nobody is asked anything.
-   *
-   * Starting it is what lets a notification arriving with the app closed be
-   * handled at all, and it has to happen before runApp. Asking permission is a
-   * separate step behind a button somebody presses, because a prompt that
-   * appears before anything has happened is why people refuse — and a refusal
-   * on Android is close to permanent.
-   *
-   * Every build, not only the diner's. This used to be behind the same flag as
-   * the anonymous identity, which tied two unrelated things together: whether a
-   * device gets an identity of its own, and whether it can be told something.
-   * The consequence was that the shop's own staff were the only people the
-   * notification system could not reach on a phone — the sold-out warnings, the
-   * GCash proofs and the poor-rating alerts all exist for them, and all of them
-   * stopped at the counter's web browser.
-   *
-   * Not awaited: it reaches the network, and no screen should wait on Firebase
-   * to paint. Failure is already swallowed inside.
    */
   unawaited(Push.start());
 

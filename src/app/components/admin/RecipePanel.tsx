@@ -6,12 +6,6 @@ import { useKarinderyaStore } from '../../store/karinderyaStore';
 
 /**
  * The link between the menu and the store room.
- *
- * A dish's recipe is recorded per BATCH, the way a cook actually thinks: one
- * pot of sinigang takes a kilo and a half of pork and feeds twenty. Recording
- * that a batch was cooked is the only thing that draws ingredients out of the
- * inventory, which is why the numbers stay honest: selling a serving lowers the
- * servings left, cooking lowers the ingredients, and the two never overlap.
  */
 
 type RecipeRow = { inventory_id: string; quantity: number };

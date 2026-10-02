@@ -569,12 +569,6 @@ function ReconciliationPanel({ orders }: { orders: Order[] }) {
 
 /**
  * The order queue, and the till, on one screen.
- *
- * The counter used to be a link out of the dashboard — press it, lose the
- * sidebar, look up a ticket, press back. In a karinderya this size the person
- * reading the queue is usually the person taking the money thirty seconds
- * later, so it is a toggle rather than a journey. Same till as the counter
- * screen, not a second copy of it.
  */
 function KitchenPage({ orders }: { orders: Order[] }) {
   const [view, setView] = useState<'queue' | 'ticket'>('queue');
@@ -1735,21 +1729,11 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 
 /**
  * How many photos one dish may carry.
- *
- * Enough for the plate, the platter and the meal with rice, which is what a
- * karinderya actually wants to show. A cap at all because every one of these is
- * fetched when a diner opens the dish, and because a gallery nobody curates
- * stops being a gallery.
  */
 const MAX_DISH_PHOTOS = 4;
 
 /**
  * What the front page needs to look sharp.
- *
- * The hero stretches the first photo across the full width of the window, so a
- * picture narrower than this is upscaled and goes soft. Both photos the shop
- * had when this was written were around 450px wide and portrait, which is why
- * the hero looked blurred and cropped on a laptop and fine on a phone.
  */
 const HERO_MIN_WIDTH = 1200;
 
@@ -1831,12 +1815,6 @@ function MenuControl() {
 
   /**
    * Adds photos to the dish being edited.
-   *
-   * They go to storage immediately rather than on save, because a photo is a
-   * file and the rest of this form is a handful of words: waiting to upload
-   * four megabytes until the Save button would make Save feel broken. The URLs
-   * are held in form state, so backing out of the dialog leaves the dish alone
-   * and only costs an orphaned object in the bucket.
    */
   const onPickImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []).filter((f) => f.type.startsWith('image/'));

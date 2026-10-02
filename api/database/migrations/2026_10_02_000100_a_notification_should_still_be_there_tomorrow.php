@@ -5,36 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Keep the things the shop says, instead of only shouting them once.
- *
- * Everything the notification system produces has been fire-and-forget: a push
- * goes to whatever devices are registered, and if nobody was holding the phone,
- * or the app was open at the time, or notifications were never switched on, the
- * event is gone. There is no list anywhere of what happened while you were busy
- * — which is most of the working day in a karinderya.
- *
- * The dashboard has a bell, and it has been lying by omission. It counts new
- * orders and low stock, computed in the browser from rows it already had, and
- * knows nothing about the five other things the shop sends: a dish selling out,
- * an order cancelled, a poor rating, a GCash proof waiting, a ticket left
- * unpaid. The cashier had no bell at all, and a diner with an account had
- * nowhere to see what they had been told.
- *
- * ---------------------------------------------------------------------------
- * One call does both
- *
- * The important part is not the table, it is that `notify_people` records and
- * sends in one place. Writing the bell as a second system — its own inserts
- * beside the existing push calls — guarantees that one day a trigger gains a
- * notification that reaches phones and never appears in the app, or the
- * reverse, and nobody notices because both halves look fine on their own.
- *
- * So the triggers now call `notify_people`, which resolves the audience once,
- * writes a row per person, and then hands the identical payload to
- * `push_notify`. A bell entry and a push are two deliveries of one notification
- * rather than two features that happen to agree.
- *
- * The audience rules are a transcription of the ones in the send-push edge
- * function, deliberately kept to the same five kinds and the same meanings.
  */
 return new class extends Migration
 {
@@ -95,11 +65,6 @@ return new class extends Migration
         DB::unprepared(<<<'SQL'
             /*
              * Records a notification and sends it, for one audience.
-             *
-             * A transcription of the audience rules in the send-push edge
-             * function. The two must agree, and the way to make them agree is
-             * for one call to produce both deliveries rather than for two
-             * systems to be kept in step by hand.
              */
             create or replace function public.notify_people(p_message jsonb)
             returns void
@@ -141,13 +106,6 @@ return new class extends Migration
               elsif v_kind = 'everyone' then
                 /*
                  * Only people with an account.
-                 *
-                 * A guest is a row in auth.users with no email and no password
-                 * that the next visit replaces, so a bell entry for one is
-                 * written for somebody who will never look at it. The push
-                 * still goes to every registered device, guests included —
-                 * that is what 'everyone' means for a shout — but the kept
-                 * copy belongs to people who have somewhere to keep it.
                  */
                 select array_agg(id) into v_ids
                   from auth.users
@@ -225,11 +183,6 @@ return new class extends Migration
 
             /*
              * Marks everything read, which is what opening a bell means.
-             *
-             * Per-item read state would be a nicer model and a worse product
-             * here: these are glanceable one-liners, not messages that get
-             * replied to, and a list where some entries stay bold after being
-             * looked at is a list people stop trusting.
              */
             create or replace function public.mark_notifications_read()
             returns void

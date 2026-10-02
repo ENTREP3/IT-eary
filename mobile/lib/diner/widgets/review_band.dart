@@ -7,16 +7,6 @@ import '../../services/api.dart';
 import '../../theme.dart';
 
 /// What diners said, a few at a time, cycling.
-///
-/// Food is bought on trust and a first-time diner has nothing else to go on. A
-/// wall of every review is unreadable and a single static quote looks planted;
-/// a small group that changes reads like a board of testimonials and gives
-/// every good review a turn.
-///
-/// The owner controls all of it from the dashboard: which reviews qualify, the
-/// star floor, how many are on screen and how often they change. Switching
-/// comments off keeps the scores and drops the sentences, which is what that
-/// switch says it does.
 class ReviewBand extends StatefulWidget {
   const ReviewBand({super.key, required this.show, required this.dishNames});
 

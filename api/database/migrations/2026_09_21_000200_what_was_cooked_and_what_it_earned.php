@@ -5,22 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The questions a kitchen actually asks, which the shop could not answer.
- *
- * Everything here reads data the system already held and never showed, except
- * for one genuine hole: nothing recorded that cooking had happened. `cook_batch`
- * took the ingredients off the shelf and put servings on the menu, then forgot
- * the event entirely. So the single most valuable number to a karinderya — what
- * was cooked against what sold, which is to say what went in the bin — could not
- * be worked out at all. A production log fixes that, and everything else
- * follows from figures that were already sitting there.
- *
- * The analytics are functions rather than views because every one of them is
- * owner-only. A view would lean on the caller's own permissions; these check
- * `is_admin()` themselves and refuse anybody else, the same as `cogs_by_day`.
- *
- * Money is counted the same way everywhere: a sale is a payment that was
- * confirmed, on an order that still exists. Cancelled, refunded and expired
- * orders stay out of every figure below, as they do on every screen.
  */
 return new class extends Migration
 {

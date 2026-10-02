@@ -5,21 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * What the storefront shows, decided by the owner rather than by the code.
- *
- * Ratings, the bestseller mark, the "only a few left" warning, sold-out dishes
- * and the recommended row were all hardcoded on. Every one of them is a
- * judgement about how the shop presents itself, and none of them was the owner's
- * to make.
- *
- * Some of these matter more than they look. Showing sold-out dishes is honest
- * and tells a diner what to come back for; hiding them makes a thin day look
- * fuller. Showing ratings is confidence when the food is good and a liability on
- * the week the ratings are thin. A shop that has just opened may want none of it
- * until there is something worth showing.
- *
- * Stored as one jsonb column rather than six boolean columns, because these are
- * presentation choices that will grow, and adding to a jsonb object does not
- * need a migration every time somebody thinks of another one.
  */
 return new class extends Migration
 {

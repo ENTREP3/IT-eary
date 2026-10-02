@@ -6,15 +6,6 @@ import '../../models/models.dart';
 import '../../widgets/dish_image.dart';
 
 /// A dish's photographs, full screen, taking turns.
-///
-/// One picture was never going to sell food. A karinderya has the plate, the
-/// serving in the platter and the meal with rice beside it, and all three say
-/// something different — so tapping the photo on the menu opens the lot rather
-/// than making the owner choose which one to tell the truth with.
-///
-/// Swiping stops the timer. The diner is now driving, and a slideshow that
-/// pulls away from you while you are looking is worse than one that never
-/// moved at all.
 class DishPhotoViewer extends StatefulWidget {
   const DishPhotoViewer({
     super.key,

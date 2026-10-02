@@ -6,12 +6,6 @@ import 'cashier/cashier_screen.dart';
 import 'sign_in_screen.dart';
 
 /// Routes a signed-in staff member to the right surface.
-///
-/// Which surface depends on **both** the account's role and the door they came
-/// through. A cashier only ever gets the counter. An owner gets the dashboard
-/// — but only if they signed in at the Owner door; entering at the Counter
-/// gives them the till and nothing else, so the two sides stay visibly
-/// separate even on a shared device.
 class StaffShell extends StatefulWidget {
   const StaffShell({
     super.key,

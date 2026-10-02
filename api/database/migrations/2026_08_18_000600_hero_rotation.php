@@ -5,11 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * How fast the front page changes the dish behind the headline.
- *
- * Kept separate from the review timer even though both cycle. A photograph
- * behind a headline wants longer than a quote does: the eye finishes reading a
- * short review and is ready to move on, while an image that swaps too often
- * reads as a flickering advert.
  */
 return new class extends Migration
 {

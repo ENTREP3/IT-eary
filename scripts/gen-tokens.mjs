@@ -1,13 +1,6 @@
 // Generates the design tokens consumed by both frontends from design/tokens.json.
 //
 //   src/styles/tokens.css   Tailwind v4 @theme block  -> bg-staff-ground, ...
-//   mobile/lib/tokens.dart  Dart constants            -> Tokens.staffGround, ...
-//
-// Run with `npm run tokens`. Both outputs are generated — never hand-edit them.
-//
-// Both generated files are COMMITTED on purpose: `npm run dev` / `npm run build`
-// regenerate them, but `flutter build` does not run npm, so mobile/lib/tokens.dart
-// must exist in the repo or the Flutter apps will not compile on a clean clone.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

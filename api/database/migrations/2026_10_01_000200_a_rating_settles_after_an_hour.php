@@ -5,29 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * A rating can be corrected for an hour, then it stands.
- *
- * Re-rating updated the row forever. A diner who mistapped one star while
- * scrolling rewrote their own five-star rating of that dish months later, and
- * the shop's average moved with it — silently, because nothing announces that
- * a rating has changed.
- *
- * An hour is the window for the mistake somebody notices: wrong star, wrong
- * dish, a sentence they would rather phrase differently. It is not long enough
- * to be a second opinion about the food, which is what a rating is supposed to
- * be a record of.
- *
- * ---------------------------------------------------------------------------
- * created_at was being overwritten, which is a bug of its own
- *
- * The old upsert set `created_at = now()` on every edit. That makes the column
- * say when it was last touched rather than when the meal was rated, and it
- * would have made this window impossible to enforce: each edit would push the
- * deadline an hour further out, so a rating could be rewritten indefinitely by
- * anyone who kept editing it.
- *
- * `created_at` is now written once and left alone. `edited_at` records the
- * change, so the two questions — when was this rated, and has it been
- * touched since — have separate answers.
  */
 return new class extends Migration
 {

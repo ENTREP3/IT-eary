@@ -8,17 +8,6 @@ import '../../theme.dart';
 import '../../widgets/dish_image.dart';
 
 /// The front page opens on the food, not on a paragraph.
-///
-/// The dishes the owner marked take turns filling the screen behind the
-/// headline, matching the website. That is the only thing on this screen that
-/// can make somebody hungry, and it used to be three small thumbnails below the
-/// fold while the top of the page repeated the address and opening hours that
-/// are already further down.
-///
-/// Everything on top of the photograph has to stay readable over a photograph
-/// nobody has vetted, which is what the scrim is for: the owner uploads their
-/// own pictures, some bright, some dark, and the headline cannot depend on any
-/// of them.
 class HeroHeader extends StatefulWidget {
   const HeroHeader({
     super.key,

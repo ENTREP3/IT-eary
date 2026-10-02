@@ -37,14 +37,6 @@ class _ShopTabState extends State<ShopTab> {
   final _fields = <String, TextEditingController>{};
 
   /// Opening hours, one set of controllers per row.
-  ///
-  /// Controllers rather than plain strings because a row can be deleted from
-  /// the middle: rebuilding fields from a list of values would leave the field
-  /// below holding the deleted row's text.
-  ///
-  /// The diner app reads these to decide whether the shop is open right now, so
-  /// leaving them uneditable meant the owner could not correct hours their own
-  /// app was showing.
   final _hours = <_HourRow>[];
 
   static const _details = [
@@ -1381,20 +1373,6 @@ class _StaffField extends StatelessWidget {
 }
 
 /// The poster that gets the app onto a diner's phone.
-///
-/// A karinderya has no app store listing and no advertising budget, but it does
-/// have a wall and a menu, and every customer is already standing in front of
-/// both while they wait.
-///
-/// The website prints this. A phone has no printer, so here it downloads: the
-/// poster is drawn as a widget, captured as an image and saved to the device,
-/// which the owner can then send to a print shop, post in a group chat, or set
-/// as the picture on their page. That is more use than a print dialog on a
-/// device that cannot print.
-///
-/// The QR is generated on the device from the address the owner saved, so no
-/// third-party QR service sits between a customer and the download: nothing to
-/// pay for and nothing to expire.
 class _AppPoster extends StatefulWidget {
   const _AppPoster({required this.shop, required this.district});
 

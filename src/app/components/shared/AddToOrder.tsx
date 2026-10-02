@@ -7,19 +7,6 @@ import { humanError } from '../../lib/errors';
 
 /**
  * Adding to a ticket at the counter.
- *
- * A diner who gets to the till and wants one more ulam used to have to be
- * refused, or served off the books: the cashier could look a ticket up and
- * settle it, and nothing else.
- *
- * Only offered before payment. After that it is no longer an order being
- * built — taking more money against a settled ticket is a second sale, and
- * handing food over without it is a hole in the till. The database refuses it
- * either way; this simply does not ask.
- *
- * Sold-out dishes are left out rather than shown greyed. The cashier is
- * standing in front of somebody waiting, and a list of things they cannot have
- * is slower to read than a list of things they can.
  */
 export function AddToOrder({
   order,

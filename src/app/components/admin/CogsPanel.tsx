@@ -3,15 +3,6 @@ import { supabase } from '../../lib/supabase';
 
 /**
  * Cost of goods sold, and the gross profit above it.
- *
- * The dashboard's existing profit line is sales minus what was BOUGHT that day,
- * which is cash flow rather than profit. Buy a sack of rice on Monday and Monday
- * reads as a loss while the rest of the week looks unusually good, though
- * nothing about the business changed.
- *
- * COGS is the cost of what was actually SOLD. Sales minus COGS answers a
- * different and more useful question: is the food priced properly, regardless of
- * when the shopping happened.
  */
 
 type Row = {

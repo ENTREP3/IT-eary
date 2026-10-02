@@ -6,14 +6,6 @@ import 'staff_api.dart';
 import 'staff_shell.dart';
 
 /// Shared shell for the two staff apps.
-///
-/// Each staff app is its own build with its own door, so a cashier's phone
-/// never carries the owner UI and vice versa. This widget holds the bit they
-/// genuinely share: restore a session, gate on role, hand off to the surface.
-///
-/// The role check here is convenience. What actually protects the owner's data
-/// is RLS and the `is_admin()` guards in Postgres — a cashier running a
-/// tampered build still gets nothing.
 class StaffEntry extends StatefulWidget {
   const StaffEntry({super.key, required this.area, required this.title});
 

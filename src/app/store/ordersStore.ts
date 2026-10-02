@@ -184,17 +184,6 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
 
   /**
    * Moves an order along the kitchen flow.
-   *
-   * Goes through advance_order_status() rather than updating the row directly.
-   * The direct write it replaced looked identical from the counter, because the
-   * staff update policy allows it, but it skipped every guard the function
-   * exists to apply: food could be started on a ticket nobody had paid for, any
-   * staff member could cancel rather than only the owner, and completed_at was
-   * never stamped. That last one is why every completed order in the database
-   * has a null completion time.
-   *
-   * Keyed by ticket code because that is what the function takes, and what the
-   * counter actually reads off the diner's phone.
    */
   refund: async ({ ticketCode, reason, method, note = null }) => {
     const { data, error } = await supabase.rpc('refund_order', {
@@ -212,14 +201,6 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
   /**
    * The diner cancels their own ticket, which is not the same call staff
    * make.
-   *
-   * `cancel_my_order` proves the ticket belongs to this person — by
-   * account, or by the device token a guest holds — and refuses once it
-   * has been paid for or the kitchen has started. Letting a customer
-   * reach advance_order_status would be letting them cancel anybody.
-   *
-   * The device copy goes too, so "Order again" cannot offer back
-   * something that no longer exists.
    */
   cancel: async (ticketCode) => {
     const { error } = await supabase.rpc('cancel_my_order', {
@@ -262,20 +243,6 @@ export const useOrdersStore = create<OrdersState>((set, get) => ({
 // ----------------------------------------------------------------------------
 /**
  * Whether a ticket is money the shop actually took.
- *
- * Every sales figure runs through this. A ticket used to count from the moment
- * it was created, so a diner filling a cart moved the day's takings and a
- * cancelled order stayed in them forever. A sale is a payment the counter
- * confirmed, on an order that still exists.
- *
- * Refunded orders are out for the same reason cancelled ones are: the money is
- * back in the diner's hands. The serving went back in the platter too, so the
- * shop never bore its cost either.
- *
- * `needs_review` deliberately does not count. The food was released so the
- * diner was not left standing there, but nobody has yet checked the money
- * against the real GCash history — the dashboard's reconciliation card is where
- * that becomes a sale or an admission that it never was one.
  */
 export function countsAsSale(o: Order) {
   return (

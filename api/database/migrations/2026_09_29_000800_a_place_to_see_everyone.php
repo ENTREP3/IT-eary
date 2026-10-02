@@ -5,33 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Everyone with an account, for the owner to look at in one place.
- *
- * `list_staff` already existed and returns the two or three people who can
- * sign in to the till. It deliberately says nothing about customers, which
- * left the owner with no way to see who their customers are at all — not how
- * many, not who orders often, not whether an account is a real person or one
- * of the anonymous rows the app creates for every guest.
- *
- * ---------------------------------------------------------------------------
- * Guests are counted separately, not hidden and not listed
- *
- * Every diner gets an anonymous account the moment they open the app, so this
- * table has far more rows than the shop has customers. Listing them all would
- * bury the forty real accounts under hundreds of empty ones; pretending they
- * do not exist would make the numbers on this screen disagree with the numbers
- * everywhere else.
- *
- * So a guest who has never ordered is left out, and a guest who *has* ordered
- * is listed, because that is a real customer who simply never signed up. The
- * screen says which is which.
- *
- * ---------------------------------------------------------------------------
- * Why a function and not a view
- *
- * It reads `auth.users` for the email address, which no client may query
- * directly and no RLS policy can be attached to. A SECURITY DEFINER function
- * that checks `is_admin()` on the way in is the way to let exactly one role
- * see exactly this much of it.
  */
 return new class extends Migration
 {

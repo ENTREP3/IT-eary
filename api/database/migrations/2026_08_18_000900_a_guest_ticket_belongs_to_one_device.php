@@ -5,40 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Stops a guest ticket being everybody's ticket.
- *
- * The read policy said: staff, or your own account, OR anything created in the
- * last 24 hours. That last clause is what let a ticket on a phone follow itself
- * without an account, and it is far too generous — it does not require the
- * code, so any anonymous caller could list every order placed today, with the
- * customer's name, what they ate, what they paid, and the path to their GCash
- * receipt. Guessing was never necessary.
- *
- * The fix is to give the device an identity the database can check. On the
- * first order a device mints a random token, keeps it, and sends it with every
- * ticket it raises. The order records it. From then on the device can ask for
- * its own orders and nobody else's, and the code is no longer the only thing
- * standing between a stranger and somebody's lunch.
- *
- * That solves the second problem at the same time. A guest who closed the page
- * without copying the code used to have nothing: the counter could look it up,
- * but had no way to tell whether the person asking actually placed it. The
- * device now remembers on their behalf, so a returning guest sees their own
- * ongoing tickets without having written anything down.
- *
- * Reads go through functions rather than a policy because the token cannot be
- * put in a policy: it is not in the caller's JWT, and a custom header would not
- * survive Realtime or a preflight. A function takes it as an argument, which is
- * plain to read and works from every client.
- *
- * The blanket window goes. Two consequences, both accepted deliberately:
- *
- *  - Tickets raised before this migration have no token, so a guest holding one
- *    can no longer pull it up themselves. The counter still can. Within a day
- *    the problem ages out of existence.
- *  - Realtime stops delivering order changes to guests, because Realtime
- *    authorises with the JWT alone and a guest has none. The ticket screens
- *    poll instead, which costs one row every few seconds while somebody is
- *    actually watching the screen.
  */
 return new class extends Migration
 {

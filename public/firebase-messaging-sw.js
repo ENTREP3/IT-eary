@@ -1,21 +1,5 @@
 /*
  * Receives notifications while no tab of this site is open.
- *
- * A service worker, so it runs on its own: the browser wakes it when a push
- * arrives and it may be the only part of this site alive at the time. That is
- * the entire point — the diner has closed the app and is doing something else,
- * which is exactly when "your order is ready" is worth saying.
- *
- * Served as a plain file straight from the site root, never processed by Vite.
- * It cannot import from src/, cannot read import.meta.env, and cannot use the
- * modular SDK's bare specifiers, so it loads the compat build from Google's CDN
- * and repeats the Firebase config literally. That duplication is deliberate and
- * unavoidable; the copy in src/app/lib/firebase.ts explains why.
- *
- * The version here is pinned. An unpinned CDN URL would mean a future Firebase
- * release could change how notifications behave on a shop that has not deployed
- * anything, and the failure would appear as customers quietly stopping being
- * told their food was ready.
  */
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
@@ -33,11 +17,6 @@ const messaging = firebase.messaging();
 
 /*
  * Shows the notification when nothing of ours is on screen.
- *
- * Only reached for a data-only message. If the server sends a `notification`
- * block the browser displays it itself and calling showNotification here as
- * well produces two identical banners, so the sender deliberately sends data
- * only and lets this decide.
  */
 messaging.onBackgroundMessage((payload) => {
   const data = payload.data || {};
@@ -87,19 +66,6 @@ self.addEventListener('notificationclick', (event) => {
 
 /*
  * A fetch handler, so the site can be installed.
- *
- * A browser only offers to add a site to the home screen if a service worker is
- * registered and handling fetches. This worker already had to exist for
- * notifications, and it is registered at the site root, so it is the one that
- * can satisfy that — and it has to be the one, because two different scripts
- * cannot both own the scope. Adding a second worker for installability would
- * have replaced this registration and quietly broken push.
- *
- * It caches nothing, on purpose. Serving the app from a cache is how a counter
- * ends up running last week's build against a changed database, and an app that
- * is silently out of date is worse than one that is briefly offline. Everything
- * goes straight to the network. This is the place real offline behaviour would
- * go if it is ever actually wanted.
  */
 self.addEventListener('fetch', (event) => {
   event.respondWith(fetch(event.request));

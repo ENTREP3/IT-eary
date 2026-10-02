@@ -230,12 +230,6 @@ class _KitchenTabState extends State<KitchenTab> {
 }
 
 /// The order queue, fetching its own orders.
-///
-/// The dashboard already holds every dataset and hands them down, so its
-/// Kitchen tab takes them as a parameter. The counter holds nothing — it is a
-/// till, and a cashier signing in there never loads the dashboard at all. This
-/// wrapper is what lets the same queue appear on both without the counter
-/// paying for an orders feed it may never open.
 class SelfLoadingKitchenQueue extends StatefulWidget {
   const SelfLoadingKitchenQueue({super.key});
 

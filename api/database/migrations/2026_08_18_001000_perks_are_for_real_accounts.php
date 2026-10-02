@@ -5,29 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Draws the line between a guest and a customer, now that guests have sessions.
- *
- * Anonymous sign-ins give every device a real Supabase user, which is what
- * makes a guest ticket provably theirs. The catch is the one the dashboard
- * warns about: an anonymous user carries the `authenticated` role, so every
- * rule written as "authenticated may do this" would quietly start admitting
- * them.
- *
- * The policies here were already written on identity rather than role — they
- * ask is_admin(), is_staff(), or customer_id = auth.uid() — so nothing opened
- * up on its own. What does need saying out loud is the difference between
- * having an identity and having an account:
- *
- *   A guest gets an identity, and it buys them exactly one thing: their own
- *   orders are theirs, and nobody else's are.
- *
- *   An account is what earns the perks — the running promotions, the loyalty
- *   card, being told when a sold-out dish comes back. Those exist to be worth
- *   signing up for. If every guest silently collected them there would be
- *   nothing left to sign up for.
- *
- * A discount code still works for anyone who types one, because preview_promo()
- * and create_ticket() price it themselves. What an account buys is being told
- * the codes exist without the shop paying to advertise them.
  */
 return new class extends Migration
 {
@@ -115,10 +92,6 @@ grant execute on function public.my_loyalty() to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- "Tell me when it is back"
---
--- The promise is that somebody gets in touch, and there is nowhere to reach a
--- device. It stays an account feature.
--- ---------------------------------------------------------------------------
 drop policy if exists "stock_alerts_own" on public.stock_alerts;
 
 create policy "stock_alerts_own"

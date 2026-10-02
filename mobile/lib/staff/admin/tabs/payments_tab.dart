@@ -315,16 +315,6 @@ class _PaymentsTabState extends State<PaymentsTab> {
 }
 
 /// Keeping GCash receipts for as long as they are useful, and no longer.
-///
-/// Receipts were kept forever. That is fine for a while and then it is not: the
-/// free tier is 1 GB, and a receipt carries the sender's real name and mobile
-/// number, so holding thousands of them indefinitely is a liability as much as
-/// a storage problem.
-///
-/// The rule enforced here is that nothing can be deleted until it has been
-/// saved off the system IN THIS SESSION. A dialog that merely suggests saving
-/// first is something people learn to tap through; a delete button that stays
-/// disabled until the files are actually out cannot be tapped through.
 class ReceiptRetention extends StatefulWidget {
   const ReceiptRetention({super.key, required this.onChanged});
 
@@ -377,15 +367,6 @@ class _ReceiptRetentionState extends State<ReceiptRetention> {
   /// Pulls every receipt down through a short-lived signed link, writes them
   /// beside a CSV naming which ticket each file belongs to, and saves the lot
   /// to the device's own Downloads folder.
-  ///
-  /// A share sheet was the first attempt and it was the wrong tool: it asks the
-  /// owner to choose a destination for every batch, and on a browser it hands
-  /// the files to whatever the platform decides to do with them. A download
-  /// lands somewhere the owner can find again, which is the whole point of
-  /// taking them off the system before deleting them.
-  ///
-  /// Without the CSV the images are a folder of meaningless filenames the
-  /// moment they leave.
   Future<void> _download() async {
     final rows = _rows;
     if (rows == null || rows.isEmpty) return;

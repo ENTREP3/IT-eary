@@ -45,16 +45,6 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   /// Starts a signed-in diner off with their own name already filled in.
-  ///
-  /// It used to start empty for everyone and the database filled the gap at
-  /// order time from the profile. That worked, but somebody who had already told
-  /// us their name was still looking at an empty box labelled "your name" — and
-  /// an empty box asks to be filled, so one live order went out stamped
-  /// `SUKIF9061`.
-  ///
-  /// Still editable: ordering for somebody else is normal, and the counter calls
-  /// out whatever is on the ticket. A guest sees it empty and optional, as
-  /// before — there is nothing to prefill it from.
   Future<void> _prefillName() async {
     if (!Api.signedIn) return;
     final me = await Api.myProfile();
@@ -256,10 +246,6 @@ class _CartScreenState extends State<CartScreen> {
                           // Minus is for changing your mind about the number;
                           // this is for changing your mind about the dish.
                           // Getting to the second by repeating the first is a
-                          // tax on ordering five of something, and five taps on
-                          // a small round button is where a thumb mis-hits and
-                          // buys a sixth. Square, and set apart, so it does not
-                          // read as a third counting button.
                           IconButton(
                             onPressed: () =>
                                 context.read<Cart>().removeLine(line.key.id),

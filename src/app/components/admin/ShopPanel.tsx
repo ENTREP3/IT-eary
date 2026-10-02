@@ -10,11 +10,6 @@ import { humanError } from '../../lib/errors';
 
 /**
  * Everything about the shop itself that only the owner may change.
- *
- * The name, address, hours and phone number used to live in a source file,
- * which meant the most important information on the whole site could not be
- * corrected without a developer. For a client with no technical staff that is
- * a defect, so it now lives here.
  */
 
 const field =

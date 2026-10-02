@@ -8,19 +8,6 @@ import '../../staff/live_refresh.dart';
 import '../../theme.dart';
 
 /// What the shop needs to tell everybody today.
-///
-/// Closing early, a brownout at the palengke, kambing that will be gone by two.
-/// None of it fits anywhere else on the storefront, because every other piece
-/// of writing here answers a question the diner asked, and this one is the shop
-/// speaking first.
-///
-/// A strip under the hero rather than a dialog over it. Somebody opening this
-/// app has come to order lunch, and a modal between them and the food to say
-/// "we close at 2 today" is the app serving itself. It can be dismissed,
-/// because a person who has read it should not have to keep reading it.
-///
-/// Nothing on this screen waits for it, so a slow or unreachable Supabase
-/// delays no part of ordering.
 class AnnouncementBanner extends StatefulWidget {
   const AnnouncementBanner({super.key});
 

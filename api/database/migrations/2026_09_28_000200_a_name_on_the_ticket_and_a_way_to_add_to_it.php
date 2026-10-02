@@ -5,25 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Two things the counter could not do.
- *
- * A name on the ticket. Every order placed from an account showed "Walk-in",
- * because `customer_name` only ever held what the diner typed into the box, and
- * somebody signed in has no reason to type their own name. Ten of ten account
- * orders had none. The account knows who they are; the ticket simply never
- * asked. It is filled in now at the moment the order is made, from the profile
- * name where there is one and from the email otherwise, so the receipt, the
- * counter and the history all say the same thing without another lookup.
- *
- * And adding to an order. A diner who gets to the counter and wants one more
- * ulam had to be refused, or served off the books: the cashier could look a
- * ticket up and settle it, and nothing else. `add_order_items` lets them add to
- * a ticket that has not been paid for yet, which is the only point where it is
- * still a change to an order rather than a change to money already taken.
- *
- * The stock is held here by hand. `apply_order_to_dishes` runs on insert, so an
- * order that grows later would otherwise take servings off the shelf that
- * nothing ever reserved, and the menu would go on offering food that is spoken
- * for.
  */
 return new class extends Migration
 {

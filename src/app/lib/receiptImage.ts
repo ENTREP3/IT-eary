@@ -2,27 +2,6 @@ import type { Order } from './types';
 
 /**
  * Draws a receipt as a picture.
- *
- * Downloading used to hand over a .txt file, on the reasoning that a receipt is
- * read, kept and occasionally forwarded, and plain text does all three without
- * a library. That was wrong about the forwarding, which is most of what happens
- * to one: it goes to a housemate or a group chat, and a text file in a chat is
- * an attachment nobody opens, while a picture is simply there.
- *
- * Drawn onto a canvas rather than screenshotted from the page. Screenshotting
- * needs a library whose whole job is re-implementing CSS, and it would capture
- * whatever the layout happened to be at that width — including the dialog's
- * buttons. This draws the record itself, at a fixed size, identically on every
- * screen.
- *
- * ---------------------------------------------------------------------------
- * The address is part of the picture
- *
- * It is printed at the foot of the receipt rather than left to the share sheet
- * to carry. Android drops the text of a share when a file is attached, and most
- * desktop browsers have no share sheet at all — so a link passed alongside the
- * image arrives perhaps half the time, which is the same as not having one. On
- * the picture it cannot be separated from the thing being shared.
  */
 
 /** Logical width of the paper. Doubled when rasterised, for a crisp result. */
@@ -56,16 +35,6 @@ function paymentLabel(order: Order): string {
 
 /**
  * Measures and draws in one pass.
- *
- * The height is not known until the items have been laid out, and a canvas is
- * cleared when it is resized — so the same drawing runs twice: once against a
- * throwaway context to find the height, then again for real. Keeping it as one
- * function is what stops the two from drifting apart, which is the bug that
- * would otherwise show up as a receipt with its last line cut off.
- *
- * `y` is always the baseline of the line last drawn, and every step moves it
- * down by a stated amount. Tracking the baseline rather than the top is what
- * keeps the first line from being clipped by the edge of the paper.
  */
 function render(
   ctx: CanvasRenderingContext2D,
@@ -223,13 +192,6 @@ export async function receiptPng(order: Order, shop: Shop, link = ''): Promise<B
 
 /**
  * Hands a blob to the browser as a download.
- *
- * The object URL is released on a timer rather than on the line after the
- * click. Revoking it immediately is a documented way to produce a truncated
- * file: the click only *schedules* the download, and pulling the URL out from
- * under it can leave a partial PNG on disk that an image viewer then refuses as
- * corrupt. It went unnoticed with text receipts because they were small enough
- * to be read before the revoke landed.
  */
 export function saveBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);

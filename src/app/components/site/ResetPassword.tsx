@@ -8,17 +8,6 @@ import { passwordProblem } from '../../lib/password';
 
 /**
  * Where a reset link lands.
- *
- * Supabase signs the visitor in as it delivers them here, so by the time this
- * renders they already have a session — a short-lived one, minted from the
- * link. That is the whole reason this page can set a password without asking
- * for the old one, and the reason it has to check there is a session at all:
- * opened cold, with no link, it would otherwise present a form that silently
- * changes nothing.
- *
- * The rule the password is held to is the database's own, asked for rather
- * than copied, so this page cannot drift out of step with what the server will
- * actually accept.
  */
 export function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -41,13 +30,6 @@ export function ResetPasswordPage() {
 
     /**
      * An anonymous session does not count as arriving from the link.
-     *
-     * Every visitor to this site is given a guest identity, so "there is a
-     * session" is nearly always true and says nothing about whether the
-     * reset link worked. Treating one as proof let the form open, accept a
-     * new password, and fail at the server with "Updating password of an
-     * anonymous user", which reads as the shop being broken rather than as a
-     * link that has expired.
      */
     const fromTheLink = (session: { user?: { is_anonymous?: boolean } } | null) =>
       Boolean(session && session.user?.is_anonymous !== true);
@@ -95,15 +77,6 @@ export function ResetPasswordPage() {
 
       /*
        * Signed out again, deliberately.
-       *
-       * The recovery link signs somebody in as a side effect of proving
-       * who they are, so without this they are let straight into the site
-       * never having typed the password they just chose.
-       *
-       * Typing it once more is the only way either of us finds out it is
-       * what they meant. A mistyped new password discovered now costs one
-       * more reset; discovered next week it looks like the shop having
-       * lost their account.
        */
       await signOut();
 

@@ -5,35 +5,6 @@ import { useBusinessStore } from '../../store/businessStore';
 
 /**
  * Where the printed QR code sends somebody.
- *
- * The code on the shop wall used to point straight at the file, which meant a
- * customer's first contact with Bencris was a download starting by itself, or
- * — once releases moved to GitHub — a page of source code and version tags
- * belonging to a system they have no reason to know exists.
- *
- * This is a page the shop owns, on the shop's own address. It explains what
- * the thing is before asking anybody to install it, and it is the only address
- * that ever needs printing: the file behind the button can move between
- * releases, or hosts, without the poster on the wall becoming wrong.
- *
- * ---------------------------------------------------------------------------
- * The warning is named before it appears
- *
- * Android interrupts every install from outside the Play Store with a security
- * warning. Somebody who meets that unprepared, having just scanned a code taped
- * to a wall in a canteen, stops — and they are right to. Saying it will happen,
- * and that it happens to every app installed this way, is the difference
- * between a cautious person continuing and a cautious person deleting the file.
- *
- * ---------------------------------------------------------------------------
- * iPhone is not an apology
- *
- * There is no iOS app and there is not going to be one — a developer account
- * costs more per year than this shop would spend on the whole system. But the
- * website already works on an iPhone and can be added to the home screen,
- * where it opens without browser furniture and is very hard to tell from an
- * app. That is worth presenting as the iPhone answer rather than as the thing
- * we could not do.
  */
 export function DownloadPage() {
   const profile = useBusinessStore((s) => s.profile);

@@ -1,11 +1,5 @@
 /**
  * The single source for who Bencris is.
- *
- * The landing page, the trust pages, the receipt and the page metadata all read
- * from here, so the shop's details are corrected in one place rather than eight.
- *
- * Values in [square brackets] are placeholders the owner still has to confirm.
- * They are deliberately obvious on screen so nobody ships them by accident.
  */
 
 export const BUSINESS = {

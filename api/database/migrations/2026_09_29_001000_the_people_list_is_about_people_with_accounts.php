@@ -5,35 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Two corrections to who the people list is about, and what it says about them.
- *
- * ---------------------------------------------------------------------------
- * Guests are not listed at all
- *
- * The first version included an anonymous diner if they had ordered, reasoning
- * that they were a real customer who simply never signed up. That was wrong
- * for what this screen is: an account is something you manage — suspend, ban,
- * change the role of, delete — and an anonymous row is none of those things.
- * It has no email to write to, no name to recognise, no password to reset, and
- * banning it accomplishes nothing because the next visit mints another one.
- *
- * Their orders are not lost by this. They are still in the takings, still in
- * the analytics, still on the kitchen board. They are simply not people the
- * owner can do anything to, so they do not belong on the screen whose whole
- * purpose is doing something to somebody.
- *
- * ---------------------------------------------------------------------------
- * Staff have no order figures
- *
- * Orders, spend and last order are now null for anyone who is not a customer.
- *
- * Not for tidiness: those numbers were actively misleading. `create_ticket`
- * deliberately leaves `customer_id` empty when a signed-in member of staff
- * checks out, so that a cashier testing the storefront does not bank orders
- * and loyalty against themselves. The figures for staff were therefore always
- * zero — and a column reading "0 orders, ₱0.00" next to the owner's name reads
- * as a fact about the owner rather than as a column that does not apply.
- *
- * Null says "this does not apply". Zero says "this applies, and it is none".
  */
 return new class extends Migration
 {

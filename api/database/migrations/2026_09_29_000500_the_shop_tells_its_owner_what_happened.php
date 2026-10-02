@@ -5,19 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The things the shop notices by itself.
- *
- * Each of these is a moment where something worth knowing happened and nobody
- * was in a position to say so — the customer who bought the last serving is
- * not going to tell the owner the dish is finished.
- *
- * Every trigger here is AFTER, and every one calls `push_notify`, which never
- * raises. An order must not fail because a notification could not be sent.
- *
- * What is deliberately absent: a notification for every new order. At lunchtime
- * that is a hundred buzzes, and the hundred-and-first — the one that actually
- * needed reading — arrives to somebody who has already muted the app. The
- * counter is told about an order only when it needs a decision: a payment to
- * check, or a ticket left sitting.
  */
 return new class extends Migration
 {
@@ -57,10 +44,6 @@ create trigger dishes_sold_out_notice
 
 -- ---------------------------------------------------------------------------
 -- An ingredient falls below its par level
--- ---------------------------------------------------------------------------
--- Crossing the line, not sitting below it. Without the check on the old value
--- every further sale of an already-low ingredient would send another warning,
--- which is how a useful alert becomes noise within one service.
 create or replace function public.tell_owner_stock_low()
 returns trigger
 language plpgsql
@@ -121,10 +104,6 @@ create trigger orders_proof_notice
 
 -- ---------------------------------------------------------------------------
 -- An order is cancelled by staff
--- ---------------------------------------------------------------------------
--- Only the owner may cancel, so this is really the owner's own action echoed
--- to their other devices — and, more usefully, to the owner's phone when a
--- second owner account did it.
 create or replace function public.tell_owner_order_cancelled()
 returns trigger
 language plpgsql
@@ -152,10 +131,6 @@ create trigger orders_cancelled_notice
 
 -- ---------------------------------------------------------------------------
 -- A poor rating arrives
--- ---------------------------------------------------------------------------
--- One or two stars only. A shop told about every rating stops reading them,
--- and the whole value of this is hearing about a bad meal the same day rather
--- than a fortnight later in an average.
 create or replace function public.tell_owner_poor_rating()
 returns trigger
 language plpgsql

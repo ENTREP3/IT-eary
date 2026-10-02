@@ -5,37 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Where to reach somebody who is not looking at the app.
- *
- * Everything the system tells a diner today requires them to be watching. The
- * ticket screen updates itself, the announcement banner appears, the menu
- * changes under them — all of it over a WebSocket that exists only while the
- * page is open. Close the app and the shop has no way to reach you at all,
- * which is exactly the moment it most needs to: you are waiting for food, so
- * you are doing something else.
- *
- * A push token is the address the device hands out for that. It is issued by
- * Firebase, belongs to one installation rather than one person, and is not
- * secret in any useful sense — but it is *personal*, because it is a way to
- * make a specific phone buzz, so it is locked to the user it was registered by
- * and cannot be read across accounts.
- *
- * Three things worth keeping:
- *
- * The token is the primary key. Firebase reissues the same token to the same
- * installation, so a diner who opens the app fifty times must not leave fifty
- * rows and get fifty copies of every notification. Upserting on the token is
- * what makes registration idempotent.
- *
- * `user_id` is nullable and changes hands. Every diner is signed in
- * anonymously from the moment the app opens, so tokens are registered against
- * a guest identity and later re-registered against a real account when they
- * sign up. The row follows the device, not the person; the trigger keeps
- * whichever user most recently proved they hold it.
- *
- * `failed_at` rather than deleting on the first error. A push can fail because
- * the token is genuinely dead, or because Firebase was briefly unhappy, and
- * those look identical from one attempt. Marking is reversible; deleting on a
- * transient failure silently unsubscribes somebody who did nothing wrong.
  */
 return new class extends Migration
 {
@@ -90,16 +59,6 @@ grant select, insert, update, delete on public.push_tokens to authenticated;
 
 /*
  * Registering a device, idempotently.
- *
- * Done as a function rather than letting the client upsert, because the client
- * must not be the one deciding which user a token belongs to. The caller
- * supplies the token it was given; who that token is for is read from the
- * session, which cannot be forged.
- *
- * A token arriving for a second user is reassigned rather than refused. That
- * is the ordinary case, not an attack: one phone, a guest identity at first,
- * then a real account after signing up. Leaving it on the old user would send
- * that diner's order updates to an identity they no longer use.
  */
 create or replace function public.register_push_token(
   p_token    text,

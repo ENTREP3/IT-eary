@@ -6,16 +6,6 @@ import { humanError } from '../../lib/errors';
 
 /**
  * Keeping GCash receipts for as long as they are useful, and no longer.
- *
- * Receipts were kept forever. That is fine for a while and then it is not: the
- * free tier is 1 GB, and a receipt carries the sender's real name and mobile
- * number, so holding thousands of them indefinitely is a liability as much as a
- * storage problem.
- *
- * The rule enforced here is that nothing can be deleted until it has been
- * downloaded IN THIS SESSION. A dialog that merely suggests downloading first is
- * something people learn to click through; a delete button that stays disabled
- * until the file is safely on the owner's machine cannot be clicked through.
  */
 
 type Doomed = {

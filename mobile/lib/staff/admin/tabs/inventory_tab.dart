@@ -405,12 +405,6 @@ class _InventoryFormState extends State<_InventoryForm> {
 }
 
 /// Recording a delivery.
-///
-/// Deliberately not the same thing as editing the stock figure. Typing over the
-/// count is a correction and explains nothing; a delivery has a quantity, a
-/// price and a date, and the shop is owed an expense entry for it. Doing it
-/// here means the owner never types the same delivery twice, and the cost of
-/// every dish using the ingredient moves with the new price.
 class _ReceiveForm extends StatefulWidget {
   const _ReceiveForm({required this.item});
 

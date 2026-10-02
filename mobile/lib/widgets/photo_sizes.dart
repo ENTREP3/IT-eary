@@ -1,22 +1,4 @@
 /// Two copies of every dish photo, and which one to ask for.
-///
-/// The shop keeps the file exactly as it was taken — nothing resized, nothing
-/// re-encoded — because that is the one a diner sees when they open a photo and
-/// pinch into it. But a modern phone photograph is around five megabytes, and
-/// the menu draws twenty-five of them at the size of a playing card. Sending
-/// the originals for that is tens of megabytes to render thumbnails, which on
-/// mobile data in the street is a menu that never appears.
-///
-/// Supabase can resize on delivery, but only on a paid plan, and this project
-/// deliberately stays inside the free one. So the admin app makes the smaller
-/// copy itself at upload time, which is the only moment the full file is
-/// already in hand.
-///
-/// The two live side by side under a fixed name, so nothing extra has to be
-/// stored to find one from the other:
-///
-///   dish-photos/adobo/7f3c.heic       the original, untouched
-///   dish-photos/adobo/7f3c-lg.jpg     the display copy, 2000px
 library;
 
 import 'dart:typed_data';

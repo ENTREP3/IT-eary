@@ -1,28 +1,5 @@
 /**
  * What this diner has already rated, from the shop as well as the device.
- *
- * The rating itself was never the problem — it is in `reviews`, counted in the
- * dish average, visible to everyone. What lived only in `localStorage` was the
- * answer to *did I rate this?*, which is what fills the stars in and decides
- * whether the button offers to rate or to edit.
- *
- * So a diner who rated their lunch, signed out, and signed in on another
- * browser was told they had never rated anything. Nothing was lost; the screen
- * simply could not see it.
- *
- * ---------------------------------------------------------------------------
- * Both copies, on purpose
- *
- * The device answers instantly, works with no signal, and is the only place a
- * guest's ratings can live at all. The account is the copy that survives a new
- * browser. Neither is sufficient alone, so the two are merged and the device
- * wins ties — it is the more recent of the two by definition, being where the
- * rating was just made.
- *
- * Shaped like `rateable`: one shared query rather than one per dish card, and
- * reloaded when the session changes. A list fetched once at mount would be
- * empty forever for anybody whose session had not finished restoring, which is
- * the bug that made ratings look missing on the live site in the first place.
  */
 import { useEffect, useState } from 'react';
 import { supabase } from './supabase';

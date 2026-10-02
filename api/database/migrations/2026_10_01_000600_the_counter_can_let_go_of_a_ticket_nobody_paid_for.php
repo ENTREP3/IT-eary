@@ -5,28 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Let a cashier cancel an order that was never paid for.
- *
- * `advance_order_status` refused cancellation to anybody who was not the owner.
- * The intent was sound — cancelling is the one status change that cannot be
- * walked back — but it was written before the rule below it, which already
- * refuses to cancel anything that has been paid for and sends it to the refund
- * flow instead. Between the two, the owner-only check was not protecting money.
- * All it could still block was the unpaid case, and the unpaid case is the
- * counter's own work: somebody orders, wanders off, and the food they are
- * holding needs to go back on the menu for the queue behind them.
- *
- * It failed in the worst way, too. The cashier screen offers the button, asks
- * "Cancel ticket HBBXEE?", takes the confirmation — and then the database says
- * no, twelve minutes into a ticket nobody is coming back for.
- *
- * ---------------------------------------------------------------------------
- * What still cannot happen
- *
- * A paid ticket is untouched by this: the check below still turns it away and
- * names refunding as the thing to do instead, so money leaving the shop stays
- * the owner's decision and keeps its proof-of-refund trail. `is_staff()` still
- * guards the whole function, so a diner cannot reach it — they cancel their own
- * unpaid tickets through `cancel_my_order`, which checks the ticket is theirs.
  */
 return new class extends Migration
 {

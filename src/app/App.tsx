@@ -5,12 +5,6 @@ import { StorefrontApp } from './components/diner/StorefrontApp';
 
 /**
  * The staff screens are loaded only when somebody actually opens them.
- *
- * They are by far the heaviest part of the build (the owner dashboard alone
- * pulls in the whole charting library), and no diner will ever see them. Every
- * customer arrives on a phone over mobile data, so making them wait for the
- * counter and dashboard code is the single most expensive thing we could do to
- * the first page load.
  */
 const AdminApp = lazy(() =>
   import('./components/AdminApp').then((m) => ({ default: m.AdminApp })),
@@ -63,9 +57,6 @@ import { ResetPasswordPage } from './components/site/ResetPassword';
  *   /menu      diner storefront, no account
  *   /cashier   counter
  *   /admin     owner
- *
- * The rules they share live in Postgres, not here, so the web and mobile
- * versions of each screen cannot drift.
  */
 export default function App() {
   const initAuth = useAuthStore((s) => s.init);
@@ -85,23 +76,6 @@ export default function App() {
   }, [initAuth, loadPayments, loadMenu, loadRatings, loadBusiness, subscribeMenu]);
 
   /* The address decides which app this is.
-   *
-   * A cashier opening bencris-cashier.iteary.site lands at the till rather
-   * than at the menu with a path to remember, and the owner dashboard is not
-   * a guessable path off the shop front page.
-   *
-   * Presentation, not protection: RequireRole and RLS are unchanged, so a
-   * diner typing the admin address meets the same sign-in wall they would at
-   * /admin. Hiding a door is not locking it, and the lock is elsewhere.
-   *
-   * A staff address gets its own route table rather than one extra <Route>
-   * added to the diner's. The first attempt did the latter — a `path="*"`
-   * entry listed above the rest — and every staff address served the
-   * storefront, because React Router does not try routes in order. It ranks
-   * them by how specific they are and takes the best match, and `/` beats `*`
-   * at the root every time. Writing it first is no help at all; the only way
-   * to mean "this address is the dashboard" is for the dashboard to be the
-   * only thing the address can reach.
    */
   if (SURFACE !== 'diner') {
     return (
@@ -143,14 +117,6 @@ export default function App() {
   }
 
   /* The diner pages get the confirm dialog too.
-   *
-   * It was added for the staff screens, where the irreversible things live, and
-   * both staff apps mount their own provider. The diner side was left without
-   * one, and that is not merely a missing feature: `useConfirm` outside a
-   * provider returns a function that does nothing. Emptying a cart and
-   * cancelling an unpaid ticket both ask for confirmation, so both were silent
-   * dead buttons on the customer site — the failure a provider-based API invites,
-   * and the reason the default logs rather than returning quietly.
    */
   return (
     <BrowserRouter>

@@ -5,17 +5,6 @@ import '../../services/api.dart';
 import '../../theme.dart';
 
 /// Getting back into an account, by code rather than by link.
-///
-/// The website sends a link, because a browser can simply follow it. A phone
-/// cannot without App Links or a custom scheme — a deployed domain, a
-/// verification file it has to serve, and a per-platform dance that breaks
-/// quietly whenever any of it drifts. A six-digit code read from an inbox and
-/// typed here needs none of that, and works the same on a phone with no
-/// default browser set.
-///
-/// Three steps on one screen rather than three screens, because the whole
-/// thing happens in under a minute and somebody switching to their email app
-/// and back should return to exactly where they left off.
 enum _Step { askEmail, askCode, askPassword, done }
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -106,15 +95,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
       /*
        * Signed out again, deliberately.
-       *
-       * The recovery code signs somebody in as a side effect of proving
-       * who they are, so without this they are simply let into the app —
-       * never having typed the password they just chose.
-       *
-       * Typing it once more is the only way either of us finds out it is
-       * what they meant. A mistyped new password discovered now costs one
-       * more reset; discovered next week it looks like the shop losing
-       * their account.
        */
       await Api.signOut();
 

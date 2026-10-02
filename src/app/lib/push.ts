@@ -1,19 +1,5 @@
 /**
  * Turning a diner's "yes, tell me" into an address the shop can reach.
- *
- * Two halves that must not be confused. The browser decides whether we may
- * notify at all, and that answer lives in the browser and survives everything
- * we do. Our database decides where to send, and that is a row that can be
- * added and removed freely. Somebody can have granted permission and have no
- * row — they turned it off in our UI — and that is a perfectly ordinary state,
- * not a bug to reconcile.
- *
- * Permission is never asked for on load. A prompt that appears before anybody
- * has done anything is why people block notifications reflexively, and once
- * blocked a site cannot ask again — the diner has to go into browser settings,
- * which nobody does. One refused prompt costs the shop that customer for good,
- * so the prompt is only ever raised by somebody pressing a button that says
- * what it is for.
  */
 import { supabase } from './supabase';
 import { requestPushToken, pushAvailable, pushPermission } from './firebase';
@@ -65,11 +51,6 @@ export async function pushState(): Promise<PushState> {
 
 /**
  * Asks, then records where to send.
- *
- * Returns the state afterwards rather than throwing, because every way this
- * can fail has the same consequence for the diner — notifications are off —
- * and a red error over a convenience they just opted into is out of
- * proportion to what was lost.
  */
 export async function enablePush(): Promise<PushState> {
   const token = await requestPushToken();
@@ -106,15 +87,6 @@ export async function disablePush(): Promise<PushState> {
 
 /**
  * Re-registers a token that is already granted, quietly.
- *
- * Firebase rotates tokens, and a diner who signs up after ordering as a guest
- * has their row pointed at the old anonymous identity. Both leave somebody who
- * agreed to be notified silently unreachable. Calling this on sign-in costs a
- * round trip and fixes both.
- *
- * Raises no prompt: it returns immediately unless permission was already
- * granted, so it can be called on every sign-in without ever being the thing
- * that makes a diner block notifications.
  */
 export async function refreshPushRegistration(): Promise<void> {
   if (pushPermission() !== 'granted') return;
@@ -124,12 +96,6 @@ export async function refreshPushRegistration(): Promise<void> {
 
 /**
  * Shows a notification that arrives while the diner is looking at the site.
- *
- * The service worker only runs when no tab is open, so without this a push
- * that lands while somebody is on the menu is delivered and then silently
- * dropped. Left alone, the notification a diner is most likely to be waiting
- * for — the one that arrives while they are staring at their ticket — is
- * exactly the one they never see.
  */
 export function watchForegroundPush(onNotice: (title: string, body: string) => void): () => void {
   if (pushPermission() !== 'granted') return () => {};

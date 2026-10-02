@@ -5,19 +5,6 @@ import { humanError } from '../../lib/errors';
 
 /**
  * Tells the owner when an ingredient price has quietly eaten their margin.
- *
- * Ingredient prices move and menu prices do not. Pork going from 300 to 350 a
- * kilo takes the profit out of every pork dish, and without this the owner finds
- * out weeks later when the takings look wrong and nobody can say why.
- *
- * The arithmetic is done in the database, from the recipes that already exist:
- * one batch of sinigang uses 1.5 kg of pork and feeds twenty, so the cost per
- * serving follows from the price per kilo. Nothing is typed twice.
- *
- * It only ever SUGGESTS. Pricing is the owner's call, because they know the
- * competitor down the road and the suki who would notice a five peso rise. Both
- * buttons re-baseline the cost, so declining makes the row go away instead of
- * nagging on every visit, which is how owners learn to ignore a warning.
  */
 
 type Suggestion = {

@@ -6,27 +6,6 @@ import { humanError } from '../../lib/errors';
 
 /**
  * What the sales say, offered as a question rather than acted on.
- *
- * The bestseller badge used to appear by itself: whichever dish led its
- * category wore it, and nobody at the shop was ever asked. That is the shop
- * making a claim about its own food on the strength of a sum, and it had a
- * second fault — a dish with no sales can never top a list, so a new dish could
- * never be promoted however good it was.
- *
- * So the figures stay, but they stop being the decision. They come here, as a
- * suggestion the owner accepts or declines, and the badge only ever says what
- * the owner agreed to say.
- *
- * The second half asks the opposite question, and has to be careful about it.
- * The obvious way to suggest *unmarking* would be to flag a marked dish that is
- * not selling — which is exactly the new dish the owner is deliberately pushing,
- * so the system would be arguing with the person it is meant to be advising.
- *
- * So the second half does not ask about a quiet dish at all. It
- * asks only when there is a concrete alternative: something the owner has NOT
- * marked is outselling their pick in the same category by a wide margin. That
- * is a fact worth knowing rather than an opinion about the food, and it names
- * the dish that prompted it so the owner can judge for themselves.
  */
 
 /** Sales must climb by half again before a declined dish is raised a second time. */
@@ -43,21 +22,11 @@ const CLEARLY_AHEAD = 2;
 
 /**
  * How many the rival has to have sold before being outsold means anything.
- *
- * Without a floor, "twice as many" is satisfied by nothing at all: a marked
- * dish on nought sales was reported as outsold by an unmarked dish also on
- * nought, because nought is not less than twice nought. The card then claimed
- * "0 sold, while Chicken Curry has sold 0", which is not evidence of anything.
  */
 const ENOUGH_TO_JUDGE = 3;
 
 /**
  * The figure a refused suggestion has to beat before it is raised again.
- *
- * Not a bare multiplication. Refusing at nought stored nought, and every later
- * figure beat nought times anything, so the card returned immediately and the
- * decline buttons looked broken. Refusing always suppresses at least the figure
- * it was refused at, whatever that figure was.
  */
 const askAgainAbove = (refusedAt: number) =>
   Math.max(refusedAt * ASK_AGAIN_AT, refusedAt + 1);

@@ -70,10 +70,6 @@ let proofPath = `${ticket.ticket_code}/receipt.png`;
 // ---------------------------------------------------------------------------
 // 3b. THE ENUMERATION ATTACK.
 //     A row-level read policy also makes list('') return folder names — i.e.
-//     the ticket codes of unpaid orders — which an attacker holding only the
-//     publishable key could then walk to download each receipt. Gating the read
-//     on `proof_path IS NULL` closes this the moment the proof is recorded.
-// ---------------------------------------------------------------------------
 {
   const { data: victim } = await fresh().rpc('create_ticket', {
     p_items: [{ id: 'adobo', qty: 1 }], p_payment_method: 'gcash',

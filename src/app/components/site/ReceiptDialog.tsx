@@ -10,27 +10,6 @@ import { dinerOrigin } from '../../lib/surface';
 
 /**
  * The receipt for one order, reopened from the order history.
- *
- * The phone has had this since the beginning: a card in the history is
- * tappable and opens the ticket. The website only ever showed a receipt once,
- * in the moment after ordering, and closing it was final — no way back to it,
- * no way to save it, and no way to cancel an order that had not been paid for.
- *
- * ---------------------------------------------------------------------------
- * Downloading is a text file, not a picture
- *
- * A receipt is read, kept, and occasionally forwarded to somebody. A PNG of a
- * web page is none of those things well: it cannot be searched, it is large,
- * and rendering one needs a library that exists to draw screenshots. Plain
- * text opens anywhere, costs nothing, and says exactly what it is.
- *
- * ---------------------------------------------------------------------------
- * Cancelling is offered only while it is true
- *
- * An unpaid ticket can be cancelled by the diner, because nothing has happened
- * yet and the stock it holds should go back. Once it is paid the counter deals
- * with it — a refund is money moving, and that is the shop's decision rather
- * than a button on a customer's phone.
  */
 export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () => void }) {
   const confirm = useConfirm();
@@ -63,13 +42,6 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
 
   /**
    * Sends the receipt on, with a way back to the shop.
-   *
-   * Three rungs, because browsers differ and the button has to do something
-   * on all of them. Where the Web Share API takes files, the picture goes
-   * with the link — that is the real thing, and it is what the phone does.
-   * Where sharing exists but not for files, the text and link go alone.
-   * Where there is no sharing at all, which is most desktop browsers, the
-   * link is copied and the button says so rather than appearing to fail.
    */
   const share = async () => {
     setError(null);
@@ -103,12 +75,6 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
 
   /**
    * Puts the shop's address on the clipboard.
-   *
-   * Its own action rather than a corner of the share flow, because the share
-   * flow is where a link goes to disappear: a phone that attaches the picture
-   * drops the text that came with it, and a desktop browser without the share
-   * API never showed one. Somebody pasting into a caption needs the address as
-   * a thing they can take, not as a hoped-for side effect.
    */
   const copyLink = async () => {
     setError(null);
@@ -156,16 +122,7 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
 
   return (
     /* A solid panel, not a floating card on a translucent wash.
-     *
-     * It used to be the latter, and the page showed straight through the
-     * parts that were not the white paper — the buttons and the note under it
-     * sat on a scrim with order cards and star ratings legible behind them.
-     * The close button had the matching problem: it lived above the card in a
-     * scrolling column, so on a short screen it scrolled off the top edge and
-     * was clipped.
-     *
-     * Now the panel owns a header, a scrolling middle and a pinned footer, so
-     * the only thing that moves is the receipt itself. */
+     */
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       role="dialog"

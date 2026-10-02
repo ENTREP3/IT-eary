@@ -44,12 +44,6 @@ export type Storefront = {
   /**
    * Bestseller suggestions the owner has already turned down, against the sales
    * figure at the time they said no.
-   *
-   * Keeping the number rather than a plain list is what stops this becoming
-   * nagware: a dish declined at 30 sold stays quiet, but if it climbs to 45 the
-   * question is a genuinely new one and worth asking again. Admin-side state
-   * riding in the storefront row rather than a table of its own, because it is
-   * one small object and it is read on the same fetch.
    */
   bestseller_dismissed: Record<string, number>;
 };
@@ -101,13 +95,6 @@ const FALLBACK: BusinessProfile = {
 
 /**
  * The last profile this device saw, kept so the first paint is already right.
- *
- * The row takes a few hundred milliseconds to arrive from Supabase. Painting
- * the bundled constants in the meantime showed a tagline the shop had changed
- * and then swapped it, which is a visible flicker on every refresh; waiting
- * instead left the largest text on the page blank for the whole round trip.
- * Remembering the answer avoids both, because on every visit after the first
- * the value painted immediately is the value the network is about to confirm.
  */
 const CACHE_KEY = 'bencris.business.v1';
 

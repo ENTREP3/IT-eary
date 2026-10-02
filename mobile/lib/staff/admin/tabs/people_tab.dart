@@ -8,28 +8,6 @@ import '../admin_api.dart';
 import 'widgets.dart';
 
 /// Everyone with an account, and what the owner can do about them.
-///
-/// The same screen the website has, reading the same functions. Not a second
-/// set of rules: suspending, banning, promoting and deleting are all refused
-/// in the database for anybody who is not the owner, and refused again for the
-/// three things nobody may do — act on your own account, remove the last
-/// owner, or leave the shop with nobody who can administer it.
-///
-/// Buttons that would be refused are hidden, but hiding a button is a courtesy
-/// rather than a rule, and the rule lives where it cannot be tapped around.
-///
-/// ---------------------------------------------------------------------------
-/// Guests are not here, and staff have no figures
-///
-/// Anonymous diners are left out by the database. An account is something you
-/// manage, and an anonymous row has no email, no password and no name; banning
-/// it achieves nothing because the next visit mints another. Their orders are
-/// still in the takings.
-///
-/// Orders and spend are null for staff rather than zero, because create_ticket
-/// deliberately leaves a signed-in staff member's orders unattributed. Zero
-/// would read as a fact about that person rather than a column that does not
-/// apply to them.
 class PeopleTab extends StatefulWidget {
   const PeopleTab({super.key});
 

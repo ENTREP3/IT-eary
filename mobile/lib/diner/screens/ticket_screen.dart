@@ -175,22 +175,6 @@ class _TicketScreenState extends State<TicketScreen> {
   }
 
   /// Saves the receipt to the phone as a picture.
-  ///
-  /// It used to write a .txt to a temporary folder and open the system share
-  /// sheet. Two things were wrong with that. A receipt gets sent to somebody
-  /// — a housemate, a group chat, whoever is being paid back — and a text
-  /// file in a chat is an attachment nobody opens, while a picture is simply
-  /// there in the conversation. And a share sheet is not a download: it asked
-  /// where to send the thing, and because the file was text, Android offered
-  /// Print among the targets, on a receipt for a karinderya.
-  ///
-  /// So it saves rather than shares. The button said Download; now that is
-  /// what it does.
-  /// The receipt as a PNG, rasterised from the widget on screen.
-  ///
-  /// Shared by both buttons, so what gets saved and what gets sent to
-  /// somebody are the same picture, and there is one place where the
-  /// resolution is decided.
   Future<Uint8List> _receiptPng() async {
     final boundary = _receiptKey.currentContext?.findRenderObject()
         as RenderRepaintBoundary?;
@@ -205,16 +189,6 @@ class _TicketScreenState extends State<TicketScreen> {
   }
 
   /// Sends the receipt on to somebody, with a way back to the shop.
-  ///
-  /// The picture carries what they ordered, which is the part people actually
-  /// forward — "this is what I had" — and the link is so the person reading it
-  /// can order the same thing rather than ask where it came from.
-  /// Puts the shop's address on the clipboard.
-  ///
-  /// Its own button rather than a corner of the share flow, because the share
-  /// flow is where a link goes to disappear: Android drops the text once a
-  /// picture is attached. Somebody pasting into a caption needs the address as
-  /// something they can take, not as a hoped-for side effect.
   Future<void> _copyLink() async {
     await Clipboard.setData(const ClipboardData(text: _siteUrl));
     if (!mounted) return;

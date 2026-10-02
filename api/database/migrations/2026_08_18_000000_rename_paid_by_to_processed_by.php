@@ -5,20 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Renames orders.paid_by to orders.processed_by.
- *
- * The old name said the wrong thing. It reads as "who paid", and people
- * reasonably assumed it held the customer. It never did: it holds the STAFF
- * MEMBER who took the money, set from auth.uid() inside mark_ticket_paid(),
- * which refuses to run for anyone who is not staff.
- *
- * Who actually paid was never missing. A signed-in diner is orders.customer_id;
- * a guest has that column null and appears as customer_name, or as nobody at
- * all. So this is purely a naming fix, and no data moves.
- *
- * mark_ticket_paid() is recreated because PL/pgSQL resolves column names when it
- * runs, not when it is defined: renaming the column alone would leave a function
- * that looks fine and fails the next time a cashier settles a ticket. The body
- * below is the live definition with the column renamed and nothing else touched.
  */
 return new class extends Migration
 {

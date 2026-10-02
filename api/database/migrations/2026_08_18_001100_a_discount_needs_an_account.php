@@ -5,23 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * A discount code is worth nothing without an account behind it.
- *
- * The last migration stopped a guest being *told* which promotions were
- * running, but a code they heard about anywhere else still worked. That is the
- * wrong half to close. A promotion is what the shop spends margin on to bring
- * somebody back, and it can only do that if it knows who came — otherwise it is
- * a discount handed to a stranger who leaves no trace and no reason to return.
- *
- * The rule goes in promo_discount_for(), which is the single definition of what
- * a code is worth. Both roads to a discount pass through it — preview_promo()
- * for the quote in the cart, create_ticket() for the price actually charged —
- * so gating it here is what makes it impossible for the two to disagree. A
- * refusal that only lived in the preview would leave a guest quoted a discount
- * the checkout then declined to give, which is worse than never offering it.
- *
- * preview_promo() gets the refusal in words as well, because "invalid" is a lie
- * when the code is perfectly valid and the diner simply is not signed in. It
- * says so, which turns a dead end into a reason to make an account.
  */
 return new class extends Migration
 {

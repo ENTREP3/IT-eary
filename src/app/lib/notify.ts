@@ -1,17 +1,5 @@
 /**
  * Asking the server to notify somebody, without ever making staff wait for it.
- *
- * Every call here happens *after* the real work has already committed. The
- * status change, the refund, the announcement — those are the job, and they
- * are done by the time this runs. A notification that fails must not make the
- * counter think the order did not advance, and must never put a spinner
- * between a cook and the next ticket.
- *
- * So every failure is swallowed. That is not carelessness about errors: there
- * is no action the person at the till could take in response, and the thing
- * they were doing succeeded. Diners still get realtime updates on their ticket
- * screen regardless, so a notification is an improvement on what already
- * happens, never the only way anybody finds out.
  */
 import { supabase } from './supabase';
 
@@ -48,11 +36,6 @@ function send(message: Message): void {
 
 /**
  * Only some status changes are worth interrupting somebody for.
- *
- * 'paid' and 'preparing' are left out on purpose: the diner is standing at the
- * counter watching it happen, and their ticket screen already updates itself.
- * A buzz to say what somebody is currently looking at teaches them to ignore
- * the next one, which will be the one that mattered.
  */
 const TICKET_NEWS: Record<string, { title: string; body: string } | undefined> = {
   ready: {

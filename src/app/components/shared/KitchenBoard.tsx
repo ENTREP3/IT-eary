@@ -59,11 +59,6 @@ function pickupState(pickupAt: string | null) {
 
 /**
  * The live order queue, shared by the owner dashboard and the counter.
- *
- * In a karinderya this size the person on the till is also the person calling
- * to the kitchen, so keeping this board owner-only made it useless in practice.
- * Both staff screens mount the same component; the database decides who may
- * actually advance a status.
  */
 export function KitchenBoard({ orders }: { orders: Order[] }) {
   const setStatus = useOrdersStore((s) => s.setStatus);
@@ -71,12 +66,6 @@ export function KitchenBoard({ orders }: { orders: Order[] }) {
 
   /**
    * Re-renders every half minute so the clock actually moves.
-   *
-   * Everything else on this board arrives by push from the database, but "12m
-   * in preparing" is computed from the current time, and nothing changes in the
-   * data as an order grows late. Without this the warning would appear only
-   * when some unrelated order happened to update, which is precisely when
-   * nobody is looking.
    */
   const [, tick] = React.useState(0);
   React.useEffect(() => {
@@ -88,26 +77,11 @@ export function KitchenBoard({ orders }: { orders: Order[] }) {
 
   /**
    * What the board has to say when an action will not go through.
-   *
-   * Every one of these used to go to the console and nowhere else. Pressing
-   * "Start preparing" on an unpaid ticket did nothing at all on screen: the
-   * database refused it, the promise rejected, and the counter was left
-   * looking at a button that appeared broken.
    */
   const [notice, setNotice] = useState<string | null>(null);
 
   /**
    * Moves a ticket along, and says why when it cannot.
-   *
-   * The unpaid case is answered here rather than by letting the database
-   * refuse it, because it is the one a cashier meets daily and it deserves a
-   * sentence about the shop's rule rather than a translated error. Anything
-   * else is reported in the database's own words, which are written to be
-   * read.
-   *
-   * This is not the rule itself. advance_order_status still refuses an unpaid
-   * ticket whatever this file believes, and the catch below is what runs if
-   * the two ever disagree.
    */
   const advance = async (o: Order, next: Order['status']) => {
     if (next !== 'cancelled' && !o.paid_at) {
@@ -133,21 +107,11 @@ export function KitchenBoard({ orders }: { orders: Order[] }) {
 
   /**
    * When this order actually needs to be ready.
-   *
-   * An order with no collection time wants feeding now, so it is due the moment
-   * it was placed. One booked for later is due later, and that is the whole
-   * value of asking: cooking it first would leave it going cold while somebody
-   * standing at the counter waits.
    */
   const dueAt = (o: Order) => new Date(o.pickup_at ?? o.created_at).getTime();
 
   /**
    * Ordered by what is most urgent, not by what arrived first.
-   *
-   * Plain first-in-first-out ignored the collection times the diners had chosen,
-   * so an order booked for an hour away sat at the top of the queue ahead of
-   * someone waiting in the shop. Sorting by when each is due puts overdue work
-   * first, then ASAP orders, and leaves the scheduled ones until they are close.
    */
   const queue = (statuses: string[]) =>
     orders.filter((o) => statuses.includes(o.status)).sort((a, b) => dueAt(a) - dueAt(b));

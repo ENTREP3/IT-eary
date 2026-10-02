@@ -3,17 +3,6 @@ import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// This device's own identity, for ordering without an account.
-///
-/// The database used to let anybody read any order from the last 24 hours,
-/// because that was the only way a guest ticket could follow itself. This is
-/// what replaces it: a random value minted on first use and kept, which the
-/// database matches against the tickets raised with it. A diner sees their own
-/// orders and nobody else's, and — because the phone remembers it — they can
-/// close the app without writing the code down and still find their way back to
-/// a ticket that is still cooking.
-///
-/// It is not a secret worth much on its own: it names a device, not a person,
-/// and it can only ever fetch orders that device itself placed.
 class DeviceToken {
   static const _key = 'device_token_v1';
   static String? _cached;

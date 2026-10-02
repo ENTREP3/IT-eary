@@ -1,12 +1,6 @@
 // Inlines docs/screenshots/*.png into docs/lab3-page.template.html and writes
 // docs/lab3-presentation.html.
 //
-// The published page is served under a strict CSP that blocks every external
-// host, so an <img src="docs/screenshots/..."> would silently render nothing.
-// Embedding each PNG as a data: URI makes the page genuinely self-contained —
-// one file you can open, print, or hand in.
-//
-// Run with: node scripts/build-lab3-page.mjs
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -8,16 +8,6 @@ import '../admin/admin_api.dart';
 import '../admin/tabs/widgets.dart' show peso;
 
 /// Handing money back over the counter.
-///
-/// A refund is not a cancellation and the shop is careful about the difference:
-/// cancelling is for a ticket nobody paid for, refunding is for one they did.
-/// This is only ever offered while the food can still go back in the platter,
-/// and the database refuses it otherwise — so an error here is the rule
-/// speaking rather than a bug, and it is shown as written.
-///
-/// A reason is required. A refund with no reason is a hole in the day's takings
-/// that nobody can explain a week later, which is exactly when it gets asked
-/// about.
 class RefundSheet extends StatefulWidget {
   const RefundSheet({super.key, required this.order});
 

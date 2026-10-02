@@ -5,37 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The two notifications that no row change can produce.
- *
- * Every other alert in the system hangs off something happening: a status
- * moves, stock drops, a rating lands. These two are the opposite — they are
- * about something *not* happening, and about the day being over. Nothing
- * writes a row at the moment a ticket has been ignored for fifteen minutes,
- * and nothing writes a row at closing time. Only a clock notices.
- *
- * So `pg_cron` runs them.
- *
- * ---------------------------------------------------------------------------
- * A ticket left sitting
- *
- * An unpaid ticket holds stock. Somebody orders, wanders off, and three
- * servings of kaldereta stay reserved for a person who is not coming back. The
- * counter can settle it or cancel it, but only if somebody notices, and at a
- * busy till nobody does.
- *
- * `nudged_at` is what stops this being a nag. Each ticket is mentioned once;
- * a reminder that repeats every five minutes is one people learn to swipe away
- * without reading.
- *
- * ---------------------------------------------------------------------------
- * The day's figures
- *
- * One message, after closing, with the numbers the owner would otherwise open
- * the dashboard to find. Sent whether or not it was a good day — a summary
- * that only arrives when something is wrong becomes a thing people dread, and
- * its absence stops meaning anything.
- *
- * Times are Manila. The server thinks in UTC, and a summary that arrives at
- * eight in the morning because nobody converted the hour is worse than none.
  */
 return new class extends Migration
 {

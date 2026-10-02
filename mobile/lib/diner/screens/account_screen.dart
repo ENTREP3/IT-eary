@@ -15,13 +15,6 @@ import 'confirm_signup_screen.dart';
 import 'forgot_password_screen.dart';
 
 /// An optional account, and everything it makes possible.
-///
-/// Ordering without one still works exactly as before, and always will. What
-/// signing in adds is memory across visits: orders that survive a new phone, a
-/// live view of whether the food is preparing or ready, and loyalty.
-///
-/// The live view is the point. Without it a diner has to stand at the counter
-/// watching, which is precisely the crowding this system exists to reduce.
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
 
@@ -106,13 +99,6 @@ class _SignedOutState extends State<_SignedOut> {
       if (_creating) {
         /*
          * The shop's own rule, asked for before Supabase is.
-         *
-         * signUp() goes straight to Supabase Auth, which applies whatever
-         * policy the project has rather than ours — so an account could be
-         * made with a password the reset screen would later refuse, leaving
-         * somebody unable to choose the password they already had.
-         *
-         * Asked of the database rather than copied, so there is one rule.
          */
         final problem = await Api.passwordProblem(_password.text);
         if (problem != null) {
@@ -134,11 +120,6 @@ class _SignedOutState extends State<_SignedOut> {
           /*
            * Straight to the code, not to a dialog saying "check your
            * email".
-           *
-           * The confirmation link in that email opens a browser, which
-           * on a phone means leaving the app they just signed up in. The
-           * same email carries a six-digit code; typing it here finishes
-           * the account without going anywhere.
            */
           await Navigator.of(context).push(
             MaterialPageRoute(
@@ -169,13 +150,6 @@ class _SignedOutState extends State<_SignedOut> {
 
         /*
          * Back to where they came from, which is the menu.
-         *
-         * Somebody signing in is not here to look at their own account —
-         * they came to order, and signing in was the obstacle. Leaving them
-         * on this screen makes them find their own way back to the food.
-         *
-         * Popping rather than pushing the menu, so the history does not grow
-         * a second copy of a screen that is already underneath this one.
          */
         if (mounted && Navigator.of(context).canPop()) {
           Navigator.of(context).pop();
@@ -673,11 +647,6 @@ class _PromoCard extends StatelessWidget {
           // Wraps rather than sharing one line.
           //
           // The owner types these codes, and some are a sentence — "TEST
-          // PER ACCOUNT ONCE ONLY CLAIM". In a Row the chip took the whole
-          // width and the Expanded label was squeezed to one character per
-          // line. A Wrap puts the label underneath when it will not fit,
-          // which costs a little height on the rare long code and nothing
-          // at all on a short one.
           ...promos.map(
             (p) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -869,17 +838,6 @@ class _OrderCard extends StatelessWidget {
 }
 
 /// The tickets this device raised, for somebody who never made an account.
-///
-/// Before this, a guest who closed the app without copying the code had nothing
-/// at all. The counter could look the ticket up, but had no way to tell whether
-/// the person asking was the person who ordered it — the code was the only
-/// proof, and it was gone. The device holds a token now, so it can ask the
-/// database for its own tickets and get an answer nobody else could get.
-///
-/// Refreshed on a timer rather than pushed: Realtime authorises with the token
-/// in the connection and a guest has none, so there is nothing for it to check
-/// the row against. One request every ten seconds while this screen is open is
-/// a fair price for tickets that are nobody else's business.
 class _GuestOrders extends StatefulWidget {
   const _GuestOrders();
 

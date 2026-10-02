@@ -5,25 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The loyalty card threw an error at exactly the people it was built for.
- *
- * `my_loyalty()` asked `loyalty_rewards` for a `label` column that has never
- * existed on it — the table holds id, customer_id, code, earned_at and
- * redeemed_at, and the label lives on `promo_codes`, one join away.
- *
- * It went unnoticed because of the order of the checks. A guest, or anybody
- * without a real account, hits the early return and gets an empty card back
- * without ever reaching the broken query. Only a signed-in customer got as far
- * as the failing select. The web page then did this:
- *
- *     supabase.rpc('my_loyalty').then(({ data }) => { if (row) ... })
- *
- * which ignores the error, leaves `loyalty` null, and renders nothing at all.
- * So the card worked for people it was not for and vanished for the ones it
- * was, silently, with nothing in the console to say why.
- *
- * The rewards now come back with the code the diner actually has to type, and
- * whether it has been spent — which is the part that makes the list worth
- * showing at all, rather than a number that resets when the page reloads.
  */
 return new class extends Migration
 {

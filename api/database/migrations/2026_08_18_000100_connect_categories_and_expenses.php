@@ -5,26 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Two relationships that always existed in practice but not in the database.
- *
- * 1. dishes.category held text that happened to match categories.name, with
- *    nothing enforcing it. The menu was grouped by string comparison, so a
- *    typo produced a dish in a category that did not exist, and it simply
- *    vanished from the chips with no error anywhere.
- *
- *    ON UPDATE CASCADE is the real prize: renaming a category now renames it on
- *    every dish by itself, which until today needed application code to go and
- *    move them. ON DELETE RESTRICT keeps that application code honest, because
- *    it reassigns dishes before removing a category and the database will now
- *    refuse if it ever forgets.
- *
- * 2. expenses had no link to the ingredient a purchase was for. receive_stock()
- *    books the expense, but the only trace was the label text, so "how much
- *    have I spent on pork this month" could not be answered without parsing
- *    words. The column is nullable because most expenses are not ingredients at
- *    all: rent, gas, a tarpaulin.
- *
- * Checked before writing: all four categories in use match a real row, and no
- * ingredient expenses exist yet, so nothing needs backfilling.
  */
 return new class extends Migration
 {

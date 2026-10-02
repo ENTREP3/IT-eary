@@ -30,11 +30,6 @@ import { ReceiptDialog } from './ReceiptDialog';
 /**
  * The diner's own page: sign in or sign up, then follow every order they have
  * ever placed.
- *
- * Ordering deliberately still works with no account at all. This page exists
- * for the things that need memory across visits, which a ticket code on one
- * phone cannot give: order history, payment history, loyalty, and being told
- * when a sold-out dish comes back.
  */
 
 type Stage = {
@@ -98,17 +93,6 @@ export function AccountPage() {
 
 /**
  * The tickets this device raised, for somebody who never made an account.
- *
- * Before this, a guest who closed the page and had not copied the code had
- * nothing at all. The counter could look the ticket up, but had no way to tell
- * whether the person asking was the person who ordered it — the code was the
- * only proof, and it was gone. The device holds a token now, so it can ask the
- * database for its own tickets and get an answer nobody else could get.
- *
- * Refreshed on a timer rather than pushed: Realtime authorises with the JWT in
- * the connection and a guest has none, so there is nothing for it to check the
- * row against. One request every ten seconds while this page is open is a fair
- * price for tickets that are nobody else's business.
  */
 function GuestOrders() {
   const [orders, setOrders] = useState<Order[] | null>(null);
@@ -281,12 +265,6 @@ function AuthPanel() {
       if (mode === 'up') {
         /*
          * The shop's own rule, checked before Supabase is asked.
-         *
-         * signUp() goes straight to Supabase Auth, which applies whatever
-         * policy the project has rather than ours — so an account could be
-         * made with a password the reset screen would later refuse. The
-         * same person would then be unable to choose the password they
-         * already had.
          */
         const problem = passwordProblem(password);
         if (problem) {
@@ -299,15 +277,6 @@ function AuthPanel() {
         if (needsConfirmation) {
           /**
            * Back to the sign-in form, holding the email they just typed.
-           *
-           * This used to be its own screen saying "check your email", which
-           * was a dead end: somebody who opened the link in another tab came
-           * back to a page with nothing on it to sign in with, and the only
-           * way forward was to reload the site.
-           *
-           * The password is cleared because the one they chose does not work
-           * until the link is opened, and leaving it filled in invites trying
-           * it straight away and being turned away.
            */
           setMode('in');
           setPassword('');
@@ -330,11 +299,6 @@ function AuthPanel() {
 
         /*
          * Straight to the menu.
-         *
-         * Somebody signing in is not here to look at their own details —
-         * they came to order, and signing in was the obstacle. Leaving
-         * them on the account page makes them find their own way to the
-         * food, which is the one thing the storefront is for.
          */
         navigate('/menu');
       }
@@ -564,13 +528,6 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
   /**
    * This page shows the signed-in customer's OWN orders, so the filter has to
    * be written here explicitly.
-   *
-   * Leaving it off did not look broken, because the access rules still returned
-   * rows: an owner is staff and may read every order in the shop, and anybody
-   * at all may read orders from the last 24 hours, which is what lets a guest
-   * ticket follow itself. So "My orders" quietly listed other people's orders
-   * while the loyalty count, which does filter by customer, disagreed with it.
-   * Access rules decide what you MAY read, not what this screen MEANS.
    */
   /**
    * Reads the card, errors included.
@@ -613,11 +570,6 @@ function SignedIn({ email, onSignOut }: { email: string; onSignOut: () => void }
 
     /**
      * The codes still worth something to this diner.
-     *
-     * A code is good once per account, so listing one they have already
-     * claimed is an advert for a dead end — they would type it in and be told
-     * no. The redemptions they can read are their own; access rules see to
-     * that, so filtering here shows nobody anything new.
      */
     Promise.all([
       supabase.from('promo_codes').select('code, label').eq('active', true),

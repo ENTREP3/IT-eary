@@ -6,28 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api.dart';
 
 /// Dishes this diner has marked, on the device and on their account.
-///
-/// Two copies, and each is there for a reason the other cannot serve.
-///
-/// The device copy is what fills the heart in the same frame it is tapped,
-/// what works with no signal, and what a guest who never signs in still gets.
-/// Waiting on a round trip before colouring a heart would make the whole menu
-/// feel broken on shop wifi.
-///
-/// The account copy is the one that survives a new phone, a reinstall, or two
-/// people sharing a handset — which was the real problem. Favourites used to
-/// live only here, and the comment explaining why said ordering was anonymous
-/// so there was no account to hang them off. There are accounts now, and what
-/// that reasoning left behind was a list belonging to the phone rather than to
-/// whoever was holding it.
-///
-/// The device is always written first and never waited on. A failed sync means
-/// a heart that does not follow the diner to their next phone, which is exactly
-/// where they were before any of this existed.
-///
-/// A [ChangeNotifier] rather than a plain read, so tapping the heart on the
-/// menu updates the header count in the same frame instead of on the next
-/// rebuild.
 class Favourites extends ChangeNotifier {
   static const _key = 'bencris.favourites';
 

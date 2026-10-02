@@ -5,26 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Who an announcement is for, and whether it is worth a buzz.
- *
- * Announcements could only ever be shouted at diners. But the thing an owner
- * most often needs to say is to their own staff — "I am running late, open
- * without me", "stop selling the kambing, it is off" — and the only channels
- * for that were a phone call or walking in.
- *
- * Two columns, and they answer different questions.
- *
- * `audience` is who sees the banner. A message to the counter must not appear
- * on the storefront, and the read policy enforces that rather than the client:
- * a diner asking the database directly for every announcement still gets only
- * the ones meant for them.
- *
- * `notify` is whether a push notification goes with it, and it defaults to
- * false on purpose. Most announcements are worth a banner and not worth a
- * buzz — "kambing today" is genuinely useful to somebody already browsing and
- * an intrusion to everybody else. Making every announcement notify would
- * train people to turn notifications off, and the one that mattered ("closed
- * this afternoon") would arrive to nobody. So the owner says which ones are
- * worth it, one at a time.
  */
 return new class extends Migration
 {

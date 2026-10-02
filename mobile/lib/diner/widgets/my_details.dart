@@ -6,21 +6,6 @@ import '../../services/api.dart';
 import '../../theme.dart';
 
 /// A diner's own details, and a way to fix them.
-///
-/// The same six fields signup collects, read and written through the same
-/// database functions the website uses. Not a second implementation of the
-/// rules: `save_my_profile` decides what a name may be and whether one is
-/// taken, so the phone and the site cannot come to different conclusions.
-///
-/// Read through `my_profile()` rather than off the table, because the email
-/// lives on `auth.users` where no client may look. It returns the caller's own
-/// row and nobody else's — the function reads `auth.uid()` rather than taking
-/// an id.
-///
-/// Saving goes through a function for a sharper reason: `profiles` also holds
-/// `role`. Any policy wide enough to let somebody fix their own surname would
-/// be wide enough to let them make themselves an owner, and no amount of care
-/// in this file closes that.
 class MyDetails extends StatefulWidget {
   const MyDetails({super.key});
 

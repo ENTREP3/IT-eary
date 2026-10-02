@@ -2,28 +2,6 @@ import React from 'react';
 
 /**
  * Catches a crash so the screen does not simply go white.
- *
- * React unmounts the entire tree when a render throws and nothing catches it.
- * The page stays loaded, the address bar is unchanged, and every pixel is
- * blank — which reads as the shop being broken, and leaves no way forward but
- * closing the app. That has happened twice here: once from a realtime
- * subscription, once from stacked auth listeners.
- *
- * Both were fixed at the cause. This exists because the next one has not been
- * written yet, and a karinderya cannot be asked to debug a white rectangle
- * during lunch.
- *
- * ---------------------------------------------------------------------------
- * Offering a way out, not an apology
- *
- * The one thing that reliably recovers a broken React tree is remounting it,
- * which is what reloading does. So the button does that, and says so plainly.
- * Going back to the menu is offered too, because a diner whose account page
- * broke can still order — and ordering is the thing they came for.
- *
- * The message itself is deliberately not the error. "Cannot read properties of
- * undefined" tells a customer nothing and looks alarming. The details go to
- * the console, where somebody who can act on them will look.
  */
 type Props = { children: React.ReactNode };
 type State = { crashed: boolean };

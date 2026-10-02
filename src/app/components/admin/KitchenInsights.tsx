@@ -5,15 +5,6 @@ import { humanError } from '../../lib/errors';
 
 /**
  * The questions a kitchen asks, which the sales chart cannot answer.
- *
- * Takings and expenses say whether money moved. They do not say which dish is
- * quietly sold at a loss, what went in the bin at closing, or which ingredient
- * price ate the margin. Every figure here comes from a function that checks
- * `is_admin()` for itself, so the panel is only ever as trusted as the caller.
- *
- * Deliberately blunt where the news is bad. A dish below cost is shown in red
- * with the loss spelled out, because the whole point of working it out is that
- * somebody does something about it.
  */
 
 type Outcomes = {

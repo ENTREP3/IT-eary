@@ -1,23 +1,6 @@
 // Checks that each deployed address opens the app it is supposed to.
 //
 // One bundle is served from three addresses and decides at runtime which of
-// the three faces to show, from the hostname. That decision is invisible to
-// anything that only reads HTML: all three addresses return a byte-identical
-// index.html, so curl cannot tell a working deploy from a broken one, and a
-// staff address quietly serving the storefront looks completely healthy from
-// outside.
-//
-// It has already broken once. The surfaces were picked by adding a `path="*"`
-// route above the diner's routes, on the assumption that <Routes> tries them
-// in order. It does not — React Router ranks by specificity and `/` beats `*`
-// at the root — so every staff address served the menu while every automated
-// check passed.
-//
-// So this drives a real browser and asks what actually rendered.
-//
-// Run with: node scripts/check-surfaces.mjs [base-domain]
-//   default: the .web.app addresses
-//   once the custom domains are live: node scripts/check-surfaces.mjs iteary.site
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import os from 'node:os';
@@ -82,12 +65,6 @@ const pending = new Map();
 
 /**
  * Anything the page threw, collected per address.
- *
- * Checking only what rendered is not enough. A React app that throws
- * during render still serves a 200 with a valid index.html and still
- * mounts its root element — it just paints nothing into it. That is
- * exactly how a realtime subscription error took the whole dashboard down
- * while every check here reported the address was fine.
  */
 let thrown = [];
 

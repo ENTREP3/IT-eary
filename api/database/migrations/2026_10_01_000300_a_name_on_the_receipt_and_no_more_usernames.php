@@ -5,46 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The username goes, and the receipt says who served you.
- *
- * ---------------------------------------------------------------------------
- * Removing the username
- *
- * It was added so the shop could greet somebody by a name they chose. The
- * nickname does that, and does it better — it is optional, it is what people
- * actually want to be called, and it carries no expectation of being unique.
- *
- * What the username added on top was cost: a uniqueness rule, a shape rule, an
- * availability check while typing, a second thing to pick at signup, and a
- * second thing that could be taken. None of it bought anything, because
- * nothing signs in with it. Email and password is the whole of the login, and
- * keeping a second identifier that is not an identifier is how a form grows
- * fields nobody can explain.
- *
- * Dropped rather than left unused. A column still there is a column somebody
- * will write to next year.
- *
- * ---------------------------------------------------------------------------
- * Staff must have a full name
- *
- * Because the receipt now says who served the diner, and "served by" with a
- * blank after it is worse than not saying it. Enforced where staff are made,
- * so a login cannot be created without one.
- *
- * ---------------------------------------------------------------------------
- * The name is stamped, not looked up
- *
- * `orders.processed_by` holds the staff member's id, and no diner may read
- * another account's profile — rightly. Rather than open that up, the name is
- * written onto the order when payment is recorded, exactly as the customer's
- * own name already is.
- *
- * It is also the more honest record: the receipt should say who served them
- * that day, not who that person is called now, and it survives the staff
- * account being deleted.
- *
- * The role is deliberately absent. A diner has no use for knowing whether the
- * person at the till was the owner or a cashier, and printing it invites
- * questions nobody at the counter wants.
  */
 return new class extends Migration
 {

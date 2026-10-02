@@ -28,14 +28,6 @@ export function Landing() {
 
   /**
    * Under "Best sellers", only the dishes the owner marked as such.
-   *
-   * They used to lead a list that the rest of the menu then filled out, which
-   * made the heading a lie: five picks and eight tiles meant three dishes were
-   * being called best sellers by nobody. If the owner marked five, the front
-   * page shows five and the rest of the menu is one link away.
-   *
-   * It stays honest in the other direction too, because a marked dish still has
-   * to be available — yesterday's pick that has run out is not on show today.
    */
   const picks = cookingNow.filter((d) => d.featured);
   const hasPicks = show.recommended && picks.length > 0;
@@ -150,15 +142,6 @@ export function Landing() {
 
 /**
  * How many columns a given number of dishes should sit in.
- *
- * A fixed four-across grid is only right when the count happens to divide by
- * four. The owner marks whatever they mark — five is a very natural number of
- * best sellers — and four columns left the fifth alone at the start of an empty
- * row, which reads as something missing rather than as a deliberate five.
- *
- * The strings are written out in full rather than built from the number,
- * because Tailwind finds classes by reading the source: a name assembled at run
- * time is a name it never sees and never generates.
  */
 function rowShape(n: number): string {
   if (n <= 2) return 'sm:grid-cols-2 lg:grid-cols-3';

@@ -1,13 +1,5 @@
 /**
  * Everything the diner's own device remembers.
- *
- * Ordering stays anonymous, so there is no account to hang favourites, order
- * history or ratings off. All three live in this browser instead, which is what
- * makes a second order one tap instead of a fresh start.
- *
- * Nothing here is authoritative: the ticket in Postgres is the real record.
- * This is a convenience layer, so every read is defensive and a corrupt or
- * cleared store simply behaves like a first visit.
  */
 import type { Order } from './types';
 
@@ -20,12 +12,6 @@ const KEY = {
 
 /**
  * Parsed values are cached by key, and that is not an optimisation.
- *
- * These getters are read through useSyncExternalStore, which compares snapshots
- * by reference. Parsing the JSON afresh on every call would hand React a brand
- * new array each render, it would conclude the store had changed, and the
- * component would re-render forever. The cache is what keeps the snapshot
- * stable between writes.
  */
 const cache = new Map<string, unknown>();
 
@@ -102,17 +88,6 @@ export function toggleFavourite(dishId: string): boolean {
 // -------------------------------------------------------------- device token
 /**
  * This browser's own identity, for ordering without an account.
- *
- * The database used to let anybody read any order from the last 24 hours,
- * because that was the only way a guest ticket could follow itself. This is
- * what replaces it: a random value minted on the first order and kept, which
- * the database matches against the tickets raised with it. A diner sees their
- * own orders and nobody else's, and — because the browser remembers it — they
- * can close the page without writing the code down and still find their way
- * back to a ticket that is still cooking.
- *
- * It is not a secret worth much on its own: it identifies a device, not a
- * person, and it can only ever fetch orders that device itself placed.
  */
 export function deviceToken(): string {
   let token = read<string>(KEY.device, '');

@@ -5,26 +5,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * A code is worth one discount to each diner, not one discount per order.
- *
- * `used_count` was only ever a cap on the promotion as a whole: run SULIT10
- * with a limit of fifty and one determined regular could take all fifty. A
- * promotion is meant to buy fifty visits from fifty people, and there was
- * nothing in the schema that said so.
- *
- * Redemptions are now recorded per account, and the primary key is the rule —
- * (code, customer) can only exist once, so the database refuses a second
- * attempt rather than trusting anybody to check first. That matters under load:
- * two orders placed a moment apart with the same code cannot both slip through
- * a `select ... if not exists`, but they cannot both insert the same key.
- *
- * The loser of that race is charged full price rather than failing outright,
- * which is how the existing `used_count` race already behaves. A diner who
- * double-taps ends up with lunch, not an error.
- *
- * Guests were already refused a discount. This adds the other half of the same
- * thought: a discount has to attach to somebody, so an order with no customer
- * on it — a staff account testing the storefront, for instance — gets none
- * either. Otherwise "once per account" would have an unlimited back door.
  */
 return new class extends Migration
 {
