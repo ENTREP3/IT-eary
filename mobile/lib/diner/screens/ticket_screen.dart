@@ -235,13 +235,23 @@ class _TicketScreenState extends State<TicketScreen> {
 
   Future<void> _saveReceipt() async {
     try {
-      await FileSaver.instance.saveFile(
+      // saveAs, not saveFile. saveFile writes into the app's own external
+      // folder, which is not in the gallery, is awkward to reach through a
+      // file manager, and is deleted with the app — so it reported success
+      // and the receipt was nowhere the diner could find it. This asks where
+      // to put it, and the answer is somewhere they chose.
+      final path = await FileSaver.instance.saveAs(
         name: 'bencris-${_ticket.ticketCode}',
         bytes: await _receiptPng(),
         ext: 'png',
         mimeType: MimeType.png,
       );
       if (!mounted) return;
+
+      // Null means they backed out of the picker, which is not a failure and
+      // not a save either.
+      if (path == null) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Receipt ${_ticket.ticketCode} saved.')),
       );

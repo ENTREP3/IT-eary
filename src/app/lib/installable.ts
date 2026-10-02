@@ -46,24 +46,35 @@ export function makeInstallable() {
 
   const shape = SHAPES[SURFACE];
 
+  /*
+   * Absolute, because the manifest is handed over as a blob.
+   *
+   * A blob: URL has no path to resolve against, so every relative entry in it
+   * — start_url, scope, each icon src — was rejected as invalid and the whole
+   * manifest ignored. The browser said so five times in the console and simply
+   * never offered to install the site, which looked like the feature not
+   * existing rather than being broken.
+   */
+  const origin = window.location.origin;
+
   const manifest = {
     name: shape.name,
     short_name: shape.short,
-    start_url: shape.start,
-    scope: '/',
+    start_url: `${origin}${shape.start}`,
+    scope: `${origin}/`,
     display: 'standalone',
     orientation: 'portrait',
     theme_color: shape.theme,
     background_color: shape.background,
     icons: [
       {
-        src: `/${shape.icon}-192.png`,
+        src: `${origin}/${shape.icon}-192.png`,
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: `/${shape.icon}-512.png`,
+        src: `${origin}/${shape.icon}-512.png`,
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
@@ -72,7 +83,7 @@ export function makeInstallable() {
       // inside a white rounded square. The mark is centred with room around
       // it, which is what makes that safe to claim.
       {
-        src: `/${shape.icon}-512.png`,
+        src: `${origin}/${shape.icon}-512.png`,
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',

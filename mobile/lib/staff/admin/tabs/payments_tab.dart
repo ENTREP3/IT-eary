@@ -392,7 +392,7 @@ class _ReceiptRetentionState extends State<ReceiptRetention> {
         final date = (r['created_at'] as String).substring(0, 10);
         final name = '${r['ticket_code']}-$date';
 
-        await FileSaver.instance.saveFile(
+        await FileSaver.instance.saveAs(
           name: name,
           bytes: Uint8List.fromList(bytes),
           ext: 'jpg',
@@ -408,7 +408,7 @@ class _ReceiptRetentionState extends State<ReceiptRetention> {
         throw Exception('None of the images could be fetched.');
       }
 
-      await FileSaver.instance.saveFile(
+      await FileSaver.instance.saveAs(
         name: 'receipts-$stamp',
         bytes: Uint8List.fromList(utf8.encode(manifest.join('\n'))),
         ext: 'csv',

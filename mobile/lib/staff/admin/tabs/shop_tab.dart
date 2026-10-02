@@ -1052,13 +1052,13 @@ class _AppPosterState extends State<_AppPoster> {
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
       if (data == null) throw Exception('The poster could not be captured.');
 
-      await FileSaver.instance.saveFile(
+      await FileSaver.instance.saveAs(
         name: 'bencris-poster',
         bytes: data.buffer.asUint8List(),
         ext: 'png',
         mimeType: MimeType.png,
       );
-      if (mounted) setState(() => _note = 'Poster saved to your downloads.');
+      if (mounted) setState(() => _note = 'Poster saved.');
     } catch (e) {
       if (mounted) {
         setState(() {

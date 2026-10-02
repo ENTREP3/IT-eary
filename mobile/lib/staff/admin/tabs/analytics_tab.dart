@@ -213,7 +213,7 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
         ),
       ]);
 
-      await FileSaver.instance.saveFile(
+      await FileSaver.instance.saveAs(
         name: 'bencris-analytics-${_iso(DateTime.now())}',
         bytes: Uint8List.fromList(utf8.encode(csv)),
         ext: 'csv',
