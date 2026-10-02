@@ -648,6 +648,10 @@ class Api {
     String? customerName,
     String paymentMethod = 'cash',
     String? promoCode,
+    /// A walk-in taken at the counter. No device token, because there is no
+    /// phone to prove the ticket belongs to later, and no promo, because
+    /// there is no account for "once each" to be counted against.
+    bool atCounter = false,
   }) async {
     final items = quantitiesByDishId.entries
         .map((e) => {'id': e.key, 'qty': e.value})
@@ -666,7 +670,7 @@ class Api {
         'p_promo_code': (promoCode ?? '').trim().isEmpty ? null : promoCode!.trim(),
         // How this device proves the ticket is its own, later, without an
         // account and without having written the code down.
-        'p_device_token': await DeviceToken.get(),
+        'p_device_token': atCounter ? null : await DeviceToken.get(),
       },
     );
     return Ticket.fromMap(Map<String, dynamic>.from(row as Map));

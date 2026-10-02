@@ -23,6 +23,8 @@ import { useAuthStore } from '../store/authStore';
 import { useOrdersStore, isRefundable } from '../store/ordersStore';
 import { Receipt } from './Receipt';
 import { KitchenBoard } from './shared/KitchenBoard';
+import { CounterOrder } from './shared/CounterOrder';
+import { ShowToCustomer } from './shared/ShowToCustomer';
 import { RefundDialog } from './shared/RefundDialog';
 import { AddToOrder } from './shared/AddToOrder';
 import type { Order, PaymentMethod, PaymentStatus } from '../lib/types';
@@ -34,10 +36,17 @@ type Stage = 'lookup' | 'review' | 'receipt';
 
 // The counter carries the kitchen board, which can cancel an order, so the
 // confirmation provider has to reach it here too.
-export function CashierApp({ chrome = true }: { chrome?: boolean }) {
+export function CashierApp({
+  chrome = true,
+  openTicket,
+}: {
+  chrome?: boolean;
+  /** A ticket to open straight away, for a counter order just raised elsewhere. */
+  openTicket?: string | null;
+}) {
   return (
     <ConfirmProvider>
-      <CashierCounter chrome={chrome} />
+      <CashierCounter chrome={chrome} openTicket={openTicket ?? null} />
     </ConfirmProvider>
   );
 }
@@ -45,10 +54,16 @@ export function CashierApp({ chrome = true }: { chrome?: boolean }) {
 /**
  * @param chrome  Whether to draw the counter's own header and screen.
  */
-function CashierCounter({ chrome }: { chrome: boolean }) {
+function CashierCounter({
+  chrome,
+  openTicket = null,
+}: {
+  chrome: boolean;
+  openTicket?: string | null;
+}) {
   // In a karinderya this size the person on the till is also the person calling
   // to the kitchen, so the counter screen carries the order queue too.
-  const [view, setView] = useState<'counter' | 'kitchen'>('counter');
+  const [view, setView] = useState<'counter' | 'new' | 'kitchen'>('counter');
   const [stage, setStage] = useState<Stage>('lookup');
   const [code, setCode] = useState('');
   const [order, setOrder] = useState<Order | null>(null);
@@ -116,6 +131,24 @@ function CashierCounter({ chrome }: { chrome: boolean }) {
     setProofUrl(null);
     setZoomed(false);
   };
+
+  // Opens a ticket the owner's dashboard has just raised, so taking an order
+  // and settling it are one movement rather than typing the code back in.
+  useEffect(() => {
+    const wanted = openTicket?.trim();
+    if (!wanted) return;
+    let alive = true;
+    (async () => {
+      const found = await findByTicket(wanted);
+      if (!alive || !found) return;
+      setOrder(found);
+      setCode(found.ticket_code);
+      setStage(found.paid_at ? 'receipt' : 'review');
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [openTicket, findByTicket]);
 
   const lookup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,6 +220,7 @@ function CashierCounter({ chrome }: { chrome: boolean }) {
             {(
               [
                 ['counter', 'Counter'],
+                ['new', 'New order'],
                 ['kitchen', 'Kitchen'],
               ] as const
             ).map(([k, label]) => (
@@ -235,6 +269,23 @@ function CashierCounter({ chrome }: { chrome: boolean }) {
           <StaffAnnouncement />
           <h2 className="text-[11px] tracking-[0.25em] uppercase opacity-45 mb-4">Order queue</h2>
           <KitchenOrders />
+        </main>
+      ) : chrome && view === 'new' ? (
+        <main className="flex-1 p-6 overflow-auto">
+          <StaffAnnouncement />
+          <h2 className="text-[11px] tracking-[0.25em] uppercase opacity-45 mb-4">
+            Take an order
+          </h2>
+          {/* Straight into the payment screen the till already has, so a
+              walk-in is settled exactly like a ticket a diner brought in. */}
+          <CounterOrder
+            onCreated={(o) => {
+              setOrder(o);
+              setCode(o.ticket_code);
+              setStage('review');
+              setView('counter');
+            }}
+          />
         </main>
       ) : (
       <main className={chrome ? "flex-1 p-6" : "py-6"}>
@@ -386,6 +437,8 @@ function CashierCounter({ chrome }: { chrome: boolean }) {
                   </span>
                 </div>
               </div>
+
+              <ShowToCustomer order={order} />
 
               <AddToOrder order={order} onChanged={setOrder} />
 

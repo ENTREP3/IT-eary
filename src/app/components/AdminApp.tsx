@@ -68,6 +68,7 @@ import { supabase } from '../lib/supabase';
 import { PromotionsPanel } from './admin/PromotionsPanel';
 import { KitchenBoard } from './shared/KitchenBoard';
 import { CashierApp } from './CashierApp';
+import { CounterOrder } from './shared/CounterOrder';
 import { RecipePanel } from './admin/RecipePanel';
 import { ShopPanel } from './admin/ShopPanel';
 import { OrderHistory, OrderDetail } from './admin/OrderHistory';
@@ -571,7 +572,8 @@ function ReconciliationPanel({ orders }: { orders: Order[] }) {
  * The order queue, and the till, on one screen.
  */
 function KitchenPage({ orders }: { orders: Order[] }) {
-  const [view, setView] = useState<'queue' | 'ticket'>('queue');
+  const [view, setView] = useState<'queue' | 'take' | 'ticket'>('queue');
+  const [handoff, setHandoff] = useState<string | null>(null);
 
   return (
     <div className="space-y-5">
@@ -579,6 +581,7 @@ function KitchenPage({ orders }: { orders: Order[] }) {
         {(
           [
             ['queue', 'Order queue'],
+            ['take', 'Take an order'],
             ['ticket', 'Look up a ticket'],
           ] as const
         ).map(([k, label]) => (
@@ -594,7 +597,21 @@ function KitchenPage({ orders }: { orders: Order[] }) {
         ))}
       </div>
 
-      {view === 'queue' ? <KitchenBoard orders={orders} /> : <CashierApp chrome={false} />}
+      {view === 'queue' && <KitchenBoard orders={orders} />}
+
+      {view === 'take' && (
+        // Handed to the till rather than settled here: the counter already
+        // knows how to take money, and a second copy of that would be the one
+        // that falls behind.
+        <CounterOrder
+          onCreated={(o) => {
+            setHandoff(o.ticket_code);
+            setView('ticket');
+          }}
+        />
+      )}
+
+      {view === 'ticket' && <CashierApp chrome={false} openTicket={handoff} />}
     </div>
   );
 }

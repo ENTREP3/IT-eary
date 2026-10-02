@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import '../../errors.dart';
 
 import '../../models/models.dart';
+import '../../services/api.dart';
 import '../../tokens.dart';
 import '../../notification_bell.dart';
 import '../../notify_toggle.dart';
 import '../admin/tabs/kitchen_tab.dart';
+import 'counter_order_screen.dart';
 import '../widgets/refund_sheet.dart';
 import '../widgets/staff_announcement.dart';
 import 'add_to_order_sheet.dart';
@@ -29,6 +31,9 @@ class CashierScreen extends StatefulWidget {
 class _CashierScreenState extends State<CashierScreen> {
   final _codeCtrl = TextEditingController();
   Ticket? _ticket;
+
+  /// The shop's GCash details, for the panel the customer is shown.
+  PaymentSettings? _settings;
   String? _proofUrl;
   bool _busy = false;
   bool _proofLoading = false;
@@ -40,6 +45,9 @@ class _CashierScreenState extends State<CashierScreen> {
   @override
   void initState() {
     super.initState();
+    Api.paymentSettings().then((v) {
+      if (mounted) setState(() => _settings = v);
+    });
     // The ticket on screen is the one thing at the counter that moves on its
     // own: the kitchen marks it ready, the owner refunds it, a stale ticket
     // expires. Watching orders means the cashier is never looking at a state
@@ -171,6 +179,21 @@ class _CashierScreenState extends State<CashierScreen> {
     });
   }
 
+  /// Takes an order at the counter and hands the ticket to the till.
+  ///
+  /// Settling is not repeated here: the screen below already knows how to
+  /// take money, and a second copy of that is the one that falls behind.
+  Future<void> _takeOrder() async {
+    final ticket = await Navigator.of(context).push<Ticket>(
+      MaterialPageRoute(builder: (_) => const CounterOrderScreen()),
+    );
+    if (ticket == null || !mounted) return;
+    setState(() {
+      _ticket = ticket;
+      _view = _CounterView.counter;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = _ticket;
@@ -183,6 +206,11 @@ class _CashierScreenState extends State<CashierScreen> {
         centerTitle: false,
         title: const Text('Counter', style: TextStyle(fontWeight: FontWeight.w600)),
         actions: [
+          IconButton(
+            onPressed: _takeOrder,
+            icon: const Icon(Icons.add_shopping_cart_outlined, size: 20),
+            tooltip: 'Take an order',
+          ),
           const NotificationBell.staff(),
           if (widget.onSignOut != null)
             IconButton(
@@ -329,6 +357,119 @@ class _CashierScreenState extends State<CashierScreen> {
     );
   }
 
+  /// The half of the screen the customer is meant to look at.
+  ///
+  /// A ticket raised at the counter leaves nothing on their phone — no code to
+  /// collect with, and for GCash no QR to pay against. This is that, turned
+  /// outward. Gone once the ticket is settled, since there is nothing left to
+  /// do with it.
+  Widget _showToCustomer(Ticket t) {
+    final gcash = t.paymentMethod == 'gcash';
+    final s = _settings;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Tokens.staffAccent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Tokens.staffAccent.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'TURN THE SCREEN AROUND',
+            style: TextStyle(
+              fontSize: 10,
+              letterSpacing: 2,
+              fontWeight: FontWeight.w600,
+              color: Tokens.staffAccent,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            t.ticketCode,
+            style: const TextStyle(
+              fontSize: 34,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 5,
+              color: Tokens.staffInk,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Ask them to photograph this. It is how they collect the order, '
+            'and there is no copy on their phone.',
+            style: TextStyle(
+              fontSize: 11.5,
+              height: 1.4,
+              color: Tokens.staffInk.withValues(alpha: 0.6),
+            ),
+          ),
+          if (gcash) ...[
+            const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (s?.gcashQrUrl != null && s!.gcashQrUrl!.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      s.gcashQrUrl!,
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    ),
+                  ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Send exactly',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Tokens.staffInk.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      Text(
+                        '₱${t.total.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Tokens.staffInk,
+                        ),
+                      ),
+                      if ((s?.gcashName ?? '').isNotEmpty)
+                        Text(
+                          s!.gcashName,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Tokens.staffInk.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      if ((s?.gcashNumber ?? '').isNotEmpty)
+                        Text(
+                          s!.gcashNumber,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Tokens.staffInk.withValues(alpha: 0.7),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _ticketView(Ticket t) {
     final paid = t.isPaid;
     return SingleChildScrollView(
@@ -346,6 +487,8 @@ class _CashierScreenState extends State<CashierScreen> {
             ),
           ),
           const SizedBox(height: 6),
+
+          if (!paid) _showToCustomer(t),
 
           _card(
             child: Column(
