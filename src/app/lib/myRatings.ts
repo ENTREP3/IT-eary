@@ -25,9 +25,11 @@ async function fetchMine(): Promise<MyRatings> {
     comment: string;
     created_at: string;
   }>) {
-    // Newest first from the function, so the first seen for a dish is current.
-    if (!map.has(row.dish_id)) {
-      map.set(row.dish_id, {
+    // Keyed by the meal. A dish rated on two visits is two ratings, and
+    // keeping only one made the other ticket show stars nobody gave it.
+    const key = `${row.ticket_code}:${row.dish_id}`;
+    if (!map.has(key)) {
+      map.set(key, {
         dishId: row.dish_id,
         stars: row.rating,
         comment: row.comment ?? '',
@@ -54,8 +56,8 @@ function refresh(): Promise<void> {
        * several — would keep disagreeing with this one, and a diner would see
        * their rating in one place and not in another.
        */
-      for (const [dishId, rating] of mine) {
-        if (!getMyRating(dishId)) saveRating(rating);
+      for (const rating of mine.values()) {
+        if (!getMyRating(rating.dishId, rating.ticket)) saveRating(rating);
       }
       publish(mine);
     })
@@ -82,7 +84,10 @@ if (typeof window !== 'undefined') {
  * The device first, because it is the fresher of the two the moment a rating
  * is made and needs no network to answer.
  */
-export function useMyRating(dishId: string): Rating | undefined {
+export function useMyRating(
+  dishId: string,
+  ticketCode?: string,
+): Rating | undefined {
   const [mine, setMine] = useState<MyRatings>(current);
 
   useEffect(() => {
@@ -93,7 +98,17 @@ export function useMyRating(dishId: string): Rating | undefined {
     };
   }, []);
 
-  return getMyRating(dishId) ?? mine.get(dishId);
+  if (ticketCode) {
+    return (
+      getMyRating(dishId, ticketCode) ?? mine.get(`${ticketCode}:${dishId}`)
+    );
+  }
+
+  // No ticket: the looser question a dish card asks — rated at all?
+  return (
+    getMyRating(dishId) ??
+    [...mine.values()].find((r) => r.dishId === dishId)
+  );
 }
 
 /** Called after leaving a rating, so the shared copy is not a step behind. */

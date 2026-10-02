@@ -40,7 +40,7 @@ function DishRow({ ticketCode, item }: { ticketCode: string; item: Item }) {
   const dishId = item.id!;
   const post = useReviewStore((s) => s.submit);
 
-  const existing = useMyRating(dishId);
+  const existing = useMyRating(dishId, ticketCode);
 
   /*
    * Settled ratings cannot be changed, and the stars stop being buttons.

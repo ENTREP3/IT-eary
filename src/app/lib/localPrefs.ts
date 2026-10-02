@@ -157,8 +157,21 @@ export function getRatings(): Rating[] {
   return read<Rating[]>(KEY.ratings, []);
 }
 
-export function getMyRating(dishId: string): Rating | undefined {
-  return getRatings().find((r) => r.dishId === dishId);
+/**
+ * This device’s rating for a dish, on one ticket.
+ *
+ * A rating belongs to a meal, not to a dish. Without the ticket, rating
+ * Chicken Curry once made every later Chicken Curry look rated — the stars
+ * appeared filled in on an order nobody had rated, and said they could no
+ * longer be changed.
+ *
+ * Called without one it answers the looser question: has this dish been
+ * rated at all? That is what a dish card on the menu wants to know.
+ */
+export function getMyRating(dishId: string, ticket?: string): Rating | undefined {
+  return getRatings().find(
+    (r) => r.dishId === dishId && (ticket === undefined || r.ticket === ticket),
+  );
 }
 
 /**
@@ -166,7 +179,11 @@ export function getMyRating(dishId: string): Rating | undefined {
  * is the same rule the server will enforce once ratings move into Postgres.
  */
 export function saveRating(r: Rating) {
-  const rest = getRatings().filter((x) => x.dishId !== r.dishId);
+  // Keyed by the meal: the same dish on a later visit is a separate rating,
+  // and replacing by dish alone threw the earlier one away.
+  const rest = getRatings().filter(
+    (x) => !(x.dishId === r.dishId && x.ticket === r.ticket),
+  );
   write(KEY.ratings, [r, ...rest]);
   announce();
 }
