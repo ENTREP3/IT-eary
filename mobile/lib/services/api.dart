@@ -517,6 +517,77 @@ class Api {
         'ends_at': endsAt.toUtc().toIso8601String(),
       });
 
+  /// Sends one notification. Never throws.
+  ///
+  /// The edge function records it for the bell and sends it to any device
+  /// that has been registered, so a failure here costs a message and nothing
+  /// else — never the work that prompted it.
+  static Future<void> _notify({
+    required Map<String, dynamic> to,
+    required String title,
+    required String body,
+    String url = '/',
+    String tag = 'bencris',
+  }) async {
+    try {
+      await _db.functions.invoke('send-push', body: {
+        'to': to,
+        'title': title,
+        'body': body,
+        'url': url,
+        'tag': tag,
+      });
+    } catch (_) {
+      // Said nowhere, because there is nothing the person at the till can do
+      // about it and the order itself is unaffected.
+    }
+  }
+
+  /// Tells the diner their ticket moved, for the two moves worth saying.
+  ///
+  /// The website has done this since tickets existed; the phone did not, so a
+  /// cashier working from the counter app marked an order ready and nobody was
+  /// ever told. Only ready and cancelled: a diner does not need buzzing when
+  /// the kitchen starts cooking.
+  static Future<void> notifyTicketStatus(String ticketCode, String status) async {
+    const news = {
+      'ready': ('Your order is ready', 'Come to the counter whenever you are ready.'),
+      'cancelled': (
+        'Your order was cancelled',
+        'Ask at the counter if you were not expecting this.',
+      ),
+    };
+    final item = news[status];
+    if (item == null) return;
+
+    await _notify(
+      to: {'kind': 'ticket', 'ticket_code': ticketCode},
+      title: item.$1,
+      body: item.$2,
+      url: '/account',
+      tag: 'ticket-$ticketCode',
+    );
+  }
+
+  /// Money going back is always worth saying, and saying precisely.
+  static Future<void> notifyRefund(String ticketCode, double amount) =>
+      _notify(
+        to: {'kind': 'ticket', 'ticket_code': ticketCode},
+        title: 'You have been refunded',
+        body: '₱${amount.toStringAsFixed(2)} for ticket $ticketCode.',
+        url: '/account',
+        tag: 'ticket-$ticketCode',
+      );
+
+  /// Tells the people who asked that a dish is back on the menu.
+  static Future<void> notifyDishBack(String dishId, String dishName) => _notify(
+    to: {'kind': 'dish_waiters', 'dish_id': dishId},
+    title: '$dishName is back',
+    body: 'You asked to be told. It is on the menu again now.',
+    url: '/menu',
+    tag: 'dish-$dishId',
+  );
+
   /// Pushes an announcement to whoever it was written for.
   ///
   /// Separate from posting it, and called only when the owner ticks the

@@ -76,6 +76,7 @@ class _RefundSheetState extends State<RefundSheet> {
         reason: _finalReason,
         method: _method,
         note: _note.text.trim().isEmpty ? null : _note.text.trim(),
+        amount: widget.order.total,
       );
       // Deliberately after, and deliberately swallowed. The refund is
       // recorded either way; a failed upload is not worth an error over a

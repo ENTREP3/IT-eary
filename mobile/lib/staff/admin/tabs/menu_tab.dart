@@ -99,7 +99,7 @@ class _MenuTabState extends State<MenuTab> {
   Future<void> _toggle(Dish d, bool value) async {
     setState(() => _busy = d.id);
     try {
-      await AdminApi.setDishAvailable(d.id, value);
+      await AdminApi.setDishAvailable(d.id, value, name: d.name);
       await widget.onChanged();
     } finally {
       if (mounted) setState(() => _busy = null);

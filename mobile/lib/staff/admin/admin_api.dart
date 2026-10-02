@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/models.dart';
+import '../../services/api.dart';
 import '../../widgets/photo_sizes.dart';
 
 /// Owner-only reads and writes. Every one of these is also gated in Postgres by
@@ -53,22 +54,33 @@ class AdminApi {
     required String reason,
     String? method,
     String? note,
-  }) => _db.rpc(
-    'refund_order',
-    params: {
-      'p_ticket_code': ticketCode.trim().toUpperCase(),
-      'p_reason': reason,
-      'p_method': method,
-      'p_note': note,
-    },
-  );
+    double? amount,
+  }) async {
+    await _db.rpc(
+      'refund_order',
+      params: {
+        'p_ticket_code': ticketCode.trim().toUpperCase(),
+        'p_reason': reason,
+        'p_method': method,
+        'p_note': note,
+      },
+    );
+    if (amount != null) {
+      await Api.notifyRefund(ticketCode.trim().toUpperCase(), amount);
+    }
+  }
 
-  /// Moves an order along the kitchen flow.
-  static Future<void> setStatus(String ticketCode, String status) =>
-      _db.rpc(
-        'advance_order_status',
-        params: {'p_ticket_code': ticketCode, 'p_status': status},
-      );
+  /// Moves an order along the kitchen flow, and tells the diner.
+  ///
+  /// The notification goes after the database has agreed, so nobody is told
+  /// their food is ready by a move that was refused.
+  static Future<void> setStatus(String ticketCode, String status) async {
+    await _db.rpc(
+      'advance_order_status',
+      params: {'p_ticket_code': ticketCode, 'p_status': status},
+    );
+    await Api.notifyTicketStatus(ticketCode, status);
+  }
 
   static Future<Ticket> resolveReview(
     String code,
@@ -93,8 +105,16 @@ class AdminApi {
     return rows.map<Dish>((r) => Dish.fromMap(r)).toList();
   }
 
-  static Future<void> setDishAvailable(String id, bool available) =>
-      _db.from('dishes').update({'available': available}).eq('id', id);
+  /// Puts a dish back on the menu, or takes it off.
+  ///
+  /// Coming back is the half worth announcing: the button a diner pressed
+  /// said the shop would tell them, and on the phone it never did.
+  static Future<void> setDishAvailable(String id, bool available, {String? name}) async {
+    await _db.from('dishes').update({'available': available}).eq('id', id);
+    if (available && (name ?? '').trim().isNotEmpty) {
+      await Api.notifyDishBack(id, name!.trim());
+    }
+  }
 
   static Future<void> updateDish(String id, Map<String, dynamic> patch) =>
       _db.from('dishes').update(patch).eq('id', id);
