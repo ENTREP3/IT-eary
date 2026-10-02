@@ -6,6 +6,7 @@ import { useBusinessStore } from '../../store/businessStore';
 import { humanError } from '../../lib/errors';
 import { useConfirm } from '../shared/useConfirm';
 import { RefundRequestDialog } from './RefundRequestDialog';
+import { RefundNotice, maybeRefunded } from './RefundNotice';
 import { receiptPng, saveBlob } from '../../lib/receiptImage';
 import { dinerOrigin } from '../../lib/surface';
 
@@ -235,6 +236,9 @@ export function ReceiptDialog({ order, onClose }: { order: Order; onClose: () =>
 
           <p className="mt-4 text-center text-xs text-black/45">Salamat po!</p>
           </div>
+
+          {/* Shown where the money is: under the receipt it belongs to. */}
+          {maybeRefunded(order) && <RefundNotice order={order} />}
         </div>
 
         <div className="shrink-0 border-t border-diner-ink/10 p-4 space-y-2">
