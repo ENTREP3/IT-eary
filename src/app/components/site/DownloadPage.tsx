@@ -61,6 +61,10 @@ export function DownloadPage() {
    */
   const apk = app.url?.trim();
 
+  // The file the link really hands over, so the steps below name the one the
+  // reader is looking at rather than always the customer's.
+  const fileName = apk ? (apk.split('/').pop() ?? 'bencris.apk') : 'bencris.apk';
+
   return (
     <div className="min-h-screen bg-diner-ground text-diner-ink">
       <main className="mx-auto w-full max-w-md px-5 py-12">
@@ -101,7 +105,7 @@ export function DownloadPage() {
               className="mt-4 flex items-center justify-center gap-2 h-12 rounded-full bg-diner-ink text-diner-ground font-medium"
             >
               <Download size={17} />
-              Download {profile.name || 'Bencris'} (.apk)
+              Download {profile.name || 'Bencris'}{app.name ? ` ${app.name}` : ''} (.apk)
             </a>
           ) : (
             // Said plainly rather than showing a button that goes nowhere.
@@ -115,7 +119,7 @@ export function DownloadPage() {
           <ol className="mt-2 space-y-2.5 text-sm opacity-75 leading-relaxed list-decimal pl-5">
             <li>Tap <strong>Download</strong> above and wait for the file to finish.</li>
             <li>
-              Open the downloaded <code className="text-xs bg-diner-ink/8 px-1 py-0.5 rounded">bencris.apk</code>{' '}
+              Open the downloaded <code className="text-xs bg-diner-ink/8 px-1 py-0.5 rounded">{fileName}</code>{' '}
               from your notifications or Files app.
             </li>
             <li>
