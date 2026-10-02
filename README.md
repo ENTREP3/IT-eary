@@ -11,24 +11,44 @@ A digital companion for the neighborhood **karinderya**, built around a
 
 The frontend splits by audience:
 
-**Six separate apps** — three on the web (React), three on mobile (Flutter PWAs)
+**Six separate apps** — three on the web (React), three on Android (Flutter)
 — sharing one Supabase backend.
 
-| Audience | Web · React | Mobile · Flutter PWA |
+| Audience | Web · React | Android · Flutter |
 | --- | --- | --- |
-| Customer | `/` | `mobile/lib/main_customer.dart` → `build/customer` |
-| Cashier | `/cashier` | `mobile/lib/main_cashier.dart` → `build/cashier` |
-| Owner | `/admin` | `mobile/lib/main_admin.dart` → `build/admin` |
+| Customer | `bencris.iteary.site` | `main_customer.dart` → `site.iteary.bencris` |
+| Cashier | `bencris-cashier.iteary.site` | `main_cashier.dart` → `…bencris.counter` |
+| Owner | `bencris-admin.iteary.site` | `main_admin.dart` → `…bencris.owner` |
 
-Each mobile app is its own build with its own name and icon, so the three
-install side by side and a cashier's phone never carries the owner UI at all.
+Each Android app is its own build with its own application id, name and icon,
+so the three install side by side and a cashier's phone never carries the owner
+UI at all. They are built as product flavors:
 
-All three are built and served by the `mobile` container, so Flutter does not
-need to be installed to run them:
+```bash
+flutter build apk --release --flavor customer -t lib/main_customer.dart
+flutter build apk --release --flavor counter  -t lib/main_cashier.dart
+flutter build apk --release --flavor owner    -t lib/main_admin.dart
+```
+
+The customer APK is published on GitHub Releases and the two staff builds in a
+separate repository, so a staff APK can never be offered to a diner as an
+update to their menu.
+
+### Installing without the Play Store
+
+The Flutter apps were web builds first, served by the `mobile` container for
+development:
 
 ```bash
 docker compose up -d mobile            # → http://localhost:5180
 ```
+
+That is still how they run locally, but nothing is deployed from it. In
+production the three React sites are the web, and the three APKs are the phone.
+
+The React sites are installable themselves — each serves a manifest naming that
+surface, so adding the counter site to a home screen gives a tile called
+"Bencris Counter", not one called "Bencris" that opens the till.
 
 ### What keeps six frontends in step
 
