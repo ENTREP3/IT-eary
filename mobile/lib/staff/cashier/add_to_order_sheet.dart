@@ -196,7 +196,7 @@ class _AddToOrderSheetState extends State<AddToOrderSheet> {
                               style: const TextStyle(
                                   fontSize: 14, color: Tokens.staffInk),
                             ),
-                            subtitle: d.stockCount == null
+                            subtitle: (d.stockCount ?? 0) <= 0
                                 ? null
                                 : Text(
                                     '${d.stockCount} left',

@@ -1041,7 +1041,7 @@ class _DishFormState extends State<_DishForm> {
             ]),
             const SizedBox(height: 10),
             _field(_stock, 'Servings left today', number: true,
-                hint: 'Unlimited'),
+                hint: '0'),
             const SizedBox(height: 6),
             Text(
               'Plates of this dish still available. Each order takes one off, '

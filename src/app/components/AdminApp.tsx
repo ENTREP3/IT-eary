@@ -2139,12 +2139,14 @@ function MenuControl() {
               </div>
             </div>
             <div>
-              <Label className="text-[#e8dfc8]/70">Servings left today (blank = unlimited)</Label>
+              <Label className="text-[#e8dfc8]/70">
+                Servings left today
+              </Label>
               <Input
                 type="number"
                 className={fieldCls}
                 value={form.stockCount ?? ''}
-                placeholder="Unlimited"
+                placeholder="0"
                 onChange={(e) =>
                   setForm((p) => ({
                     ...p,

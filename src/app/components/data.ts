@@ -13,7 +13,13 @@ export type Dish = {
   /** Owner chose to show this off on the storefront. */
   featured?: boolean;
   soldToday: number;
-  /** NULL/undefined = unlimited; when set, the order trigger decrements it. */
+  /**
+   * Servings left today. Nought means none, and takes the dish off the menu.
+   *
+   * It used to mean "do not track", which is a reasonable default for a shop
+   * that never counts and a dangerous one for a shop that does — a blank read
+   * as unlimited, so a dish nobody had cooked could still be ordered.
+   */
   stockCount?: number | null;
 };
 
